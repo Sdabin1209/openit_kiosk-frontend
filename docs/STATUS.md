@@ -1,0 +1,15 @@
+# STATUS
+
+## 한 일
+- 설계서 `design.md`, 경계 문서 `boundary.md`, 변경 요청 CR-001~003.
+- `api/`(클라이언트: 재시도, 순서, 타임아웃), `mock-server/`, 키오스크 앱, 직원 콘솔(SSE, 푸시 구독 서비스 워커, 개입 결정), 정적 서버, Dockerfile, 스모크 스크립트.
+- 시험: `npm test`(33개), `npm run typecheck`, `npm run check-schema`, `npm run smoke`.
+
+## 남은 일 / 막힌 것
+- 실제 survey-service와 연동하지 못했다(모의 서버만). 계약 어긋남은 CR-002, 003.
+- 실제 브라우저에서 화면·STT·웹 푸시를 돌려 보지 못했다(자동 시험은 상태 기계와 클라이언트까지).
+- 한국어 STT 정확도, 오프라인 글꼴 파일 포함(라이선스), TTS 품질은 미정.
+- 의존 버전은 `package-lock.json`으로 고정했다. 이미지 CI 게시(D24)는 deploy와 협의.
+
+## 실행
+`npm ci && npm run build && STATIC_DIR=dist MOCK_SCENARIO=risk_stop PORT=8099 node mock-server/main.ts` 로 시연(PORT를 비우면 빈 포트).
