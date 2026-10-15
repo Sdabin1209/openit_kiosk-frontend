@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>직원 콘솔</title>
+<link rel="stylesheet" href="staff.css">
+</head>
+<body>
+<header>
+  <h1>직원 콘솔</h1>
+  <span id="conn" role="status">연결 중</span>
+  <button id="push" type="button">푸시 알림 켜기</button>
+</header>
+<div id="banner" role="alert" hidden></div>
+<main>
+  <h2>열린 알림</h2>
+  <ul id="open"></ul>
+  <h2>해결된 알림</h2>
+  <ul id="resolved"></ul>
+</main>
+<dialog id="confirm">
+  <p id="confirm-text"></p>
+  <button id="confirm-yes" type="button">확인</button>
+  <button id="confirm-no" type="button">취소</button>
+</dialog>
+<script src="staff.js"></script>
+</body>
+</html>

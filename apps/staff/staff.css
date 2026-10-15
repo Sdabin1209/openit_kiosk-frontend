@@ -1,0 +1,12 @@
+body { margin:0; font:18px/1.5 system-ui,"Noto Sans KR","Malgun Gothic",sans-serif; color:#111; background:#f6f7f9; }
+header { display:flex; gap:16px; align-items:center; padding:12px 24px; background:#0b3d91; color:#fff; }
+header h1 { font-size:22px; margin:0; flex:1; }
+main { padding:24px; max-width:900px; margin:0 auto; }
+ul { list-style:none; padding:0; display:grid; gap:12px; }
+li { background:#fff; border:2px solid #ccd; border-radius:8px; padding:12px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+li .meta { flex:1; }
+button { font:inherit; padding:8px 16px; border-radius:6px; border:2px solid #0b3d91; background:#0b3d91; color:#fff; cursor:pointer; }
+button.alt { background:#fff; color:#0b3d91; }
+button:focus-visible { outline:4px solid #f5a300; }
+#banner { background:#8a1c1c; color:#fff; padding:12px 24px; font-weight:bold; }
+dialog { border-radius:8px; }

@@ -1,0 +1,24 @@
+{
+  "name": "kiosk-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "check-schema": "node scripts/check-schema.mjs",
+    "test": "node --test \"test/*.test.ts\"",
+    "mock": "node mock-server/main.ts",
+    "start": "node server/static.mjs",
+    "smoke": "bash scripts/smoke.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "ajv": "8.17.1",
+    "esbuild": "0.25.9",
+    "typescript": "5.9.2"
+  }
+}

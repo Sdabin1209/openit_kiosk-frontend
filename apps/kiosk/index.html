@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>문진 키오스크</title>
+<link rel="stylesheet" href="kiosk.css">
+</head>
+<body>
+<main id="app" aria-live="polite">
+  <h1 id="title"></h1>
+  <p id="text"></p>
+  <div id="manual" hidden>
+    <label for="manual-input">말씀하실 내용을 입력해 주세요</label>
+    <input id="manual-input" type="text" autocomplete="off">
+  </div>
+  <button id="action" type="button"></button>
+  <button id="secondary" type="button" hidden></button>
+</main>
+<script src="kiosk.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+:root { --bg:#fff; --fg:#111; --accent:#0b3d91; --warn:#8a1c1c; }
+* { box-sizing: border-box; }
+body { margin:0; font: 32px/1.5 system-ui, "Noto Sans KR", "Malgun Gothic", sans-serif; background:var(--bg); color:var(--fg); }
+main { min-height:100vh; display:flex; flex-direction:column; justify-content:center; gap:32px; padding:48px; max-width:1100px; margin:0 auto; }
+h1 { font-size:56px; margin:0; }
+p { margin:0; font-size:40px; min-height:1.5em; }
+button { font:inherit; font-size:44px; padding:32px 48px; border:4px solid var(--accent); background:var(--accent); color:#fff; border-radius:24px; cursor:pointer; }
+button#secondary { background:#fff; color:var(--accent); }
+button:focus-visible, input:focus-visible { outline:6px solid #f5a300; outline-offset:4px; }
+input { font:inherit; width:100%; padding:20px; border:3px solid #333; border-radius:16px; }
+body.warn main { border-left:24px solid var(--warn); }
+body.warn h1 { color:var(--warn); }
