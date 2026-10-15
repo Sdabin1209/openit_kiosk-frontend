@@ -27,7 +27,14 @@ export class KioskFlow {
   private pendingUtterance: string | null = null;
 
   private api: PublicApiClient;
-  constructor(api: PublicApiClient) { this.api = api; }
+  private pollMs: number;
+  private sleep: (ms: number) => Promise<void>;
+  private gen = 0; // 폴링을 끊기 위한 세대 번호
+  constructor(api: PublicApiClient, o: { pollMs?: number; sleep?: (ms: number) => Promise<void> } = {}) {
+    this.api = api;
+    this.pollMs = o.pollMs ?? 2000; // 계약: 2초 간격
+    this.sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  }
 
   get current(): KioskView { return this.view; }
   get session(): string | null { return this.sessionId; }
@@ -35,7 +42,9 @@ export class KioskFlow {
     this.listeners.add(fn); fn(this.view);
     return () => this.listeners.delete(fn);
   }
-  private set(v: KioskView) { this.view = v; for (const l of this.listeners) l(v); }
+  private set(v: KioskView) {
+    if (v.state !== "WAITING_STAFF") this.gen++; // 대기 화면을 떠나면 폴링 종료
+    this.view = v; for (const l of this.listeners) l(v); }
 
   async start(): Promise<void> {
     if (this.view.state !== "IDLE") return;
@@ -53,7 +62,7 @@ export class KioskFlow {
   /** STT 결과(또는 화면 입력)를 받는다. 쓸 수 없으면 서버로 보내지 않는다. */
   async hear(r: SttResult | null): Promise<void> {
     const s = this.view.state;
-    if (s !== "LISTENING" && s !== "WAITING_STAFF" && s !== "REPEAT_PROMPT") return;
+    if (s !== "LISTENING" && s !== "REPEAT_PROMPT") return; // 위험 정지 중에는 말을 받지 않는다
     if (!isUsableTranscript(r)) {
       this.set({ state: "REPEAT_PROMPT", text: null, repeatReason: "EMPTY_STT" });
       return;
@@ -92,7 +101,7 @@ export class KioskFlow {
       return this.set({ state: "CALL_STAFF", text: r.response_text, callStaffReason: "DELIVERY_FAILED" });
     }
     if (sig?.staff_alert === "DELIVERED") {
-      return this.set({ state: "WAITING_STAFF", text: r.response_text });
+      return this.waitForStaff(r.response_text);
     }
     if (sig?.write_committed === "NOT_COMMITTED") {
       return this.set({ state: "REPEAT_PROMPT", text: r.response_text, repeatReason: "NOT_COMMITTED" });
@@ -100,9 +109,33 @@ export class KioskFlow {
     this.set({ state: "LISTENING", text: r.response_text });
   }
 
+  /** 위험 정지 화면: 2초 간격으로 세션 상태를 보고, 재개되면 resume_text를 보이며 이어간다. */
+  private waitForStaff(text: string | null): void {
+    this.set({ state: "WAITING_STAFF", text });
+    const id = this.sessionId!, g = this.gen;
+    void (async () => {
+      while (this.gen === g) {
+        await this.sleep(this.pollMs);
+        if (this.gen !== g) return;
+        try {
+          const s = await this.api.getSessionState(id);
+          if (this.gen !== g) return;
+          if (s.state === "ACTIVE") return this.set({ state: "LISTENING", text: s.resume_text });
+          if (s.state === "ENDED") { this.sessionId = null; return this.set({ state: "ENDED", text: null }); }
+          // PAUSED_RISK 또는 모르는 값: 계속 기다린다
+        } catch (e) {
+          if (this.gen !== g) return;
+          if (e instanceof ApiError && e.status === 404) { this.sessionId = null; return this.set({ state: "IDLE", text: null }); }
+          if (e instanceof ApiError && (e.status === 401 || e.status === 403)) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "AUTH" });
+          // 그 밖의 오류(재시도 소진 포함)는 계속 폴링한다. 대기 화면은 직원 호출을 이미 안내 중이다.
+        }
+      }
+    })();
+  }
+
   private fail(e: unknown, dflt: CallStaffReason): void {
     if (e instanceof ApiError) {
-      if (e.status === 409) return this.set({ state: "WAITING_STAFF", text: null }); // 위험 정지 중
+      if (e.status === 409) return this.waitForStaff(null); // 위험 정지 중이거나 순서 어긋남: 상태를 폴링해 확인
       if (e.status === 404) { this.sessionId = null; return this.set({ state: "IDLE", text: null }); } // 세션 만료
       if (e.status === 401 || e.status === 403) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "AUTH" });
     }

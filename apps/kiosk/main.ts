@@ -26,7 +26,8 @@ async function listenOnce() {
 
 function render(v: KioskView) {
   document.body.classList.toggle("warn", v.state === "CALL_STAFF");
-  manual.hidden = !(v.state === "LISTENING" || v.state === "REPEAT_PROMPT" || v.state === "WAITING_STAFF") || stt.available();
+  manual.hidden = !(v.state === "LISTENING" || v.state === "REPEAT_PROMPT") || stt.available();
+  action.hidden = false;
   secondary.hidden = true; onSecondary = null; action.disabled = false; text.textContent = v.text ?? "";
   clearTimeout(idleTimer);
   switch (v.state) {
@@ -41,8 +42,8 @@ function render(v: KioskView) {
       onAction = () => (stt.available() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null }).then(() => { input.value = ""; })); break;
     case "SENDING": title.textContent = "확인하고 있어요"; action.hidden = true; break;
     case "WAITING_STAFF":
-      title.textContent = "직원이 곧 도와드립니다"; action.hidden = false; action.textContent = "말하기";
-      onAction = () => (stt.available() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null })); break;
+      title.textContent = "직원이 곧 도와드립니다"; action.hidden = true;
+      if (!v.text) text.textContent = "그대로 기다려 주세요. 직원이 오면 이어서 안내해 드립니다."; break;
     case "CALL_STAFF":
       title.textContent = "직원을 불러 주세요"; text.textContent = "가까이 있는 직원에게 알려 주세요."; action.hidden = false; action.textContent = "처음으로";
       onAction = () => flow.reset(); break;

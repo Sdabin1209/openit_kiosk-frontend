@@ -15,8 +15,8 @@ const validateMsg = ajv.compile(JSON.parse(readFileSync(new URL("FrontendMessage
 const fast = { retryDelayMs: 0, sleep: async () => {} };
 const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
-async function mk(sc = {}, opt = {}) {
-  const m = await startMock(sc); open.push(m.close);
+async function mk(sc = {}, opt = {}, mopt = {}) {
+  const m = await startMock(sc, mopt); open.push(m.close);
   return { m, api: new PublicApiClient({ baseUrl: m.base + "/v1", ...fast, ...opt }) };
 }
 
@@ -28,9 +28,84 @@ test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진
   assert.equal(m.state.log.some((l) => l.path.includes("secret")), false);
 });
 
-test("보내는 본문이 FrontendMessage 스키마를 지킨다(turn_id는 스키마에 없음, CR-002)", () => {
-  assert.ok(validateMsg({ session_id: "s1", kind: "UTTERANCE", utterance: "x" }));
-  assert.equal(validateMsg({ session_id: "s1", kind: "UTTERANCE", utterance: "x", turn_id: "t" }), false);
+const validateDecision = ajv.compile(JSON.parse(readFileSync(new URL("InterventionDecision.json", SCHEMA_DIR), "utf8")));
+const BSCHEMAS = new URL("../../boundary-contracts/schemas/", import.meta.url);
+const bs = (n: string) => ajv.compile(JSON.parse(readFileSync(new URL(n, BSCHEMAS), "utf8")));
+const vAlert = bs("StaffAlert.schema.json"), vPage = bs("StaffAlertPage.schema.json"), vState = bs("SessionState.schema.json"), vPush = bs("PushConfig.schema.json");
+
+test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDecision을 지킨다(D66)", async () => {
+  const bodies: Record<string, any>[] = [];
+  const c = new PublicApiClient({ ...fast, fetch: (async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(init.body as string)); return new Response(JSON.stringify({ response_text: null, turn_failure_signal: null })); }) as any });
+  await c.startSession("s1"); await c.sendUtterance("s1", "x", "t1"); await c.intervene("s1", "RESUME", "t2"); await c.endSession("s1");
+  assert.equal(bodies.length, 4);
+  for (const b of bodies) {
+    const { turn_id, ...rest } = b as Record<string, any>;
+    const v = rest.decision ? validateDecision : validateMsg;
+    assert.ok(v(rest), JSON.stringify(v.errors));
+    if (rest.kind === "UTTERANCE" || rest.decision) assert.ok(turn_id);
+  }
+});
+
+test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async () => {
+  const { m } = await mk();
+  await fetch(m.base + "/v1/sessions", { method: "POST", body: JSON.stringify({ session_id: "s1", kind: "SESSION_START" }) });
+  const bad = await fetch(m.base + "/v1/sessions/s1/turns", { method: "POST", body: JSON.stringify({ session_id: "s1", kind: "UTTERANCE", utterance: "x", turn_id: "t", extra: 1 }) });
+  assert.equal(bad.status, 400);
+  assert.equal(((await bad.json()) as any).code, "INVALID_RECORD");
+});
+
+test("알림·목록·상태·푸시 설정 응답이 v1.3.2 스키마를 지킨다", async () => {
+  const { m, api } = await mk({ vapidPublicKey: "PUBKEY" });
+  await api.startSession("s1"); await api.sendUtterance("s1", "위험");
+  const page = await new StaffApi(api).listAlerts("OPEN");
+  assert.ok(vPage(page), JSON.stringify(vPage.errors));
+  assert.ok(vAlert(page.items[0]));
+  const st = await api.getSessionState("s1");
+  assert.ok(vState(st), JSON.stringify(vState.errors));
+  assert.equal(st.state, "PAUSED_RISK");
+  const pc = await new StaffApi(api).pushConfig();
+  assert.ok(vPush(pc)); assert.equal(pc.vapid_public_key, "PUBKEY");
+  m.state.sc.vapidPublicKey = null;
+  assert.equal((await api.getPushConfig()).vapid_public_key, null);
+});
+
+test("위험 정지 -> 직원 재개: state는 ACTIVE+resume_text, 다음 턴 뒤 null, 종료는 ENDED", async () => {
+  const { api } = await mk();
+  const staff = new StaffApi(api);
+  await api.startSession("s1"); await api.sendUtterance("s1", "위험");
+  await staff.intervene("s1", "RESUME", "i1");
+  const a = await api.getSessionState("s1");
+  assert.equal(a.state, "ACTIVE"); assert.ok(a.resume_text);
+  await api.sendUtterance("s1", "계속", "t9");
+  assert.equal((await api.getSessionState("s1")).resume_text, null);
+  await api.sendUtterance("s1", "위험 또");
+  await staff.intervene("s1", "END", "i2");
+  assert.equal((await api.getSessionState("s1")).state, "ENDED");
+  await assert.rejects(api.getSessionState("nope"), (e) => e instanceof ApiError && e.status === 404);
+});
+
+test("risk_resume 시나리오: 키오스크가 폴링으로 재개를 알고 이어간다", async () => {
+  const { api } = await mk({ autoResumeMs: 30 });
+  const flow = new KioskFlow(api, { pollMs: 10, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
+  await flow.start(); await flow.hear({ text: "위험해요", confidence: 0.9 });
+  assert.equal(flow.current.state, "WAITING_STAFF");
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(flow.current.state, "LISTENING");
+  assert.match(flow.current.text ?? "", /이어서/);
+  flow.reset();
+});
+
+test("rate_limited 시나리오: 429에 Retry-After를 붙이고 클라이언트가 따른다", async () => {
+  const { m } = await mk({ errorStatus: 429, errorTimes: 1, retryAfterSec: 2 });
+  const r = await fetch(m.base + "/v1/sessions", { method: "POST", body: "{}" });
+  assert.equal(r.status, 429);
+  assert.equal(r.headers.get("retry-after"), "2");
+  assert.equal(((await r.json()) as any).code, "UNAVAILABLE");
+  const waits: number[] = [];
+  m.state.sc.errorTimes = 1;
+  const api = new PublicApiClient({ baseUrl: m.base + "/v1", sleep: async (ms) => { waits.push(ms); } });
+  await api.startSession("s2");
+  assert.deepEqual(waits, [2000]);
 });
 
 test("같은 turn_id는 같은 응답이고 한 번만 처리된다", async () => {
@@ -124,11 +199,11 @@ test("SSE: 새 알림과 해결 이벤트, Last-Event-ID로 이어 받기", asyn
     ctl.abort(); return buf;
   };
   const first = await read();
-  assert.match(first, /id: 1\ndata: .*"status":"OPEN"/);
+  assert.match(first, /id: 1\nevent: alert\ndata: .*"status":"OPEN"/);
   await new StaffApi(api).intervene("s1", "END", "i1");
   const resumed = await read({ "last-event-id": "1" });
   assert.doesNotMatch(resumed, /id: 1\n/);
-  assert.match(resumed, /id: 2\ndata: .*"status":"RESOLVED"/);
+  assert.match(resumed, /id: 2\nevent: resolved\ndata: .*"status":"RESOLVED"/);
 });
 
 test("healthz/readyz와 모르는 경로", async () => {
@@ -137,4 +212,14 @@ test("healthz/readyz와 모르는 경로", async () => {
   assert.equal((await fetch(m.base + "/readyz")).status, 200);
   const r = await fetch(m.base + "/v1/nope");
   assert.equal(r.status, 404);
+});
+
+test("SSE는 설정한 간격으로 ': ping' 주석을 보낸다", async () => {
+  const { m } = await mk({}, {}, { pingMs: 20 });
+  const ctl = new AbortController();
+  const res = await fetch(m.base + "/v1/staff/alerts/stream", { signal: ctl.signal });
+  const dec = new TextDecoder(); let buf = "";
+  for await (const chunk of res.body as any) { buf += dec.decode(chunk); if (buf.includes(": ping")) break; }
+  ctl.abort();
+  assert.match(buf, /: ping/);
 });

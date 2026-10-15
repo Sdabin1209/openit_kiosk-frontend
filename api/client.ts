@@ -1,6 +1,6 @@
 import { ApiError, CallStaffError } from "./errors.ts";
 import { isValidSessionId, newTurnId } from "./ids.ts";
-import type { BoundaryError, Decision, FrontendInput } from "./types.ts";
+import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionState } from "./types.ts";
 
 export interface ClientOptions {
   /** 같은 출처의 /v1. 인증은 게이트웨이가 붙이므로 토큰 옵션은 없다. */
@@ -8,7 +8,8 @@ export interface ClientOptions {
   fetch?: typeof fetch;
   timeoutMs?: number; // 기본 10초
   maxAttempts?: number; // 기본 3
-  retryDelayMs?: number; // 시도 사이 대기
+  retryDelayMs?: number; // 무응답·네트워크 오류 뒤 대기(기본 0.5초)
+  defaultRetryAfterMs?: number; // 429·503에 Retry-After가 없을 때(기본 1초)
   sleep?: (ms: number) => Promise<void>;
 }
 
@@ -20,6 +21,7 @@ export class PublicApiClient {
   private timeoutMs: number;
   private maxAttempts: number;
   private retryDelayMs: number;
+  private defaultRetryAfterMs: number;
   private sleep: (ms: number) => Promise<void>;
   private queues = new Map<string, Promise<unknown>>();
 
@@ -29,6 +31,7 @@ export class PublicApiClient {
     this.timeoutMs = o.timeoutMs ?? 10_000;
     this.maxAttempts = o.maxAttempts ?? 3;
     this.retryDelayMs = o.retryDelayMs ?? 500;
+    this.defaultRetryAfterMs = o.defaultRetryAfterMs ?? 1000;
     this.sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
@@ -58,6 +61,15 @@ export class PublicApiClient {
     return this.serial(sessionId, () =>
       this.post(`/sessions/${sessionId}/end`, { session_id: sessionId, kind: "SESSION_END" }),
     );
+  }
+
+  /** 위험 정지 중 키오스크가 2초 간격으로 폴링한다. */
+  getSessionState(sessionId: string): Promise<SessionState> {
+    this.check(sessionId);
+    return this.request("GET", `/sessions/${sessionId}/state`);
+  }
+  getPushConfig(): Promise<PushConfig> {
+    return this.request("GET", `/staff/push-config`);
   }
 
   /** 직원 콘솔 전용 호출은 api/staff.ts가 이 메서드를 쓴다. */
@@ -101,7 +113,11 @@ export class PublicApiClient {
       } catch (e) {
         if (e instanceof ApiError && !RETRYABLE_STATUS.has(e.status)) throw e;
         last = e;
-        if (i < attempts) await this.sleep(this.retryDelayMs);
+        if (i < attempts) {
+          // 429·503은 Retry-After(초)를 따르고 없으면 1초. 무응답·네트워크 오류는 짧게 쉰다.
+          const wait = e instanceof ApiError ? (e.retryAfterMs ?? this.defaultRetryAfterMs) : this.retryDelayMs;
+          await this.sleep(wait);
+        }
       }
     }
     throw new CallStaffError(attempts, last);
@@ -122,7 +138,9 @@ export class PublicApiClient {
       if (!res.ok) {
         let err: BoundaryError | null = null;
         try { err = (await res.json()) as BoundaryError; } catch { /* 본문 없음 */ }
-        throw new ApiError(res.status, err);
+        const ra = Number(res.headers.get("retry-after"));
+        const retryAfterMs = Number.isInteger(ra) && ra >= 0 && res.headers.get("retry-after") ? ra * 1000 : null;
+        throw new ApiError(res.status, err, retryAfterMs);
       }
       if (res.status === 204) return undefined as T;
       const text = await res.text();

@@ -62,7 +62,9 @@ api.stream(
   (ok) => { $("conn").textContent = ok ? "실시간 연결됨" : "연결 끊김(다시 연결 중)"; if (ok) void load(); },
 );
 $("push").onclick = async () => {
-  try { await enablePush((s) => api.registerPush(s)); $("push").textContent = "푸시 알림 켜짐"; }
+  try { await enablePush(async () => (await api.pushConfig()).vapid_public_key, (s) => api.registerPush(s)); $("push").textContent = "푸시 알림 켜짐"; }
   catch (e) { banner((e as Error).message); }
 };
 void load();
+// 푸시가 꺼져 있으면(공개키 null) 버튼을 숨기고 SSE만 쓴다.
+api.pushConfig().then((c) => { if (!c.vapid_public_key) $("push").hidden = true; }).catch(() => { /* 설정을 못 읽으면 버튼은 두고 누를 때 오류를 보인다 */ });

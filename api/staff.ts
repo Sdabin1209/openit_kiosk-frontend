@@ -1,5 +1,5 @@
 import { PublicApiClient } from "./client.ts";
-import type { AlertPage, Decision, FrontendInput, PushSubscriptionJson, StaffAlert } from "./types.ts";
+import type { Decision, FrontendInput, PushSubscriptionJson, StaffAlert, StaffAlertPage } from "./types.ts";
 
 export interface StaffApiOptions {
   baseUrl?: string;
@@ -11,9 +11,12 @@ export class StaffApi {
   private o: StaffApiOptions;
   constructor(client: PublicApiClient, o: StaffApiOptions = {}) { this.client = client; this.o = o; }
 
-  listAlerts(status: "OPEN" | "RESOLVED", limit = 50): Promise<AlertPage> {
-    return this.client.request("GET", `/staff/alerts?status=${status}&limit=${limit}`);
+  listAlerts(status: "OPEN" | "RESOLVED", limit = 50, cursor?: string): Promise<StaffAlertPage> {
+    const c = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
+    return this.client.request("GET", `/staff/alerts?status=${status}&limit=${limit}${c}`);
   }
+  /** vapid_public_key가 null이면 푸시는 꺼져 있고 SSE만 동작한다. */
+  pushConfig() { return this.client.getPushConfig(); }
 
   registerPush(sub: PushSubscriptionJson): Promise<void> {
     return this.client.request("POST", `/staff/push-subscriptions`, sub);
@@ -42,7 +45,7 @@ export class StaffApi {
         if (a && typeof a.alert_id === "string") onAlert(a);
       } catch { /* 무시 */ }
     };
-    // 이벤트 이름은 계약에 없다(CR-003). 이름 없는 이벤트와 흔한 이름을 모두 받는다.
+    // 계약: 이벤트 이름 alert(새 알림), resolved(해결). 이름 없는 이벤트도 받는다.
     es.onmessage = handle;
     for (const name of ["alert", "resolved"]) es.addEventListener(name, handle as EventListener);
     return () => es.close();

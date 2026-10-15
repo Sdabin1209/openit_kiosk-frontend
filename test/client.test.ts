@@ -67,3 +67,25 @@ test("빈 발화와 잘못된 session_id는 보내지 않는다", () => {
   assert.throws(() => c.startSession("bad id!"));
   assert.throws(() => c.startSession("a".repeat(65)));
 });
+
+test("429·503은 Retry-After(초)를 따르고 없으면 1초 기다린다", async () => {
+  const waits: number[] = [];
+  const mk = (headers: Record<string, string>, status: number) => {
+    let n = 0;
+    return new PublicApiClient({ timeoutMs: 1000, sleep: async (ms) => { waits.push(ms); }, fetch: (async () =>
+      ++n < 3 ? new Response(JSON.stringify({ code: "UNAVAILABLE" }), { status, headers }) : ok()) as any });
+  };
+  await mk({ "retry-after": "3" }, 429).sendUtterance("s1", "x", "t");
+  assert.deepEqual(waits.splice(0), [3000, 3000]);
+  await mk({}, 429).sendUtterance("s1", "x", "t");
+  assert.deepEqual(waits.splice(0), [1000, 1000]);
+  await mk({}, 503).sendUtterance("s1", "x", "t");
+  assert.deepEqual(waits.splice(0), [1000, 1000]);
+});
+
+test("상태 조회와 푸시 설정 호출 경로", async () => {
+  const urls: string[] = [];
+  const c = new PublicApiClient({ ...fast, timeoutMs: 1000, fetch: (async (u: string) => { urls.push(u); return json({}); }) as any });
+  await c.getSessionState("s1"); await c.getPushConfig();
+  assert.deepEqual(urls, ["/v1/sessions/s1/state", "/v1/staff/push-config"]);
+});

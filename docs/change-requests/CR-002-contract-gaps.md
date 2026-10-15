@@ -1,5 +1,7 @@
 # CR-002 (대상: 헤드) 공개 API 계약의 부족한 점
 
+> 갱신: 헤드가 D66 회신으로 이 요청(CR-002, CR-003)에 답했고 kiosk-frontend가 반영했다. 이 파일은 기록으로 남긴다.
+
 작성: kiosk-frontend. 읽은 것: `PUBLIC_API.md`, `CONVENTIONS.md`, `survey-service/schema/schemas`의 `FrontendInput`, `FrontendMessage`, `InterventionDecision`, `BoundaryError.schema.json`. 아래는 읽고 **확인한** 불일치와, 그에 대한 **제안**이다.
 
 1. **`turn_id`가 스키마에 없다.** `PUBLIC_API.md`는 발화와 개입 본문에 `turn_id`를 넣는다. 그러나 `FrontendMessage`(UTTERANCE)와 `InterventionDecision`은 `additionalProperties: false`이고 `turn_id`가 없다. 스키마대로 검증하면 `turn_id`가 붙은 본문이 거부된다(`test/mock.test.ts`에서 확인). 제안: 두 스키마에 선택이 아닌 필수 `turn_id`(UTTERANCE, 개입)를 추가하거나, 공개 API용 요청 스키마를 따로 정의한다. MAJOR인지 MINOR인지는 헤드 판단.

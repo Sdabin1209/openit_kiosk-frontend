@@ -4,11 +4,14 @@ import type { BoundaryError } from "./types.ts";
 export class ApiError extends Error {
   status: number;
   body: BoundaryError | null;
-  constructor(status: number, body: BoundaryError | null) {
+  /** Retry-After(초)를 밀리초로. 없으면 null. */
+  retryAfterMs: number | null;
+  constructor(status: number, body: BoundaryError | null, retryAfterMs: number | null = null) {
     super(`API ${status}${body ? " " + body.code : ""}`);
     this.name = "ApiError";
     this.status = status;
     this.body = body;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 

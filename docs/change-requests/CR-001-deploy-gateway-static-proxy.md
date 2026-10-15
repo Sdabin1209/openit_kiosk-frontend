@@ -12,6 +12,6 @@
 2. **직원 콘솔 접근 제어.** staff 토큰을 붙이는 경로는 사람 인증 뒤에만 연다(기본 인증, 사내망 제한, SSO 등 deploy가 선택. 로그인 방식은 브리프상 미정). 키오스크 단말이 `/staff/`에 닿지 않도록 네트워크로도 나눌 것을 권한다.
 3. **정적 파일 서빙.** 이미지(`kiosk-frontend`)가 8080에서 `/`(키오스크), `/staff/`(직원 콘솔), `/staff/sw.js`, `/config.json`, `/healthz`, `/readyz`를 낸다. 이미지는 `/v1`을 처리하지 않는다. 서비스 워커 범위가 `/staff/`이므로 `Service-Worker-Allowed` 헤더는 필요 없다.
 4. **/v1 프록시와 SSE.** `/v1/staff/alerts/stream`은 응답 버퍼링을 끄고(`proxy_buffering off` 상당) 읽기 제한 시간을 길게(수 분 이상) 해야 한다. 서버가 보내는 `id:`와 클라이언트의 `Last-Event-ID`를 그대로 전달해야 한다. 웹 푸시는 HTTPS(또는 localhost)가 필요하다. 키오스크의 STT(Web Speech API)도 보안 출처가 필요하다. **HTTPS 종단은 deploy가 맡는다.**
-5. **VAPID 공개키.** 이미지는 환경 변수 `VAPID_PUBLIC_KEY`(공개 값)를 `/config.json`으로 낸다. 비밀 키는 survey-service만 갖는다. deploy가 같은 쌍의 공개키를 이 컨테이너에 넘겨야 한다.
+5. **VAPID 공개키.** (갱신: D66) 이미지는 공개키를 다루지 않는다. 직원 콘솔이 `GET /v1/staff/push-config`로 받는다(survey-service). 이미지에 `/config.json`은 없다.
 6. **헤더.** 이미지는 CSP(`default-src 'self'`), `nosniff`, `Referrer-Policy: no-referrer`를 낸다. 게이트웨이가 HTTPS 관련 헤더(HSTS)를 더한다. 접근 로그에 요청 본문을 남기지 말 것(환자 발화 포함).
 7. **이미지 규약.** 설정은 환경 변수(`PORT` 기본 8080, `STATIC_DIR`, `VAPID_PUBLIC_KEY`), non-root(uid 1000), 로그는 표준 출력, 라벨 `io.openit.service/revision/contracts.boundary/contracts.survey-schema`와 `io.openit.app-version`. `io.openit.turn-engine`, `io.openit.model-runtime`은 이 영역에 해당이 없어 두지 않는다(D50의 6개 중 해당하는 것만, 브리프 2절). 이미 그렇게 해도 되는지 확인 바람.

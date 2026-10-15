@@ -28,14 +28,14 @@ test("빌드 산출물에 토큰과 외부 URL이 없다", { skip: !existsSync("
 test("정적 서버: healthz, readyz, config.json, 경로 탈출 차단", async () => {
   const { createServer } = await import("node:http");
   const { makeStaticHandler } = await import("../server/static.mjs");
-  const h = makeStaticHandler({ dir: "apps/kiosk", vapidPublicKey: "PUB" });
+  const h = makeStaticHandler({ dir: "apps/kiosk" });
   const srv = createServer((q, r) => void h(q, r));
   await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${(srv.address() as any).port}`;
   try {
     assert.equal((await fetch(base + "/healthz")).status, 200);
     assert.equal((await fetch(base + "/readyz")).status, 200);
-    assert.deepEqual(await (await fetch(base + "/config.json")).json(), { vapidPublicKey: "PUB" });
+    assert.equal((await fetch(base + "/config.json")).status, 404); // 공개키는 /v1/staff/push-config
     assert.equal((await fetch(base + "/")).status, 200);
     assert.equal((await fetch(base + "/..%2f..%2fpackage.json")).status, 403);
   } finally { srv.closeAllConnections(); srv.close(); }

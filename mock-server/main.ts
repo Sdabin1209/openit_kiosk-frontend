@@ -2,13 +2,13 @@ import { SCENARIO_PRESETS, createMock } from "./app.ts";
 import { makeStaticHandler } from "../server/static.mjs";
 
 const name = process.env.MOCK_SCENARIO ?? "normal";
-const { server } = createMock(SCENARIO_PRESETS[name] ?? {});
+const { server } = createMock({ ...(SCENARIO_PRESETS[name] ?? {}), vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? null });
 const staticDir = process.env.STATIC_DIR;
 if (staticDir) {
   // 시연용: 같은 출처에서 정적 파일과 /v1을 함께 낸다(게이트웨이 대역).
   const api = server.listeners("request")[0] as (...a: any[]) => void;
   server.removeAllListeners("request");
-  const st = makeStaticHandler({ dir: staticDir, vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "" });
+  const st = makeStaticHandler({ dir: staticDir });
   server.on("request", (req, res) => {
     const p = req.url ?? "";
     if (p.startsWith("/v1/") || p.startsWith("/__mock/")) api(req, res); else void st(req, res);

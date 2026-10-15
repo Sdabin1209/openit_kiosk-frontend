@@ -1,8 +1,8 @@
 import { createMock, type Scenario } from "../mock-server/app.ts";
 import type { AddressInfo } from "node:net";
 
-export async function startMock(initial: Partial<Scenario> = {}) {
-  const m = createMock(initial);
+export async function startMock(initial: Partial<Scenario> = {}, opt: { pingMs?: number } = {}) {
+  const m = createMock(initial, opt);
   await new Promise<void>((r) => m.server.listen(0, "127.0.0.1", r)); // 고정 포트 금지
   const port = (m.server.address() as AddressInfo).port;
   return { ...m, port, base: `http://127.0.0.1:${port}`, close: () => { m.reset(); m.server.closeAllConnections(); return new Promise<void>((r) => m.server.close(() => r())); } };

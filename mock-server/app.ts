@@ -10,8 +10,11 @@ export interface Scenario {
   riskKeyword: string;          // 발화에 이 말이 있으면 위험 정지
   alertDelivery: "DELIVERED" | "DELIVERY_FAILED";
   notCommitted: boolean;        // 신호 NOT_COMMITTED
+  retryAfterSec: number | null; // 429·503 오류에 Retry-After(초)를 붙임
+  autoResumeMs: number;         // 0보다 크면 위험 정지 후 이 시간 뒤 직원이 RESUME한 것처럼 처리
+  vapidPublicKey: string | null; // GET /v1/staff/push-config
 }
-const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false };
+const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null };
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
@@ -20,12 +23,14 @@ const PRESETS: Record<string, Partial<Scenario>> = {
   delay: { delayMs: 3000 },
   hang: { hangFirst: 2 },
   error: { errorStatus: 503, errorTimes: 2 },
+  rate_limited: { errorStatus: 429, errorTimes: 2, retryAfterSec: 1 },
+  risk_resume: { alertDelivery: "DELIVERED", autoResumeMs: 4000 },
 };
 
-interface Session { id: string; turns: number; paused: boolean; alertId: string | null; ended: boolean }
+interface Session { id: string; turns: number; paused: boolean; alertId: string | null; ended: boolean; resumeText: string | null }
 export interface MockState {
   sc: Scenario; sessions: Map<string, Session>; alerts: any[]; subs: Map<string, any>;
-  cache: Map<string, any>; events: { id: number; data: any }[]; sse: Set<ServerResponse>; seq: number; requests: number;
+  cache: Map<string, any>; events: { id: number; name: string; data: any }[]; sse: Set<ServerResponse>; seq: number; requests: number;
   log: { method: string; path: string }[]; // 발화 본문은 기록하지 않는다
 }
 
@@ -33,16 +38,37 @@ const QUESTIONS = ["어디가 불편하신가요?", "언제부터 그러셨나�
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const berr = (code: string, message: string, retryable = false) => ({ pipeline_schema_version: "1.0", code, message, retryable });
 
-export function createMock(initial: Partial<Scenario> = {}): { server: Server; state: MockState; reset: (s?: Partial<Scenario>) => void } {
+export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: number } = {}): { server: Server; state: MockState; reset: (s?: Partial<Scenario>) => void } {
   const state: MockState = { sc: { ...DEFAULT, ...initial }, sessions: new Map(), alerts: [], subs: new Map(), cache: new Map(), events: [], sse: new Set(), seq: 0, requests: 0, log: [] };
+  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const pinger = setInterval(() => { for (const r of state.sse) r.write(": ping\n\n"); }, opt.pingMs ?? 15_000);
+  pinger.unref();
   const reset = (s: Partial<Scenario> = {}) => {
+    for (const t of timers) clearTimeout(t);
+    timers.clear();
     for (const r of state.sse) r.end();
     Object.assign(state, { sc: { ...DEFAULT, ...s }, sessions: new Map(), alerts: [], subs: new Map(), cache: new Map(), events: [], sse: new Set(), seq: 0, requests: 0, log: [] });
   };
 
   const json = (res: ServerResponse, code: number, body: unknown) => { res.writeHead(code, { "content-type": "application/json; charset=utf-8" }); res.end(JSON.stringify(body)); };
   const readBody = (req: IncomingMessage) => new Promise<any>((ok, ng) => { let d = ""; req.on("data", (c) => (d += c)); req.on("end", () => { try { ok(d ? JSON.parse(d) : {}); } catch { ng(new Error("json")); } }); });
-  const publish = (a: any) => { const id = ++state.seq; state.events.push({ id, data: a }); for (const r of state.sse) r.write(`id: ${id}\ndata: ${JSON.stringify(a)}\n\n`); };
+  const publish = (name: "alert" | "resolved", a: any) => {
+    const id = ++state.seq; // 이벤트 순번(id)
+    state.events.push({ id, name, data: a });
+    for (const r of state.sse) r.write(`id: ${id}\nevent: ${name}\ndata: ${JSON.stringify(a)}\n\n`);
+  };
+  const resolve = (s: Session, decision: "RESUME" | "END") => {
+    s.paused = false;
+    const alert = state.alerts.find((a) => a.alert_id === s.alertId);
+    if (alert) { Object.assign(alert, { status: "RESOLVED", resolved_by_decision: decision, resolved_at: new Date().toISOString() }); publish("resolved", alert); }
+    if (decision === "END") s.ended = true; else s.resumeText = "다시 이어서 진행하겠습니다. " + QUESTIONS[Math.min(s.turns, 2)];
+  };
+  /** turn_id는 API 봉투 필드: 떼어 낸 나머지가 문진 스키마(FrontendMessage, InterventionDecision)와 같은 키 집합이어야 한다. */
+  const envelopeOk = (body: any, op: string) => {
+    const { turn_id: _t, ...rest } = body ?? {};
+    const want = op === "turns" ? ["kind", "session_id", "utterance"] : op === "intervention" ? ["decision", "session_id"] : ["kind", "session_id"];
+    return JSON.stringify(Object.keys(rest).sort()) === JSON.stringify(want);
+  };
   const input = (text: string | null, sig: any = null) => ({ response_text: text, turn_failure_signal: sig });
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
@@ -60,7 +86,11 @@ export function createMock(initial: Partial<Scenario> = {}): { server: Server; s
     if (state.sc.errorStatus && state.sc.errorTimes > 0 && !path.includes("/stream")) {
       state.sc.errorTimes--;
       const s = state.sc.errorStatus;
-      return json(res, s, berr(s === 503 ? "UNAVAILABLE" : s === 403 ? "PERMISSION_DENIED" : "INVALID_RECORD", "scenario error", s === 503 || s === 429));
+      // PUBLIC_API.md 상태 코드 표: 400 INVALID_RECORD, 401·403 PERMISSION_DENIED, 404 NOT_FOUND, 409 CONFLICT, 429·503 UNAVAILABLE
+      const code = ({ 400: "INVALID_RECORD", 401: "PERMISSION_DENIED", 403: "PERMISSION_DENIED", 404: "NOT_FOUND", 409: "CONFLICT", 429: "UNAVAILABLE", 503: "UNAVAILABLE" } as Record<number, string>)[s] ?? "INVALID_RECORD";
+      const headers: Record<string, string> = { "content-type": "application/json; charset=utf-8" };
+      if ((s === 429 || s === 503) && state.sc.retryAfterSec !== null) headers["retry-after"] = String(state.sc.retryAfterSec);
+      res.writeHead(s, headers); return res.end(JSON.stringify(berr(code, "scenario error", s === 429 || s === 503)));
     }
 
     let body: any = {};
@@ -69,27 +99,36 @@ export function createMock(initial: Partial<Scenario> = {}): { server: Server; s
     // ---- 문진 ----
     if (m === "POST" && path === "/v1/sessions") {
       if (body.kind !== "SESSION_START" || !ID_RE.test(body.session_id ?? "")) return json(res, 400, berr("INVALID_RECORD", "bad start"));
-      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, alertId: null, ended: false });
+      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, alertId: null, ended: false, resumeText: null });
       return json(res, 200, input("안녕하세요. 문진을 시작합니다. " + QUESTIONS[0]));
+    }
+    const sm = path.match(/^\/v1\/sessions\/([^/]+)\/state$/);
+    if (m === "GET" && sm) {
+      const s = state.sessions.get(sm[1]);
+      if (!s) return json(res, 404, berr("NOT_FOUND", "unknown session"));
+      return json(res, 200, { session_id: s.id, state: s.ended ? "ENDED" : s.paused ? "PAUSED_RISK" : "ACTIVE", resume_text: s.resumeText });
     }
     let mm = path.match(/^\/v1\/sessions\/([^/]+)\/(turns|end|intervention)$/);
     if (m === "POST" && mm) {
       const [, sid, op] = mm;
       const s = state.sessions.get(sid);
       if (!s) return json(res, 404, berr("NOT_FOUND", "unknown session"));
-      if (body.session_id !== sid) return json(res, 400, berr("INVALID_RECORD", "session_id mismatch"));
+      if (body.session_id !== sid || !envelopeOk(body, op)) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
       if (op === "end") { s.ended = true; return json(res, 200, input(null)); }
       if (typeof body.turn_id !== "string" || body.turn_id === "") return json(res, 400, berr("INVALID_RECORD", "turn_id required"));
       const key = `${sid}:${op}:${body.turn_id}`;
       if (state.cache.has(key)) return json(res, 200, state.cache.get(key)); // 같은 turn_id는 같은 응답, 한 번만 처리
       if (op === "turns") {
         if (body.kind !== "UTTERANCE" || typeof body.utterance !== "string") return json(res, 400, berr("INVALID_RECORD", "bad utterance"));
-        if (s.paused) return json(res, 409, berr("FAILED_PRECONDITION", "session is paused"));
+        if (s.paused) return json(res, 409, berr("CONFLICT", "session is paused"));
+        if (s.ended) return json(res, 409, berr("CONFLICT", "session ended"));
+        s.resumeText = null; // 다음 발화 턴이 접수되면 resume_text는 null
         let out;
         if (state.sc.riskKeyword && body.utterance.includes(state.sc.riskKeyword)) {
           s.paused = true;
           const alert = { alert_id: "a-" + (state.alerts.length + 1), session_id: sid, kind: "RISK_STOP", created_at: new Date().toISOString(), status: "OPEN", resolved_by_decision: null, resolved_at: null };
-          s.alertId = alert.alert_id; state.alerts.push(alert); publish(alert);
+          s.alertId = alert.alert_id; state.alerts.push(alert); publish("alert", alert);
+          if (state.sc.autoResumeMs > 0) { const t = setTimeout(() => { timers.delete(t); if (s.paused) resolve(s, "RESUME"); }, state.sc.autoResumeMs); timers.add(t); }
           out = input("확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.", { session_id: sid, write_committed: "COMMITTED", staff_alert: state.sc.alertDelivery });
         } else if (state.sc.notCommitted) {
           out = input("저장하지 못했습니다. 다시 말씀해 주세요.", { session_id: sid, write_committed: "NOT_COMMITTED", staff_alert: "NONE" });
@@ -102,12 +141,9 @@ export function createMock(initial: Partial<Scenario> = {}): { server: Server; s
       }
       // intervention
       if (!["RESUME", "END"].includes(body.decision)) return json(res, 400, berr("INVALID_RECORD", "bad decision"));
-      if (!s.paused) return json(res, 409, berr("FAILED_PRECONDITION", "session is not paused"));
-      s.paused = false;
-      const alert = state.alerts.find((a) => a.alert_id === s.alertId);
-      if (alert) { Object.assign(alert, { status: "RESOLVED", resolved_by_decision: body.decision, resolved_at: new Date().toISOString() }); publish(alert); }
-      if (body.decision === "END") s.ended = true;
-      const out = input(body.decision === "RESUME" ? "다시 이어서 진행하겠습니다. " + QUESTIONS[Math.min(s.turns, 2)] : null);
+      if (!s.paused) return json(res, 409, berr("CONFLICT", "session is not paused"));
+      resolve(s, body.decision);
+      const out = input(body.decision === "RESUME" ? s.resumeText : null);
       state.cache.set(key, out);
       return json(res, 200, out);
     }
@@ -115,17 +151,20 @@ export function createMock(initial: Partial<Scenario> = {}): { server: Server; s
     // ---- 직원 콘솔 ----
     if (m === "GET" && path === "/v1/staff/alerts") {
       const st = url.searchParams.get("status"), limit = Number(url.searchParams.get("limit") ?? 50);
-      const items = state.alerts.filter((a) => !st || a.status === st).slice().reverse().slice(0, limit);
-      return json(res, 200, { items, next_cursor: null });
+      const all = state.alerts.filter((a) => !st || a.status === st).slice().reverse();
+      const lim = Math.min(Math.max(limit || 50, 1), 200), off = Number(url.searchParams.get("cursor") ?? 0) || 0;
+      const items = all.slice(off, off + lim);
+      return json(res, 200, { items, next_cursor: off + lim < all.length ? String(off + lim) : null });
     }
     if (m === "GET" && path === "/v1/staff/alerts/stream") {
       res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
       res.write(": open\n\n");
       const last = Number(req.headers["last-event-id"] ?? 0);
-      for (const e of state.events) if (e.id > last) res.write(`id: ${e.id}\ndata: ${JSON.stringify(e.data)}\n\n`);
+      for (const e of state.events) if (e.id > last) res.write(`id: ${e.id}\nevent: ${e.name}\ndata: ${JSON.stringify(e.data)}\n\n`);
       state.sse.add(res); req.on("close", () => state.sse.delete(res));
       return;
     }
+    if (m === "GET" && path === "/v1/staff/push-config") return json(res, 200, { vapid_public_key: state.sc.vapidPublicKey });
     if (m === "POST" && path === "/v1/staff/push-subscriptions") {
       if (typeof body.endpoint !== "string" || !body.keys) return json(res, 400, berr("INVALID_RECORD", "bad subscription"));
       state.subs.set(body.endpoint, body); res.writeHead(201); return res.end();
