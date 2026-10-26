@@ -3,9 +3,15 @@
 # 고정 포트를 쓰지 않는다: Docker가 호스트 포트를 배정한다(-p 127.0.0.1::8080).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-DOCKER="${DOCKER:-}"
-if [ -z "$DOCKER" ]; then
-  if command -v docker >/dev/null 2>&1; then DOCKER=docker; else DOCKER=docker.exe; fi
+# 표준 docker만 쓴다. 실행 파일 이름은 DOCKER 환경 변수로만 바꿀 수 있다.
+DOCKER="${DOCKER:-docker}"
+if ! command -v "$DOCKER" >/dev/null 2>&1; then
+  echo "오류: '$DOCKER' 명령을 찾을 수 없습니다. Docker를 설치하거나 DOCKER 환경 변수에 실행 파일 이름을 지정하세요." >&2
+  exit 1
+fi
+if ! "$DOCKER" info >/dev/null 2>&1; then
+  echo "오류: Docker 데몬에 연결할 수 없습니다. 데몬이 실행 중인지, 현재 사용자에게 접근 권한이 있는지 확인하세요." >&2
+  exit 1
 fi
 NAME=kiosk-frontend
 TAG="$NAME:smoke-$$"
