@@ -1,6 +1,7 @@
 import { AbortedError, ApiError, CallStaffError } from "./errors.ts";
 import { isValidSessionId, newTurnId } from "./ids.ts";
 import { isValidSubjectRef } from "./device.ts";
+import { validateFrontendInput, validateSessionState } from "./validate.ts";
 import { DEFAULT_RETRY, RETRYABLE_STATUS, TURN_IN_PROGRESS, waitMs, type RetryPolicy } from "./retry.ts";
 import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionStart, SessionState } from "./types.ts";
 
@@ -82,7 +83,7 @@ export class PublicApiClient {
   /** 위험 정지 중 키오스크가 2초 간격으로 폴링한다. */
   getSessionState(sessionId: string): Promise<SessionState> {
     this.check(sessionId);
-    return this.request("GET", `/sessions/${sessionId}/state`);
+    return this.call("GET", `/sessions/${sessionId}/state`, undefined, true, {}, validateSessionState);
   }
   getPushConfig(): Promise<PushConfig> {
     return this.request("GET", `/staff/push-config`);
@@ -118,19 +119,21 @@ export class PublicApiClient {
   }
 
   private post(path: string, body: unknown, co: CallOptions = {}): Promise<FrontendInput> {
-    return this.call<FrontendInput>("POST", path, body, true, co);
+    return this.call<FrontendInput>("POST", path, body, true, co, validateFrontendInput);
   }
 
   /** 일시 장애(429·502·503·504·네트워크 오류·무응답, 409 details.reason=TURN_IN_PROGRESS)는 같은 요청 그대로 지수 백오프로 재시도하고,
    * 총 예산을 넘으면 CallStaffError. 그 밖의 오류는 바로 던진다. */
-  private async call<T>(method: string, path: string, body: unknown, retry: boolean, co: CallOptions): Promise<T> {
+  private async call<T>(method: string, path: string, body: unknown, retry: boolean, co: CallOptions, validate?: (v: unknown) => void): Promise<T> {
     const p = this.policy, start = this.now();
     const maxAttempts = retry ? p.maxAttempts : 1;
     let last: unknown;
     for (let i = 1; ; i++) {
       if (co.signal?.aborted) throw new AbortedError();
       try {
-        return await this.once<T>(method, path, body, co.signal);
+        const r = await this.once<T>(method, path, body, co.signal);
+        validate?.(r); // 본문이 계약에 맞지 않으면 BadBodyError -> 아래에서 일시 장애와 같이 재시도
+        return r;
       } catch (e) {
         if (e instanceof AbortedError) throw e;
         if (e instanceof ApiError && !(RETRYABLE_STATUS.has(e.status) || (e.status === 409 && (e.body?.details as { reason?: unknown } | undefined)?.reason === TURN_IN_PROGRESS))) throw e;

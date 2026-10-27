@@ -18,9 +18,11 @@ const st = makeStaticHandler({ dir: "dist" });
 const api = mock.server.listeners("request")[0] as (...a: any[]) => void;
 const web: Server = createServer((req, res) => {
   const p = req.url ?? "";
-  if (p.startsWith("/v1/") || p.startsWith("/__mock/")) api(req, res); else void st(req, res);
+  if (p.startsWith("/v1/") || p.startsWith("/__mock/")) api(req, res);
+  else if (staticDown) { res.writeHead(503, { "retry-after": "1" }); res.end("static down"); } // 정적 화면 서버 장애 모의(A3)
+  else void st(req, res);
 });
-let base = "", browser: Browser;
+let base = "", browser: Browser, staticDown = false;
 const vapid = (() => { const e = createECDH("prime256v1"); e.generateKeys(); return e.getPublicKey().toString("base64url"); })();
 
 test.before(async () => {
@@ -146,6 +148,26 @@ test("키오스크: 재시도 중 직원 부르기를 누르면 바로 직원 �
   await page.getByRole("button", { name: "시작하기" }).click();
   await page.getByRole("button", { name: "직원 부르기" }).click({ timeout: 10_000 });
   await page.getByText("직원을 불러 주세요").waitFor({ timeout: 3_000 });
+  await ctx.close();
+});
+
+test("키오스크: 이미 열린 화면은 정적 서버가 죽어도 진행 중인 세션을 이어 간다 (A3)", async () => {
+  await scenario("normal");
+  staticDown = false;
+  const { page, ctx } = await open("none");
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.getByText("어디가 불편하신가요?").waitFor();
+  staticDown = true;
+  try {
+    const st503 = await page.evaluate(async () => (await fetch("/kiosk.js", { cache: "no-store" })).status);
+    assert.equal(st503, 503, "정적 파일은 실제로 내려가 있다");
+    await page.locator("#manual-input").fill("가짜 두통 문장");
+    await page.getByRole("button", { name: "말하기" }).click();
+    await page.getByText("언제부터 그러셨나요?").waitFor({ timeout: 10_000 });
+    await page.getByRole("button", { name: "그만하기" }).click();
+    await page.getByText("수고하셨습니다").waitFor({ timeout: 10_000 });
+  } finally { staticDown = false; }
   await ctx.close();
 });
 

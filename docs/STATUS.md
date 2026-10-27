@@ -33,6 +33,11 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 ## 세션 기록 보기와 스키마 대기
 `check-schema`는 `../survey-service/schema/schemas/StaffSessionView.json`이 있으면 모의 서버 응답을 그 스키마로 검증해 PASS로 세고, 없으면 "대상 아님(서버 스키마 대기)"을 출력한다(PASS로 세지 않음). 서버 스키마가 생겼으므로 지금은 대조된다. jsdom 시험은 호스트에 jsdom이 없으면 건너뛰므로(`npm test`의 skipped) `npm run test:dom`으로 컨테이너에서 확인한다.
 
+## 깨진 응답·정적 서버 장애 (원칙 10, A1·A2 F6, A3)
+- 변경: `api/validate.ts`로 FrontendInput·SessionState 응답 모양을 검사하고 어긋나면 재시도 대상 실패로 처리(빈 본문 200이 재시도 없이 직원 호출이 되던 틈을 닫음). 시험 `test/retry.test.ts` 추가분, 브라우저 시험(정적 서버 503 중에도 세션 진행).
+- 시험 변경: `test/client.test.ts`의 상태 조회 경로 시험은 응답이 `{}`였는데 검사를 통과하도록 올바른 SessionState로 바꿨다(단언은 그대로).
+- 확인하지 못한 것: 실제 gateway가 주는 깨진 본문 모양, 새로고침/최초 로드 실패 화면(오프라인 캐시 없음), 실제 survey와 키오스크를 잇는 E2E.
+
 ## 직원 콘솔 연결 복구 (FAULT_MATRIX A10·A9, FAULT_POLICY 7·12)
 - 변경: 스트림 재연결을 직접 구현(지수 백오프+지터, 예산 없음), 붙을 때마다·15초마다 목록 재읽기(catch-up), 연결 끊김·목록 실패 상태를 명시적으로 표시, 푸시 구독 실패는 알림 배너와 분리. 코드 `api/staff.ts`, `apps/staff/sync.ts`, `main.ts`. 이전에는 EventSource 자동 재연결만 믿었고, 502·503·504로 거절되면 브라우저가 재연결을 포기해 화면이 "연결 끊김"인 채 영원히 복구되지 않을 수 있었다(브라우저 사양에 따른 추정이며 실제 Chromium으로 재현 확인은 하지 않았다).
 - 시험: `test/sync.test.ts`(가짜 EventSource, 가짜 타이머), 브라우저 시험 3건(스트림 503 거절 후 복구, 끊긴 사이 알림 보충, 목록 실패 표시와 복구), 모의 서버에 스트림 거절·연결 끊기 추가.

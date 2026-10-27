@@ -85,7 +85,7 @@ test("429·503은 Retry-After(초) 이상 기다리고, 없으면 지수 백오�
 
 test("상태 조회와 푸시 설정 호출 경로", async () => {
   const urls: string[] = [];
-  const c = new PublicApiClient({ ...fast, timeoutMs: 1000, fetch: (async (u: string) => { urls.push(u); return json({}); }) as any });
+  const c = new PublicApiClient({ ...fast, timeoutMs: 1000, fetch: (async (u: string) => { urls.push(u); return json({ session_id: "s1", state: "ACTIVE", resume_text: null }); }) as any });
   await c.getSessionState("s1"); await c.getPushConfig();
   assert.deepEqual(urls, ["/v1/sessions/s1/state", "/v1/staff/push-config"]);
 });

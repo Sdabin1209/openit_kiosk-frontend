@@ -226,3 +226,53 @@ test("흐름: reason 없는 409는 WAITING_STAFF(기존), TURN_IN_PROGRESS는 �
   assert.equal(flow.current.state, "LISTENING"); assert.equal(flow.current.text, "다음");
   flow.reset();
 });
+
+// ---- 깨진 응답 본문(원칙 10): 성공으로 취급하지 않고 일시 장애처럼 재시도, 값을 지어내지 않는다 ----
+const raw = (body: string, status = 200, ct = "text/html") => () => new Response(body, { status, headers: { "content-type": ct } });
+const bad: Array<[string, () => Response]> = [
+  ["HTML 본문(200)", raw("<html>gateway</html>")],
+  ["빈 본문(200)", raw("")],
+  ["잘린 JSON", raw('{"response_text": "안', 200, "application/json")],
+  ["배열", raw("[]", 200, "application/json")],
+  ["response_text 없음", raw('{"turn_failure_signal": null}', 200, "application/json")],
+  ["response_text가 숫자", raw('{"response_text": 1, "turn_failure_signal": null}', 200, "application/json")],
+  ["빈 문자열 response_text", raw('{"response_text": "", "turn_failure_signal": null}', 200, "application/json")],
+  ["신호의 알 수 없는 값", raw('{"response_text": null, "turn_failure_signal": {"session_id": "s", "write_committed": "MAYBE", "staff_alert": "NONE"}}', 200, "application/json")],
+  ["204 본문 없음", () => new Response(null, { status: 204 })],
+];
+for (const [name, mk] of bad) {
+  test(`깨진 응답(${name})은 성공으로 취급하지 않고 재시도해 정상 응답을 받는다`, async () => {
+    const { api, count, turnIds } = make([mk, () => ok("정상")]);
+    const r = await api.sendUtterance("s1", "x", "t-b");
+    assert.equal(r.response_text, "정상");
+    assert.equal(count(), 2);
+    assert.deepEqual(turnIds, ["t-b", "t-b"]);
+  });
+}
+
+test("깨진 응답이 계속되면 예산 소진 뒤 직원 호출이고, 값을 지어내 LISTENING으로 가지 않는다", async () => {
+  const c = clock();
+  const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) =>
+    JSON.parse(init.body as string).kind === "SESSION_START" ? ok("질문") : raw("<html>")()) as any });
+  const flow = new KioskFlow(api);
+  await flow.start(); await flow.hear(say("네"));
+  assert.equal(flow.current.state, "CALL_STAFF");
+  assert.equal(flow.current.text, null);
+});
+
+test("정상 응답 모양(신호 3종, null 응답 문장)은 그대로 통과한다", async () => {
+  for (const sig of [null, { session_id: "s", write_committed: "COMMITTED", staff_alert: "NONE" }, { session_id: "s", write_committed: "NOT_COMMITTED", staff_alert: "DELIVERY_FAILED" }]) {
+    const { api, count } = make([() => json({ response_text: null, turn_failure_signal: sig })]);
+    await api.sendUtterance("s1", "x", "t");
+    assert.equal(count(), 1);
+  }
+});
+
+test("상태 폴링 응답이 깨졌으면 재시도하고 그래도 안 되면 실패(상태를 지어내지 않는다)", async () => {
+  let n = 0;
+  const c = clock();
+  const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async () => (++n < 2 ? new Response("<html>") : json({ session_id: "s1", state: "ACTIVE", resume_text: null }))) as any });
+  assert.equal((await api.getSessionState("s1")).state, "ACTIVE");
+  const api2 = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async () => json({ ok: true })) as any });
+  await assert.rejects(api2.getSessionState("s1"), CallStaffError);
+});
