@@ -5,6 +5,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { StaffApi } from "../api/staff.ts";
 import { STAFF_STREAM_RETRY } from "../api/retry.ts";
 import { createAlertSync, type SyncStatus } from "../apps/staff/sync.ts";
+import { settle } from "./helpers.ts";
 import type { StaffAlert } from "../api/types.ts";
 
 class FakeES {
@@ -39,7 +40,7 @@ function setup(list: () => StaffAlert[] | Error, rand = () => 0) {
   const sync = createAlertSync({ api, onChange: () => {}, onNew: (a) => news.push(a.alert_id), onStatus: (s) => statuses.push(s), refreshMs: 0, streamTimers: { setTimeout: tm.setTimeout, clearTimeout: tm.clearTimeout, rand } });
   return { sync, tm, statuses, news };
 }
-const flush = () => new Promise<void>((r) => setTimeout(r, 5));
+const flush = () => settle();
 
 test("스트림 오류(HTTP 오류로 CLOSED)면 닫고 지수 백오프로 새로 연다, 붙으면 시도 횟수 초기화", async () => {
   const { sync, tm, statuses } = setup(() => []);

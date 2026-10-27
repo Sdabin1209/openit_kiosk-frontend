@@ -6,7 +6,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { StaffApi } from "../api/staff.ts";
 import { ApiError, CallStaffError } from "../api/errors.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { startMock } from "./helpers.ts";
+import { startMock, waitFor } from "./helpers.ts";
 
 const SCHEMA_DIR = new URL("../../survey-service/schema/schemas/", import.meta.url);
 const ajv = new Ajv2020({ strict: false });
@@ -96,7 +96,7 @@ test("risk_resume 시나리오: 키오스크가 폴링으로 재개를 알고 �
   const flow = new KioskFlow(api, { pollMs: 10, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
   await flow.start(); await flow.hear({ text: "위험해요", confidence: 0.9 });
   assert.equal(flow.current.state, "WAITING_STAFF");
-  await new Promise((r) => setTimeout(r, 150));
+  await waitFor(() => flow.current.state === "LISTENING", "재개를 폴링으로 알아 LISTENING"); // 서버 30ms 뒤 재개, 상한 10초
   assert.equal(flow.current.state, "LISTENING");
   assert.match(flow.current.text ?? "", /이어서/);
   flow.reset();
@@ -124,8 +124,23 @@ test("같은 turn_id는 같은 응답이고 한 번만 처리된다", async () =
   assert.equal(m.state.sessions.get("s1")!.turns, 1);
 });
 
+/** 모의 서버가 응답하지 않기로 한 요청(hangFirst)은 서버가 그 요청을 받은 것을 확인한 뒤 클라이언트 쪽에서 끊는다.
+ * 클라이언트 타임아웃 값을 짧게 줄이는 방식은 부하 때문에 정상 요청까지 끊어 간헐 실패를 만든다(이 파일의 이전 방식).
+ * 실제 10초 타임아웃 경로는 test/client.test.ts의 가짜 fetch 시험이 본다. */
+function hangThenAbort(m: Awaited<ReturnType<typeof startMock>>): typeof fetch {
+  return (async (u: any, init: any) => {
+    const left = m.state.sc.hangFirst;
+    if (left <= 0) return fetch(u, init);
+    const ctl = new AbortController();
+    const p = fetch(u, { ...init, signal: ctl.signal });
+    void waitFor(() => m.state.sc.hangFirst < left, "서버가 무응답 요청을 받음").then(() => ctl.abort());
+    return p;
+  }) as typeof fetch;
+}
+
 test("hang 시나리오: 앞 두 번 무응답이어도 같은 turn_id 재시도로 한 번만 처리", async () => {
-  const { m, api } = await mk({ hangFirst: 0 }, { timeoutMs: 50 });
+  const { m, api } = await mk({ hangFirst: 0 }, {});
+  (api as any).f = hangThenAbort(m);
   await api.startSession("s1");
   m.state.sc.hangFirst = 2;
   const r = await api.sendUtterance("s1", "하나", "t1");
@@ -134,7 +149,8 @@ test("hang 시나리오: 앞 두 번 무응답이어도 같은 turn_id 재시도
 });
 
 test("hang이 3회 이상이면 CallStaffError", async () => {
-  const { m, api } = await mk({}, { timeoutMs: 30 });
+  const { m, api } = await mk({}, {});
+  (api as any).f = hangThenAbort(m);
   await api.startSession("s1");
   m.state.sc.hangFirst = 3;
   await assert.rejects(api.sendUtterance("s1", "하나", "t1"), CallStaffError);

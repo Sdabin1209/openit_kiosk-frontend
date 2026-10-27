@@ -2,19 +2,21 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PublicApiClient } from "../api/client.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { hang, json, ok } from "./helpers.ts";
+import { hang, json, ok, settle } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 let stateFn: () => any = () => ({ state: "PAUSED_RISK", resume_text: null });
-const tick = (ms = 15) => new Promise<void>((r) => setTimeout(r, ms));
+// 상태 폴링 대기는 가짜 시계: sleep은 step()이 풀어 줄 때만 끝난다(실제 타이머에 의존하지 않는다).
+const sleepers: Array<() => void> = [];
+const step = async (n = 1) => { for (let i = 0; i < n; i++) { await settle(); sleepers.splice(0).forEach((r) => r()); } await settle(); };
 function make(handler: (body: any, init: RequestInit) => Promise<Response> | Response) {
   const calls: any[] = [];
   const polls: string[] = [];
-  const api = new PublicApiClient({ timeoutMs: 20, retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = new PublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     if (init.method === "GET") { polls.push(u); return json({ session_id: "s", ...stateFn() }); }
     const body = JSON.parse(init.body as string); calls.push(body); return handler(body, init);
   }) as any });
-  return { flow: new KioskFlow(api, { pollMs: 2, sleep: () => tick(2) }), calls, polls };
+  return { flow: new KioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) }), calls, polls };
 }
 
 test("정상 흐름: 시작 -> 듣기 -> 응답 -> 종료", async () => {
@@ -100,17 +102,17 @@ test("위험 정지 화면은 상태를 폴링하고 ACTIVE가 되면 resume_tex
   const { flow, polls, calls } = make((b) => b.kind === "UTTERANCE" ? ok("대기", { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERED" }) : ok("시작"));
   await flow.start(); await flow.hear(say("위험"));
   assert.equal(flow.current.state, "WAITING_STAFF");
-  await tick(30);
-  assert.ok(polls.length >= 2, "여러 번 폴링");
+  await step(3);
+  assert.ok(polls.length >= 3, "여러 번 폴링");
   assert.match(polls[0], /\/sessions\/[^/]+\/state$/);
   assert.equal(flow.current.state, "WAITING_STAFF");
   // 대기 중 말은 서버로 가지 않는다
   const n = calls.length; await flow.hear(say("또 말함")); assert.equal(calls.length, n);
   stateFn = () => ({ state: "ACTIVE", resume_text: "이어서 진행합니다" });
-  await tick(30);
+  await step(2);
   assert.equal(flow.current.state, "LISTENING");
   assert.equal(flow.current.text, "이어서 진행합니다");
-  const after = polls.length; await tick(20); assert.equal(polls.length, after, "재개 뒤 폴링 중단");
+  const after = polls.length; await step(3); assert.equal(polls.length, after, "재개 뒤 폴링 중단");
 });
 
 test("위험 정지 중 직원이 종료하면 ENDED 화면", async () => {
@@ -118,7 +120,7 @@ test("위험 정지 중 직원이 종료하면 ENDED 화면", async () => {
   const { flow } = make((b) => b.kind === "UTTERANCE" ? ok("대기", { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERED" }) : ok("시작"));
   await flow.start(); await flow.hear(say("위험"));
   stateFn = () => ({ state: "ENDED", resume_text: null });
-  await tick(30);
+  await step(2);
   assert.equal(flow.current.state, "ENDED");
 });
 

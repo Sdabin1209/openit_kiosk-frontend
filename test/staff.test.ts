@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { InterventionDeciding } from "../apps/staff/decide.ts";
-import { ok } from "./helpers.ts";
+import { ok, settle } from "./helpers.ts";
 
 test("확인을 거절하면 보내지 않는다", async () => {
   let n = 0;
@@ -16,7 +16,7 @@ test("같은 알림의 중복 클릭은 같은 turn_id로 한 번만 간다", as
   const gate = new Promise<void>((r) => (release = r));
   const d = new InterventionDeciding(async (_s, _d, t) => { ids.push(t); await gate; return { response_text: "이어서", turn_failure_signal: null }; }, async () => true);
   const p = [d.decide("a1", "s1", "RESUME"), d.decide("a1", "s1", "RESUME"), d.decide("a1", "s1", "RESUME")];
-  await new Promise((r) => setTimeout(r, 5));
+  await settle(); // 중복 클릭이 모두 처리 경로에 들어갈 때까지 이벤트 루프를 돌린다
   release();
   await Promise.all(p);
   assert.equal(ids.length, 1);

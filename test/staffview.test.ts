@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ApiError } from "../api/errors.ts";
 import type { StaffSessionView } from "../api/types.ts";
+import { settle, waitFor } from "./helpers.ts";
 import { createRecordViewer } from "../apps/staff/record.ts";
 
 let JSDOM: any = null;
@@ -112,14 +113,14 @@ test("열린 알림마다 결정 버튼이 있고, 결정은 decide 콜백(확�
   const btns = [...doc.querySelectorAll('[aria-label="개입 결정"] button')] as HTMLButtonElement[];
   assert.deepEqual(btns.map((b) => b.textContent), ["이어서 진행", "종료"]); // a1(OPEN)만
   btns[0].click();
-  await new Promise((r) => setTimeout(r, 10));
+  await waitFor(() => loads === 2 && calls.length === 1, "결정 뒤 다시 불러오기");
   assert.deepEqual(calls, ["a1:s1:RESUME"]);
   assert.equal(loads, 2);
   // 거절(확인에서 취소)이면 다시 불러오지 않는다
   const r2 = setup(async () => { loads++; return view(); }, async () => false);
   await r2.v.open("s1"); loads = 0;
   (r2.doc.querySelector('[aria-label="개입 결정"] button') as HTMLButtonElement).click();
-  await new Promise((r) => setTimeout(r, 10));
+  await settle(); // 취소 경로가 끝날 때까지 이벤트 루프를 돌린다
   assert.equal(loads, 0);
 });
 

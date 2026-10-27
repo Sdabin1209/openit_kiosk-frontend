@@ -5,7 +5,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { ApiError, CallStaffError, AbortedError } from "../api/errors.ts";
 import { DEFAULT_RETRY, backoffMs, waitMs } from "../api/retry.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { json, ok } from "./helpers.ts";
+import { json, ok, settle, waitFor } from "./helpers.ts";
 
 /** 가상 시계: sleep이 시계를 앞으로 보낸다. 예산 계산을 실제 대기 없이 시험한다. */
 function clock() {
@@ -125,7 +125,7 @@ test("무응답(타임아웃)도 예산에 들어가고 소진하면 직원 호�
 
 test("취소 신호를 받으면 대기 중에도 바로 끝나고 더 보내지 않는다", async () => {
   const ctl = new AbortController(); let n = 0;
-  const api = new PublicApiClient({ sleep: () => new Promise<void>((r) => setTimeout(r, 50)), fetch: (async () => { n++; return err(503); }) as any });
+  const api = new PublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: (async () => { n++; return err(503); }) as any });
   const p = api.sendUtterance("s1", "x", "t", { signal: ctl.signal, onRetry: () => queueMicrotask(() => ctl.abort()) });
   await assert.rejects(p, AbortedError);
   assert.equal(n, 1);
@@ -162,27 +162,26 @@ test("흐름: 504 계속 -> 예산 소진 뒤 직원 호출(RETRY_EXHAUSTED)", a
 
 test("흐름: 재시도 중 환자가 직원 호출을 누르면 즉시 직원 호출 화면, 더 보내지 않는다", async () => {
   let n = 0;
-  const api = new PublicApiClient({ sleep: () => new Promise<void>((r) => setTimeout(r, 30)), fetch: (async (_u: string, init: RequestInit) => {
+  const api = new PublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: (async (_u: string, init: RequestInit) => {
     if (JSON.parse(init.body as string).kind === "SESSION_START") return ok("질문");
     n++; return err(503);
   }) as any });
   const flow = new KioskFlow(api);
   await flow.start();
   const p = flow.hear(say("네"));
-  await new Promise((r) => setTimeout(r, 10));
-  assert.equal(flow.current.retrying, true);
+  await waitFor(() => flow.current.retrying === true, "재시도 중 표시");
   flow.callStaff();
   assert.equal(flow.current.state, "CALL_STAFF");
   assert.equal(flow.current.callStaffReason, "STAFF_REQUESTED");
   await p;
   assert.equal(flow.current.state, "CALL_STAFF");
-  await new Promise((r) => setTimeout(r, 60));
+  await settle();
   assert.equal(n, 1);
 });
 
 test("흐름: 재시도 중 그만하기(end)는 재시도를 끊고 종료한다", async () => {
   const kinds: string[] = [];
-  const api = new PublicApiClient({ sleep: () => new Promise<void>((r) => setTimeout(r, 30)), fetch: (async (_u: string, init: RequestInit) => {
+  const api = new PublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: (async (_u: string, init: RequestInit) => {
     const k = JSON.parse(init.body as string).kind; kinds.push(k);
     if (k === "UTTERANCE") return err(503);
     return ok(k === "SESSION_END" ? null : "질문");
@@ -190,7 +189,7 @@ test("흐름: 재시도 중 그만하기(end)는 재시도를 끊고 종료한�
   const flow = new KioskFlow(api);
   await flow.start();
   const p = flow.hear(say("네"));
-  await new Promise((r) => setTimeout(r, 10));
+  await waitFor(() => flow.current.retrying === true, "재시도 중 표시");
   await flow.end(); await p;
   assert.equal(flow.current.state, "ENDED");
   assert.deepEqual(kinds, ["SESSION_START", "UTTERANCE", "SESSION_END"]);

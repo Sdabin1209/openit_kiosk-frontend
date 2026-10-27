@@ -4,7 +4,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { ApiError, CallStaffError } from "../api/errors.ts";
 import { hang, json, ok } from "./helpers.ts";
 
-const fast = { timeoutMs: 20, retry: { maxAttempts: 3 }, sleep: async () => {} };
+const fast = { timeoutMs: 250, retry: { maxAttempts: 3 }, sleep: async () => {} };
 
 test("무응답이면 같은 turn_id로 재시도하고 이후 성공한다", async () => {
   const seen: string[] = [];
