@@ -28,6 +28,14 @@ async function listenOnce() {
   catch { await flow.hear(null); }
 }
 
+/** 일시 장애로 다시 보내는 중이면 환자가 직원을 부르거나 그만둘 수 있게 한다. (문구는 임상 문구가 아니며 임시 UI 문구다.) */
+function waitingButtons(v: KioskView) {
+  if (!v.retrying) return;
+  text.textContent = "연결이 느려 다시 시도하고 있어요. 기다리기 어려우시면 아래 버튼을 눌러 주세요.";
+  action.hidden = false; action.textContent = "직원 부르기"; onAction = () => flow.callStaff();
+  secondary.hidden = false; secondary.textContent = "그만하기"; onSecondary = () => void flow.end();
+}
+
 function render(v: KioskView) {
   document.body.classList.toggle("warn", v.state === "CALL_STAFF");
   manual.hidden = !(v.state === "LISTENING" || v.state === "REPEAT_PROMPT") || stt.available();
@@ -36,7 +44,7 @@ function render(v: KioskView) {
   clearTimeout(idleTimer);
   switch (v.state) {
     case "IDLE": title.textContent = "문진을 시작합니다"; action.textContent = "시작하기"; onAction = () => void flow.start(); break;
-    case "STARTING": title.textContent = "잠시만 기다려 주세요"; action.hidden = true; break;
+    case "STARTING": title.textContent = "잠시만 기다려 주세요"; action.hidden = true; waitingButtons(v); break;
     case "LISTENING":
       title.textContent = "말씀해 주세요"; action.hidden = false; action.textContent = "말하기";
       onAction = () => (stt.available() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null }).then(() => { input.value = ""; }));
@@ -44,7 +52,7 @@ function render(v: KioskView) {
     case "REPEAT_PROMPT":
       title.textContent = "다시 말씀해 주세요"; action.hidden = false; action.textContent = "말하기";
       onAction = () => (stt.available() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null }).then(() => { input.value = ""; })); break;
-    case "SENDING": title.textContent = "확인하고 있어요"; action.hidden = true; break;
+    case "SENDING": title.textContent = v.retrying ? "잠시만 기다려 주세요" : "확인하고 있어요"; action.hidden = true; waitingButtons(v); break;
     case "WAITING_STAFF":
       title.textContent = "직원이 곧 도와드립니다"; action.hidden = true;
       if (!v.text) text.textContent = "그대로 기다려 주세요. 직원이 오면 이어서 안내해 드립니다."; break;

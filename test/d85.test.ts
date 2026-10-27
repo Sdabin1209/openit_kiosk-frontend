@@ -13,7 +13,7 @@ const TOKEN = "dev-tok-FAKE-123";
 const REF = "visit:2026/10#27=a+b.c_d-e";
 const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
-const fast = { retryDelayMs: 0, sleep: async () => {} };
+const fast = { retry: { maxAttempts: 3 }, sleep: async () => {} };
 const win = (hash: string, search = "") => {
   const calls: string[] = [];
   return { calls, location: { hash, pathname: "/", search }, history: { replaceState: (_d: unknown, _u: string, url?: string | null) => { calls.push(String(url)); } } };

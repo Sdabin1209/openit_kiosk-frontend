@@ -10,7 +10,7 @@ const tick = (ms = 15) => new Promise<void>((r) => setTimeout(r, ms));
 function make(handler: (body: any, init: RequestInit) => Promise<Response> | Response) {
   const calls: any[] = [];
   const polls: string[] = [];
-  const api = new PublicApiClient({ timeoutMs: 20, retryDelayMs: 0, defaultRetryAfterMs: 0, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = new PublicApiClient({ timeoutMs: 20, retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     if (init.method === "GET") { polls.push(u); return json({ session_id: "s", ...stateFn() }); }
     const body = JSON.parse(init.body as string); calls.push(body); return handler(body, init);
   }) as any });

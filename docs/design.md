@@ -16,10 +16,10 @@
 | 상태 | 뜻 | 다음 |
 | --- | --- | --- |
 | IDLE | 시작 화면 | 시작 -> STARTING |
-| STARTING | 세션 시작 호출 중 | 성공 -> LISTENING, 실패(재시도 소진) -> CALL_STAFF |
+| STARTING | 세션 시작 호출 중. 재시도 중이면 `retrying`(대기 문구 + 직원 부르기·그만하기) | 성공 -> LISTENING, 실패(재시도 예산 소진) -> CALL_STAFF, 직원 부르기 -> CALL_STAFF(`STAFF_REQUESTED`) |
 | LISTENING | 발화 대기 | 발화 -> SENDING, 빈/불신 STT -> REPEAT_PROMPT, 종료 -> ENDING |
 | REPEAT_PROMPT | "다시 말씀해 주세요"(서버 호출 없음) | -> LISTENING |
-| SENDING | 턴 호출 중(하나씩) | 응답 처리표 참조 |
+| SENDING | 턴 호출 중(하나씩). 재시도 중이면 `retrying`: "잠시만 기다려 주세요" + 직원 부르기·그만하기 | 응답 처리표 참조, 직원 부르기 -> CALL_STAFF(`STAFF_REQUESTED`), 그만하기 -> ENDING |
 | WAITING_STAFF | 위험 정지, 직원 호출 전달됨. 말은 받지 않고 `GET /sessions/{id}/state`를 2초 간격 폴링(D66) | ACTIVE -> LISTENING(`resume_text` 표시), ENDED -> ENDED, 404 -> IDLE, 401/403 -> CALL_STAFF |
 | CALL_STAFF | 직원을 직접 부르는 화면 | 직원이 "처음으로" -> IDLE |
 | ENDING / ENDED | 종료 호출 / 종료 화면 | ENDED -> 일정 시간 후 IDLE |
@@ -29,7 +29,12 @@
 - `staff_alert = DELIVERY_FAILED` -> CALL_STAFF(최우선).
 - `staff_alert = DELIVERED` -> WAITING_STAFF.
 - `write_committed = NOT_COMMITTED`(DELIVERY_FAILED가 아닐 때) -> 다시 말해 달라고 안내, LISTENING.
-- 재시도 3회 소진, 401/403 -> CALL_STAFF. 404 -> 세션 만료 안내 후 IDLE. 409 -> 위험 정지 중으로 보고 WAITING_STAFF(폴링으로 확인). 위험 정지 세션은 유휴 만료되지 않는다(계약).
+- 재시도 예산(20초) 소진, 401/403 -> CALL_STAFF. 500·그 밖의 4xx(429 제외)는 재시도 없이 오류로 처리. 404 -> 세션 만료 안내 후 IDLE. 409 -> 위험 정지 중으로 보고 WAITING_STAFF(폴링으로 확인). 위험 정지 세션은 유휴 만료되지 않는다(계약).
+
+### 재시도와 대기 화면 (FAULT_POLICY 원칙 2·3·7)
+- 정책 값은 `api/retry.ts` 한 곳(기준 0.5초, 배율 2, 상한 5초, 예산 20초, 지터 하한 50%)에 근거와 함께 둔다. 예산·값이 임상 현장에 맞는지는 FAULT_POLICY의 사용자 결정 대기 항목이며 실측으로 확인하지 못했다. 예산은 타임아웃과 대기를 합산하며 시작한 시도는 끊지 않으므로 최악 약 예산 + 10초(한 번의 타임아웃)까지 길어질 수 있다.
+- 재시도가 시작되면 화면은 "잠시만 기다려 주세요"(기존 STARTING 문구)와 안내 문장, "직원 부르기", "그만하기"를 보인다. 안내 문장은 임상 문구가 아닌 임시 UI 문구다. 직원 부르기는 진행 중 요청을 끊고 CALL_STAFF, 그만하기는 끊고 세션 종료를 요청한다. 이미 서버가 확정한 턴이 있을 수 있으나 같은 `turn_id` 재전송은 멱등이라 안전하다(서버 계약).
+- 서버가 `409 TURN_IN_PROGRESS`를 주지 않는 동안에는 이 경로가 쓰이지 않는다. 모의 서버는 이 코드를 내지 않는다.
 
 ## 4. 공개 API 호출 규칙 대응표
 | 규칙(PUBLIC_API.md) | 구현 위치 |
@@ -37,9 +42,9 @@
 | 세션 ID는 프론트가 발급(1~64자, 영문·숫자·`-_`) | `api/ids.ts` `newSessionId` |
 | 턴마다 고유 `turn_id` | `api/ids.ts` `newTurnId`, 발화 호출 한 번에 하나 |
 | 같은 `turn_id` 재전송은 안전 | `api/client.ts` 재시도는 같은 `turn_id` |
-| 10초 무응답이면 재시도, 3회 실패 시 직원 호출 | `api/client.ts` `AbortController` 타임아웃, 시도 3회 후 `CallStaffError` |
+| 10초 무응답이면 같은 `turn_id`로 재시도, 총 재시도 예산(기본 20초)을 넘으면 직원 호출(FAULT_POLICY 원칙 7; 이전 "3회 실패"를 대체) | `api/client.ts` `AbortController` 타임아웃, 예산 소진 시 `CallStaffError`. 값과 근거는 `api/retry.ts` |
 | 한 세션의 요청은 순서대로 하나씩 | `api/client.ts` 세션별 직렬 큐 |
-| 상태 코드로 분기(D66 표). 429·503은 재시도하고 `Retry-After`(초)를 따르며 없으면 1초, 400/401/403/404/409는 재시도 안 함 | `api/client.ts` |
+| 상태 코드로 분기(D66 표 + FAULT_POLICY). 429·502·503·504·네트워크 오류·무응답은 지수 백오프(0.5초 x2, 상한 5초, 지터 50~100%)로 재시도하고 `Retry-After`가 있으면 그 이상 기다린다(위로만 지터). 409 중 `code = TURN_IN_PROGRESS`만 같은 `turn_id`로 재시도하고 나머지 409는 기존대로 WAITING_STAFF. 400/401/403/404/500은 재시도 안 함. `Retry-After`가 남은 예산보다 길면 기다리지 않고 직원 호출 | `api/client.ts`, `api/retry.ts` |
 | `turn_id`는 봉투 필드: 떼어 낸 나머지가 FrontendMessage/InterventionDecision | 시험 `test/mock.test.ts`, 모의 서버 |
 | 위험 정지 중 상태 폴링 2초 | `apps/kiosk/flow.ts` |
 | SSE 이벤트 `alert`/`resolved`, 15초 `: ping` | `api/staff.ts`, 모의 서버 |

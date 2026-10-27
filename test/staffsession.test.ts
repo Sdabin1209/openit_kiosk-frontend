@@ -10,7 +10,7 @@ const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
 async function mk(sc = {}) {
   const m = await startMock(sc); open.push(m.close);
-  const c = new PublicApiClient({ baseUrl: m.base + "/v1", retryDelayMs: 0, sleep: async () => {} });
+  const c = new PublicApiClient({ baseUrl: m.base + "/v1", retry: { maxAttempts: 3 }, sleep: async () => {} });
   return { m, c, staff: new StaffApi(c) };
 }
 

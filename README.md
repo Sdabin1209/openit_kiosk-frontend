@@ -19,7 +19,7 @@
 
 | 경로 | 역할 |
 |---|---|
-| `api/` | 공개 API 클라이언트. UI를 모른다. 재시도(같은 `turn_id`), 세션별 순서 큐, 10초 타임아웃, 상태 코드 분기 |
+| `api/` | 공개 API 클라이언트. UI를 모른다. 재시도(같은 `turn_id`, 지수 백오프+지터, 총 예산 20초: `api/retry.ts`), 세션별 순서 큐, 10초 타임아웃, 상태 코드 분기 |
 | `apps/kiosk/` | 키오스크 앱. `flow.ts` 상태 기계, `stt.ts` 음성 어댑터, `main.ts` 화면 |
 | `apps/staff/` | 직원 콘솔. `decide.ts` 개입 결정(확인 후 전송), `push.ts` 푸시 구독, `sw.ts` 서비스 워커 |
 | `mock-server/` | 공개 API 모의 서버(시나리오: normal, risk_stop, delivery_failed, not_committed, delay, hang, error 등). 서버 없이 혼자 시험·시연하는 대역 |

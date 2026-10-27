@@ -26,3 +26,8 @@ export class CallStaffError extends Error {
     this.lastCause = lastCause;
   }
 }
+
+/** 호출자(환자의 직원 호출·그만하기)가 요청을 끊었다. 재시도하지 않는다. */
+export class AbortedError extends Error {
+  constructor() { super("요청이 취소되었습니다"); this.name = "AbortedError"; }
+}

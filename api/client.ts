@@ -1,6 +1,7 @@
-import { ApiError, CallStaffError } from "./errors.ts";
+import { AbortedError, ApiError, CallStaffError } from "./errors.ts";
 import { isValidSessionId, newTurnId } from "./ids.ts";
 import { isValidSubjectRef } from "./device.ts";
+import { DEFAULT_RETRY, RETRYABLE_STATUS, TURN_IN_PROGRESS, waitMs, type RetryPolicy } from "./retry.ts";
 import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionStart, SessionState } from "./types.ts";
 
 export interface ClientOptions {
@@ -10,21 +11,27 @@ export interface ClientOptions {
   deviceToken?: () => string | null;
   fetch?: typeof fetch;
   timeoutMs?: number; // 기본 10초
-  maxAttempts?: number; // 기본 3
-  retryDelayMs?: number; // 무응답·네트워크 오류 뒤 대기(기본 0.5초)
-  defaultRetryAfterMs?: number; // 429·503에 Retry-After가 없을 때(기본 1초)
+  /** 재시도 정책(api/retry.ts). 일부만 덮어쓸 수 있다. */
+  retry?: Partial<RetryPolicy>;
   sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
+  rand?: () => number;
 }
 
-const RETRYABLE_STATUS = new Set([429, 503]);
+/** 호출마다 붙이는 선택 사항. 키오스크가 대기 표시와 직원 호출·그만하기에 쓴다. */
+export interface CallOptions {
+  signal?: AbortSignal;
+  /** 재시도하기 직전에 부른다(대기 화면 표시용). */
+  onRetry?: (info: { attempt: number; waitMs: number; status: number | null }) => void;
+}
 
 export class PublicApiClient {
   private f: typeof fetch;
   private base: string;
   private timeoutMs: number;
-  private maxAttempts: number;
-  private retryDelayMs: number;
-  private defaultRetryAfterMs: number;
+  private policy: RetryPolicy;
+  private now: () => number;
+  private rand: () => number;
   private sleep: (ms: number) => Promise<void>;
   private deviceToken: () => string | null;
   private queues = new Map<string, Promise<unknown>>();
@@ -34,25 +41,25 @@ export class PublicApiClient {
     this.deviceToken = o.deviceToken ?? (() => null);
     this.base = (o.baseUrl ?? "/v1").replace(/\/$/, "");
     this.timeoutMs = o.timeoutMs ?? 10_000;
-    this.maxAttempts = o.maxAttempts ?? 3;
-    this.retryDelayMs = o.retryDelayMs ?? 500;
-    this.defaultRetryAfterMs = o.defaultRetryAfterMs ?? 1000;
+    this.policy = { ...DEFAULT_RETRY, ...o.retry };
+    this.now = o.now ?? (() => Date.now());
+    this.rand = o.rand ?? Math.random;
     this.sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
   /** subjectRef가 있으면 본문에 넣는다(없으면 필드 생략). 형식이 틀리면 보내지 않는다. */
-  startSession(sessionId: string, subjectRef?: string | null): Promise<FrontendInput> {
+  startSession(sessionId: string, subjectRef?: string | null, co: CallOptions = {}): Promise<FrontendInput> {
     this.check(sessionId);
     const body: SessionStart = { session_id: sessionId, kind: "SESSION_START" };
     if (subjectRef !== undefined && subjectRef !== null) {
       if (!isValidSubjectRef(subjectRef)) throw new Error("subject_ref 형식 오류(1~128자 [A-Za-z0-9._:/#=+-])");
       body.subject_ref = subjectRef;
     }
-    return this.serial(sessionId, () => this.post(`/sessions`, body));
+    return this.serial(sessionId, () => this.post(`/sessions`, body, co));
   }
 
   /** turnId를 주면 그 ID로 보낸다(재시도 모두 같은 ID). 빈 발화는 보내지 않는다. */
-  sendUtterance(sessionId: string, utterance: string, turnId: string = newTurnId()): Promise<FrontendInput> {
+  sendUtterance(sessionId: string, utterance: string, turnId: string = newTurnId(), co: CallOptions = {}): Promise<FrontendInput> {
     this.check(sessionId);
     if (utterance.trim() === "") throw new Error("빈 발화는 서버로 보내지 않는다");
     return this.serial(sessionId, () =>
@@ -61,14 +68,14 @@ export class PublicApiClient {
         kind: "UTTERANCE",
         utterance,
         turn_id: turnId,
-      }),
+      }, co),
     );
   }
 
-  endSession(sessionId: string): Promise<FrontendInput> {
+  endSession(sessionId: string, co: CallOptions = {}): Promise<FrontendInput> {
     this.check(sessionId);
     return this.serial(sessionId, () =>
-      this.post(`/sessions/${sessionId}/end`, { session_id: sessionId, kind: "SESSION_END" }),
+      this.post(`/sessions/${sessionId}/end`, { session_id: sessionId, kind: "SESSION_END" }, co),
     );
   }
 
@@ -91,7 +98,7 @@ export class PublicApiClient {
 
   /** 재시도 정책을 같이 쓰는 일반 요청(직원 콘솔의 GET/POST/DELETE). */
   request<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
-    return this.call<T>(method, path, body, retry ? this.maxAttempts : 1);
+    return this.call<T>(method, path, body, retry, {});
   }
 
   // ---- 내부 ----
@@ -110,30 +117,47 @@ export class PublicApiClient {
     return next;
   }
 
-  private post(path: string, body: unknown): Promise<FrontendInput> {
-    return this.call<FrontendInput>("POST", path, body, this.maxAttempts);
+  private post(path: string, body: unknown, co: CallOptions = {}): Promise<FrontendInput> {
+    return this.call<FrontendInput>("POST", path, body, true, co);
   }
 
-  private async call<T>(method: string, path: string, body: unknown, attempts: number): Promise<T> {
+  /** 일시 장애(429·502·503·504·네트워크 오류·무응답, 409 TURN_IN_PROGRESS)는 같은 요청 그대로 지수 백오프로 재시도하고,
+   * 총 예산을 넘으면 CallStaffError. 그 밖의 오류는 바로 던진다. */
+  private async call<T>(method: string, path: string, body: unknown, retry: boolean, co: CallOptions): Promise<T> {
+    const p = this.policy, start = this.now();
+    const maxAttempts = retry ? p.maxAttempts : 1;
     let last: unknown;
-    for (let i = 1; i <= attempts; i++) {
+    for (let i = 1; ; i++) {
+      if (co.signal?.aborted) throw new AbortedError();
       try {
-        return await this.once<T>(method, path, body);
+        return await this.once<T>(method, path, body, co.signal);
       } catch (e) {
-        if (e instanceof ApiError && !RETRYABLE_STATUS.has(e.status)) throw e;
+        if (e instanceof AbortedError) throw e;
+        if (e instanceof ApiError && !(RETRYABLE_STATUS.has(e.status) || (e.status === 409 && e.body?.code === TURN_IN_PROGRESS))) throw e;
         last = e;
-        if (i < attempts) {
-          // 429·503은 Retry-After(초)를 따르고 없으면 1초. 무응답·네트워크 오류는 짧게 쉰다.
-          const wait = e instanceof ApiError ? (e.retryAfterMs ?? this.defaultRetryAfterMs) : this.retryDelayMs;
-          await this.sleep(wait);
-        }
+        const wait = waitMs(i, e instanceof ApiError ? e.retryAfterMs : null, p, this.rand);
+        // 예산을 넘겼거나 다음 대기까지 하면 넘는다면 더 기다리지 않고 직원 호출로 넘긴다.
+        if (i >= maxAttempts || this.now() - start + wait >= p.budgetMs) throw new CallStaffError(i, last);
+        co.onRetry?.({ attempt: i, waitMs: wait, status: e instanceof ApiError ? e.status : null });
+        await this.sleepAbortable(wait, co.signal);
       }
     }
-    throw new CallStaffError(attempts, last);
   }
 
-  private async once<T>(method: string, path: string, body: unknown): Promise<T> {
+  private sleepAbortable(ms: number, signal?: AbortSignal): Promise<void> {
+    if (!signal) return this.sleep(ms);
+    return new Promise<void>((resolve, reject) => {
+      const onAbort = () => reject(new AbortedError());
+      if (signal.aborted) return onAbort();
+      signal.addEventListener("abort", onAbort, { once: true });
+      this.sleep(ms).then(() => { signal.removeEventListener("abort", onAbort); resolve(); }, reject);
+    });
+  }
+
+  private async once<T>(method: string, path: string, body: unknown, outer?: AbortSignal): Promise<T> {
     const ctl = new AbortController();
+    const onOuter = () => ctl.abort();
+    outer?.addEventListener("abort", onOuter, { once: true });
     const timer = setTimeout(() => ctl.abort(), this.timeoutMs);
     try {
       const headers: Record<string, string> = body === undefined ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" };
@@ -157,7 +181,11 @@ export class PublicApiClient {
       if (res.status === 204) return undefined as T;
       const text = await res.text();
       return (text ? JSON.parse(text) : undefined) as T;
+    } catch (e) {
+      if (outer?.aborted) throw new AbortedError();
+      throw e;
     } finally {
+      outer?.removeEventListener("abort", onOuter);
       clearTimeout(timer);
     }
   }

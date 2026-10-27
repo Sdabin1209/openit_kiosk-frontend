@@ -130,8 +130,22 @@ test("키오스크: 서버 오류가 계속되면 직원 호출 화면 (503)", a
   const { page, ctx } = await open("none");
   await page.goto(kioskUrl());
   await page.getByRole("button", { name: "시작하기" }).click();
-  await page.getByText("직원을 불러 주세요").waitFor({ timeout: 30_000 });
+  // 재시도 중(예산 20초)에는 대기 문구와 직원 부르기·그만하기 버튼이 보인다.
+  await page.getByRole("button", { name: "직원 부르기" }).waitFor({ timeout: 10_000 });
+  await page.getByText("잠시만 기다려 주세요").waitFor();
+  await page.getByRole("button", { name: "그만하기" }).waitFor();
+  await page.getByText("직원을 불러 주세요").waitFor({ timeout: 45_000 }); // 예산 소진 뒤
   await page.screenshot({ path: `${SHOTS}/kiosk-7-error-call-staff.png` });
+  await ctx.close();
+});
+
+test("키오스크: 재시도 중 직원 부르기를 누르면 바로 직원 호출 화면 (503)", async () => {
+  await scenario("error", { errorTimes: 100 });
+  const { page, ctx } = await open("none");
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.getByRole("button", { name: "직원 부르기" }).click({ timeout: 10_000 });
+  await page.getByText("직원을 불러 주세요").waitFor({ timeout: 3_000 });
   await ctx.close();
 });
 

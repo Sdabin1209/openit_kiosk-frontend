@@ -12,7 +12,7 @@ const SCHEMA_DIR = new URL("../../survey-service/schema/schemas/", import.meta.u
 const ajv = new Ajv2020({ strict: false });
 const validate = ajv.compile(JSON.parse(readFileSync(new URL("FrontendInput.json", SCHEMA_DIR), "utf8")));
 const validateMsg = ajv.compile(JSON.parse(readFileSync(new URL("FrontendMessage.json", SCHEMA_DIR), "utf8")));
-const fast = { retryDelayMs: 0, sleep: async () => {} };
+const fast = { retry: { maxAttempts: 3 }, sleep: async () => {} };
 const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
 async function mk(sc = {}, opt = {}, mopt = {}) {
@@ -110,7 +110,7 @@ test("rate_limited 시나리오: 429에 Retry-After를 붙이고 클라이언트
   assert.equal(((await r.json()) as any).code, "UNAVAILABLE");
   const waits: number[] = [];
   m.state.sc.errorTimes = 1;
-  const api = new PublicApiClient({ baseUrl: m.base + "/v1", sleep: async (ms) => { waits.push(ms); } });
+  const api = new PublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
   await api.startSession("s2");
   assert.deepEqual(waits, [2000]);
 });

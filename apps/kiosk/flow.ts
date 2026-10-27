@@ -1,5 +1,5 @@
 // 키오스크 상태 기계. UI를 모른다. 화면은 subscribe로 상태를 받아 그린다.
-import { ApiError, CallStaffError } from "../../api/errors.ts";
+import { AbortedError, ApiError, CallStaffError } from "../../api/errors.ts";
 import { newSessionId, newTurnId } from "../../api/ids.ts";
 import type { PublicApiClient } from "../../api/client.ts";
 import type { FrontendInput } from "../../api/types.ts";
@@ -10,7 +10,7 @@ export type KioskState =
   | "IDLE" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING"
   | "WAITING_STAFF" | "CALL_STAFF" | "ENDING" | "ENDED";
 
-export type CallStaffReason = "RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "NO_DEVICE_TOKEN" | "BAD_SUBJECT_REF";
+export type CallStaffReason = "RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "NO_DEVICE_TOKEN" | "STAFF_REQUESTED" | "BAD_SUBJECT_REF";
 export type RepeatReason = "EMPTY_STT" | "NOT_COMMITTED";
 
 export interface KioskView {
@@ -18,6 +18,8 @@ export interface KioskView {
   text: string | null; // 화면에 보일 응답 문장(메모리에만 둔다)
   callStaffReason?: CallStaffReason;
   repeatReason?: RepeatReason;
+  /** 일시 장애로 같은 요청을 다시 보내는 중(STARTING·SENDING). 화면은 대기 문구와 직원 호출·그만하기를 보인다. */
+  retrying?: boolean;
 }
 
 export class KioskFlow {
@@ -30,6 +32,7 @@ export class KioskFlow {
   private api: PublicApiClient;
   private pollMs: number;
   private sleep: (ms: number) => Promise<void>;
+  private inflight: AbortController | null = null; // 진행 중 요청(직원 호출·그만하기가 끊는다)
   private gen = 0; // 폴링을 끊기 위한 세대 번호
   private startValues: (() => Promise<KioskStart>) | null;
   constructor(api: PublicApiClient, o: { pollMs?: number; sleep?: (ms: number) => Promise<void>; startValues?: () => Promise<KioskStart> } = {}) {
@@ -62,9 +65,13 @@ export class KioskFlow {
         if (v.subjectInvalid) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "BAD_SUBJECT_REF" });
         subjectRef = v.subjectRef;
       }
-      const r = await this.api.startSession(this.sessionId, subjectRef);
+      const ctl = this.begin();
+      const r = await this.api.startSession(this.sessionId, subjectRef, this.opts(ctl));
+      this.inflight = null;
       this.handle(r);
     } catch (e) {
+      if (e instanceof AbortedError) return; // 환자가 직원 호출·그만하기를 눌러 이미 화면이 바뀌었다
+      this.inflight = null;
       this.fail(e, "START_FAILED");
     }
   }
@@ -83,25 +90,51 @@ export class KioskFlow {
     this.pendingTurnId = turnId; this.pendingUtterance = text;
     this.set({ state: "SENDING", text: null });
     try {
-      const resp = await this.api.sendUtterance(this.sessionId!, text, turnId);
+      const ctl = this.begin();
+      const resp = await this.api.sendUtterance(this.sessionId!, text, turnId, this.opts(ctl));
+      this.inflight = null;
       this.pendingTurnId = this.pendingUtterance = null; // 발화는 메모리에도 남기지 않는다
       this.handle(resp);
     } catch (e) {
+      if (e instanceof AbortedError) return;
+      this.inflight = null;
       this.fail(e, "RETRY_EXHAUSTED");
     }
   }
 
   async end(): Promise<void> {
     if (!this.sessionId || this.view.state === "IDLE" || this.view.state === "ENDED") return;
+    this.inflight?.abort(); this.inflight = null; // 재시도 중인 요청이 있으면 끊는다(보낸 발화는 서버가 같은 turn_id로 멱등 처리)
     this.set({ state: "ENDING", text: null });
     try { await this.api.endSession(this.sessionId); } catch { /* 종료 실패는 화면을 막지 않는다 */ }
     this.sessionId = null; this.pendingTurnId = this.pendingUtterance = null;
     this.set({ state: "ENDED", text: null });
   }
 
+  /** 환자가 대기(재시도) 중에 직원 호출을 눌렀다. 진행 중 요청을 끊고 직원 호출 화면으로 간다. */
+  callStaff(): void {
+    if (this.view.state === "IDLE" || this.view.state === "ENDED") return;
+    this.inflight?.abort(); this.inflight = null;
+    this.set({ state: "CALL_STAFF", text: null, callStaffReason: "STAFF_REQUESTED" });
+  }
+
   reset(): void {
+    this.inflight?.abort(); this.inflight = null;
     this.sessionId = null; this.pendingTurnId = this.pendingUtterance = null;
     this.set({ state: "IDLE", text: null });
+  }
+
+  private begin(): AbortController { this.inflight?.abort(); return (this.inflight = new AbortController()); }
+  private opts(ctl: AbortController) {
+    return {
+      signal: ctl.signal,
+      onRetry: () => {
+        if (this.inflight !== ctl) return;
+        const v = this.view;
+        if (v.state !== "STARTING" && v.state !== "SENDING") return;
+        this.view = { ...v, retrying: true }; for (const l of this.listeners) l(this.view);
+      },
+    };
   }
 
   /** 서버 응답 처리: 직원 호출 실패가 가장 우선. */

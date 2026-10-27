@@ -4,7 +4,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { ApiError, CallStaffError } from "../api/errors.ts";
 import { hang, json, ok } from "./helpers.ts";
 
-const fast = { timeoutMs: 20, retryDelayMs: 0, sleep: async () => {} };
+const fast = { timeoutMs: 20, retry: { maxAttempts: 3 }, sleep: async () => {} };
 
 test("무응답이면 같은 turn_id로 재시도하고 이후 성공한다", async () => {
   const seen: string[] = [];
@@ -68,19 +68,19 @@ test("빈 발화와 잘못된 session_id는 보내지 않는다", () => {
   assert.throws(() => c.startSession("a".repeat(65)));
 });
 
-test("429·503은 Retry-After(초)를 따르고 없으면 1초 기다린다", async () => {
+test("429·503은 Retry-After(초) 이상 기다리고, 없으면 지수 백오프(0.5초 기준)를 따른다", async () => {
   const waits: number[] = [];
   const mk = (headers: Record<string, string>, status: number) => {
     let n = 0;
-    return new PublicApiClient({ timeoutMs: 1000, sleep: async (ms) => { waits.push(ms); }, fetch: (async () =>
+    return new PublicApiClient({ timeoutMs: 1000, rand: () => 0, sleep: async (ms) => { waits.push(ms); }, fetch: (async () =>
       ++n < 3 ? new Response(JSON.stringify({ code: "UNAVAILABLE" }), { status, headers }) : ok()) as any });
   };
   await mk({ "retry-after": "3" }, 429).sendUtterance("s1", "x", "t");
   assert.deepEqual(waits.splice(0), [3000, 3000]);
   await mk({}, 429).sendUtterance("s1", "x", "t");
-  assert.deepEqual(waits.splice(0), [1000, 1000]);
+  assert.deepEqual(waits.splice(0), [250, 500]);
   await mk({}, 503).sendUtterance("s1", "x", "t");
-  assert.deepEqual(waits.splice(0), [1000, 1000]);
+  assert.deepEqual(waits.splice(0), [250, 500]);
 });
 
 test("상태 조회와 푸시 설정 호출 경로", async () => {

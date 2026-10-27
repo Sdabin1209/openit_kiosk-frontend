@@ -32,3 +32,8 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 
 ## 세션 기록 보기와 스키마 대기
 `check-schema`는 `../survey-service/schema/schemas/StaffSessionView.json`이 있으면 모의 서버 응답을 그 스키마로 검증해 PASS로 세고, 없으면 "대상 아님(서버 스키마 대기)"을 출력한다(PASS로 세지 않음). 서버 스키마가 생겼으므로 지금은 대조된다. jsdom 시험은 호스트에 jsdom이 없으면 건너뛰므로(`npm test`의 skipped) `npm run test:dom`으로 컨테이너에서 확인한다.
+
+## 재시도 정책 (FAULT_POLICY 원칙 2·3·7)
+- 변경: 502·503·504·429·네트워크 오류·무응답은 같은 `turn_id`로 지수 백오프(지터) 재시도, 총 예산 20초 뒤 직원 호출. 409 `TURN_IN_PROGRESS`는 `Retry-After` 이상 기다린 뒤 같은 `turn_id` 재시도(코드가 없는 409는 기존대로 위험 정지 폴링). 500·4xx(429 제외)는 재시도 없음. 재시도 중 직원 부르기·그만하기 버튼. 이전의 "3회 시도" 상한은 없어졌다(`retry.maxAttempts`로 시험에서만 둘 수 있다).
+- 시험 변경: 기존 시험 중 "시도 3회"에 의존한 곳은 `retry: { maxAttempts: 3 }`를 명시하게 했고, Retry-After 없을 때 1초라는 단언은 백오프 값(지터 0 기준 250/500ms)으로 바꿨다. 새 시험은 `test/retry.test.ts`.
+- 확인하지 못한 것: 실제 gateway·survey-service에서 재시작 중 동작(모의 서버만), 서버의 `409 TURN_IN_PROGRESS` 실제 응답 모양, 20초 예산이 임상 흐름에 맞는지(사용자 결정 대기), 실기기 화면.
