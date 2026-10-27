@@ -69,3 +69,20 @@ test("L: install()이 끝나지 않으면 상한 뒤 지원 안 함으로 보고
   assert.equal(stt.available(), false);
   assert.equal(f.calls.filter((c) => c.startsWith("available")).length, 1, "시간 초과 뒤 다시 확인하지 않는다");
 });
+
+test("L(3차 점검): 설치 시간 초과 때는 allowRemote여도 외부 인식으로 자동 전환하지 않고, recheck()로 다시 확인한다", async () => {
+  const f = fakeCtor({ avail: ["downloadable"] });
+  (g.SpeechRecognition as any).install = () => new Promise(() => {});
+  const stt = new WebSpeechStt({ allowRemote: true, installTimeoutMs: 20 });
+  await stt.init();
+  assert.equal(stt.available(), false); assert.equal(stt.remote, false);
+  // 이제 언어 팩이 준비됐다고 하면 recheck가 새로고침 없이 온디바이스로 올린다.
+  (g.SpeechRecognition as any).available = async () => "available";
+  await stt.recheck();
+  assert.equal(stt.available(), true); assert.equal(stt.remote, false); assert.equal(stt.local, true);
+  // 시간 초과가 아닌 실패(설치 오류)는 명시한 allowRemote 설정대로 외부 인식을 쓴다(고지 문구가 화면에 보인다).
+  fakeCtor({ avail: ["downloadable"], install: false });
+  const s2 = new WebSpeechStt({ allowRemote: true }); await s2.init();
+  assert.equal(s2.remote, true);
+  void f;
+});

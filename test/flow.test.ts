@@ -147,3 +147,37 @@ test("발화를 저장소·쿠키·콘솔에 남기지 않는다", async () => {
   assert.deepEqual(touched, []);
   assert.deepEqual(logs, []);
 });
+
+test("3차 점검 K-a: CALL_STAFF의 처음으로는 서버 세션 종료를 먼저 보내고(실패하면 한 번 더) 실패해도 화면은 처음으로 간다", async () => {
+  let endFails = 0;
+  const { flow, calls } = make((b) => {
+    if (b.kind === "SESSION_END") { endFails++; return new Response("{}", { status: 400 }); }
+    return ok("시작");
+  });
+  await flow.start();
+  flow.callStaff();
+  assert.equal(flow.current.callStaffReason, "STAFF_REQUESTED");
+  await flow.leaveCallStaff();
+  assert.equal(flow.current.state, "IDLE");
+  assert.equal(calls.filter((c) => c.kind === "SESSION_END").length, 2, "종료 요청 2회(재시도 한 번)");
+  assert.ok(endFails === 2);
+});
+
+test("3차 점검 K-a: 종료가 성공하면 한 번만 보내고 IDLE", async () => {
+  const { flow, calls } = make((b) => ok(b.kind === "SESSION_END" ? null : "시작"));
+  await flow.start(); flow.callStaff(); await flow.leaveCallStaff();
+  assert.equal(flow.current.state, "IDLE");
+  assert.equal(calls.filter((c) => c.kind === "SESSION_END").length, 1);
+});
+
+test("3차 점검 K-b: DELIVERY_FAILED의 처음으로는 한 번 더 확인하고, 서버 세션은 끝내지 않는다(흔적 보존)", async () => {
+  const { flow, calls } = make((b) => b.kind === "UTTERANCE" ? ok("대기", { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" }) : ok("시작"));
+  await flow.start(); await flow.hear(say("위험"));
+  assert.equal(flow.current.callStaffReason, "DELIVERY_FAILED");
+  await flow.leaveCallStaff();
+  assert.equal(flow.current.state, "CALL_STAFF"); assert.equal(flow.current.confirmLeave, true);
+  flow.cancelLeave(); assert.equal(flow.current.confirmLeave, false);
+  await flow.leaveCallStaff(); await flow.leaveCallStaff();
+  assert.equal(flow.current.state, "IDLE");
+  assert.equal(calls.filter((c) => c.kind === "SESSION_END").length, 0, "세션 종료 요청을 보내지 않는다");
+});

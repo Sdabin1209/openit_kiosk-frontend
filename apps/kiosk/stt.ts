@@ -33,6 +33,9 @@ export class WebSpeechStt implements SttAdapter {
   private ready = false;
   private allowRemote: boolean;
   private installTimeoutMs: number;
+  /** 언어 팩 설치가 시간 초과로 끝났다: 기기 안 인식이 곧 될 수도 있으므로 외부 인식으로 자동 전환하지 않는다(3차 점검 L). */
+  private timedOut = false;
+  private rechecking = false;
   constructor(o: { allowRemote?: boolean; installTimeoutMs?: number } = {}) { this.allowRemote = o.allowRemote === true; this.installTimeoutMs = o.installTimeoutMs ?? 10_000; /* 임의(측정 안 함) */ }
   setAllowRemote(v: boolean): void { this.allowRemote = v === true; }
   private ctor(): any {
@@ -53,20 +56,27 @@ export class WebSpeechStt implements SttAdapter {
             const limit = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error("install timeout")), this.installTimeoutMs); });
             try { await Promise.race([C.install(opts), limit]); } finally { clearTimeout(timer); }
             st = await C.available(opts);
-          } catch { st = "unavailable"; /* 설치 실패·시간 초과는 지원 안 함으로 */ }
+          } catch (e) { st = "unavailable"; /* 설치 실패·시간 초과는 지원 안 함으로 */ this.timedOut = (e as Error)?.message === "install timeout"; }
         }
         this.localOk = st === "available";
       }
     } catch { this.localOk = false; }
     this.ready = true;
   }
+  /** 시간 초과로 끝난 경우에만 다시 확인한다(새로고침을 기다리지 않게). 대기 화면(IDLE)에서 부른다. 동시에 한 번만 돈다. */
+  async recheck(): Promise<boolean> {
+    if (!this.timedOut || this.rechecking) return false; // 다시 확인하지 않았다(호출한 쪽이 다시 그리지 않는다: 그리기 -> 확인 -> 그리기 반복 방지)
+    this.rechecking = true; this.timedOut = false;
+    try { await this.init(); } finally { this.rechecking = false; }
+    return true;
+  }
   /** 온디바이스로 인식할 수 있나. */
   get local(): boolean { return this.localOk; }
   available(): boolean {
-    return this.ctor() !== null && this.ready && (this.localOk || this.allowRemote);
+    return this.ctor() !== null && this.ready && (this.localOk || (this.allowRemote && !this.timedOut));
   }
   /** 외부 제공자로 음성이 나갈 수 있는 상태(허용 설정이 켜져 있고 기기 안 인식은 안 되는 경우). */
-  get remote(): boolean { return this.ctor() !== null && this.ready && !this.localOk && this.allowRemote; }
+  get remote(): boolean { return this.ctor() !== null && this.ready && !this.localOk && this.allowRemote && !this.timedOut; }
   listen(): Promise<SttResult> {
     return new Promise((resolve, reject) => {
       const C = this.ctor();

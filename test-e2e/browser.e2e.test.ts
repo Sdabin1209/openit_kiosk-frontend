@@ -16,8 +16,15 @@ mkdirSync(SHOTS, { recursive: true });
 const mock = createMock({});
 const st = makeStaticHandler({ dir: "dist" });
 const api = mock.server.listeners("request")[0] as (...a: any[]) => void;
+// 게이트웨이 CSRF 방어(Sec-Fetch-Site same-origin|none, Origin == 요청 출처)와 Referrer-Policy: no-referrer를 모의한다.
+// 브라우저가 보낸 상태 변경 요청(Sec-Fetch-Site가 있는 것만 = 브라우저. Node의 시험용 fetch는 보내지 않아 제외)의 헤더를 기록해 마지막 시험에서 확인한다.
+const mutations: { method: string; path: string; site?: string; origin?: string }[] = [];
 const web: Server = createServer((req, res) => {
   const p = req.url ?? "";
+  res.setHeader("Referrer-Policy", "no-referrer");
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method ?? "") && req.headers["sec-fetch-site"]) {
+    mutations.push({ method: req.method ?? "", path: p.split("?")[0], site: req.headers["sec-fetch-site"] as string | undefined, origin: req.headers.origin as string | undefined });
+  }
   if (p.startsWith("/v1/") || p.startsWith("/__mock/")) api(req, res);
   else if (staticDown) { res.writeHead(503, { "retry-after": "1" }); res.end("static down"); } // 정적 화면 서버 장애 모의(A3)
   else void st(req, res);
@@ -185,7 +192,13 @@ test("키오스크: 직원 호출 화면(알림 전달 실패) → 처음으로"
   await page.getByText("직원을 불러 주세요").waitFor();
   assert.equal(await page.evaluate(() => document.body.classList.contains("warn")), true);
   await page.screenshot({ path: `${SHOTS}/kiosk-6-call-staff.png` });
+  // 알림이 닿지 않은 상태: 처음으로는 한 번 더 확인한다(3차 점검 K-b). 취소하면 직원 호출 화면에 남는다.
   await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByText("직원에게 직접 알리셨나요?").waitFor();
+  await page.getByRole("button", { name: "취소" }).click();
+  await page.getByRole("button", { name: "처음으로" }).waitFor();
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByRole("button", { name: "직접 알렸어요, 처음으로" }).click();
   await page.getByRole("button", { name: "시작하기" }).waitFor();
   await ctx.close();
 });
@@ -480,4 +493,14 @@ test("D85: 기기 토큰이 없으면 설정 필요 화면(요청 없음), 틀�
   assert.equal(seen.length, 1);
   assert.match(await run(`device=${DEV}&subject_ref=${encodeURIComponent("공백 있음")}`), /접수 정보/);
   assert.equal(seen.length, 1, "형식 오류면 보내지 않는다");
+});
+
+// 마지막 시험(앞선 시험들이 만든 요청을 모아 확인한다): 브라우저의 모든 상태 변경 요청이 fetch 기본 모드(cors)로 나가
+// Origin이 요청 출처와 같고(Origin: null 아님) Sec-Fetch-Site가 same-origin이다. 그래야 게이트웨이 CSRF 방어가 403을 내지 않는다.
+test("CSRF 방어 호환: 브라우저의 모든 POST/DELETE가 Origin=요청 출처, Sec-Fetch-Site=same-origin (Referrer-Policy: no-referrer 아래)", () => {
+  assert.ok(mutations.some((m) => m.method === "POST" && m.path.startsWith("/v1/sessions")), "문진 POST가 기록되어야 한다");
+  for (const m of mutations) {
+    assert.equal(m.origin, base, `${m.method} ${m.path}: Origin=${m.origin}`);
+    assert.equal(m.site, "same-origin", `${m.method} ${m.path}: Sec-Fetch-Site=${m.site}`);
+  }
 });

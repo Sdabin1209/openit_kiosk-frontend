@@ -61,7 +61,8 @@ function render(v: KioskView) {
   notice.textContent = notes.join(" ");
   clearTimeout(idleTimer);
   switch (v.state) {
-    case "IDLE": title.textContent = "문진을 시작합니다"; action.textContent = "시작하기"; onAction = () => void flow.start(); break;
+    case "IDLE": void stt.recheck().then((did) => { if (did && flow.current.state === "IDLE") render(flow.current); }); // 언어 팩 설치 시간 초과였으면 새로고침 없이 다시 확인
+      title.textContent = "문진을 시작합니다"; action.textContent = "시작하기"; onAction = () => void flow.start(); break;
     case "STARTING": title.textContent = "잠시만 기다려 주세요"; action.hidden = true; waitingButtons(v); break;
     case "LISTENING":
       if (!v.text) text.textContent = "계속 말씀해 주세요."; // 응답 문장이 없는 정상 응답에서 빈 화면을 막는다
@@ -86,7 +87,17 @@ function render(v: KioskView) {
         : v.callStaffReason === "BAD_SUBJECT_REF" ? "접수 정보를 확인할 수 없습니다. 가까이 있는 직원에게 알려 주세요."
         : v.callStaffReason === "REPEAT_LIMIT" ? "여러 번 알아듣지 못했어요. 가까이 있는 직원에게 알려 주세요."
         : "가까이 있는 직원에게 알려 주세요."; action.hidden = false; action.textContent = "처음으로";
-      onAction = () => flow.reset(); break;
+      onAction = () => void flow.leaveCallStaff();
+      if (v.callStaffReason === "DELIVERY_FAILED") {
+        // 직원 알림이 닿지 않았다: 직접 직원에게 알리는 것이 우선이고, 처음으로는 한 번 더 확인한다.
+        text.textContent = "직원에게 알림이 닿지 않았을 수 있어요. 가까이 있는 직원에게 직접 알려 주세요.";
+        if (v.confirmLeave) {
+          text.textContent = "직원에게 직접 알리셨나요? 알리지 않았다면 취소를 눌러 직원을 찾아 주세요.";
+          action.textContent = "직접 알렸어요, 처음으로";
+          secondary.hidden = false; secondary.textContent = "취소"; onSecondary = () => flow.cancelLeave();
+        }
+      }
+      break;
     case "ENDING": title.textContent = "마무리하고 있어요"; action.hidden = true; break;
     case "ENDED":
       title.textContent = v.endFailed ? "종료를 서버에 알리지 못했습니다" : "수고하셨습니다";

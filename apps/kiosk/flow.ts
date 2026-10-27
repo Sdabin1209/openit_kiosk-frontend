@@ -29,6 +29,8 @@ export interface KioskView {
   waitNotice?: "SERVER_UNREACHABLE" | "LONG_WAIT";
   /** 종료 요청이 서버에 닿지 않았다(ENDED 화면에서 직원에게 알리게 한다). */
   endFailed?: boolean;
+  /** CALL_STAFF(DELIVERY_FAILED)에서 '처음으로'를 한 번 눌렀다: 직원 알림이 닿지 않았을 수 있음을 알리고 한 번 더 확인한다. */
+  confirmLeave?: boolean;
 }
 
 export class KioskFlow {
@@ -186,6 +188,32 @@ export class KioskFlow {
     this.inflight?.abort(); this.inflight = null;
     this.set({ state: "CALL_STAFF", text: null, callStaffReason: "STAFF_REQUESTED" });
   }
+
+  /**
+   * CALL_STAFF 화면의 '처음으로'(3차 점검 K-a, K-b).
+   * - DELIVERY_FAILED: 직원 알림이 닿지 않은 상태다. 서버 세션(위험 정지 등)이 그 사실의 유일한 흔적이므로 세션을 끝내지 않고 남긴다
+   *   (끝내면 직원 콘솔에서 사라진다). 환자가 실수로 떠나지 않게 한 번 더 확인한다(첫 번째 누름은 확인 단계로만 간다).
+   * - 그 밖: 서버 세션을 끝내 다음 사람에게 열린 세션이 남지 않게 한다. 실패하면 한 번 더 시도하고, 그래도 실패해도 화면은 처음으로 간다
+   *   (직원 호출 화면에 환자를 가두지 않는다. 남은 세션은 서버 유휴 만료가 정리한다 — 런북).
+   */
+  async leaveCallStaff(): Promise<void> {
+    if (this.view.state !== "CALL_STAFF") return;
+    if (this.view.callStaffReason === "DELIVERY_FAILED") {
+      if (!this.view.confirmLeave) return this.patch({ confirmLeave: true });
+      return this.reset();
+    }
+    const id = this.sessionId;
+    if (id) {
+      this.inflight?.abort(); this.inflight = null;
+      for (let i = 0; i < 2; i++) {
+        try { await this.api.endSession(id); break; }
+        catch (e) { if (e instanceof ApiError && (e.status === 404 || e.status === 409)) break; /* 이미 끝났거나 없다 */ }
+      }
+    }
+    if (this.view.state === "CALL_STAFF") this.reset();
+  }
+  /** 확인 단계에서 취소한다. */
+  cancelLeave(): void { if (this.view.state === "CALL_STAFF" && this.view.confirmLeave) this.patch({ confirmLeave: false }); }
 
   reset(): void {
     this.inflight?.abort(); this.inflight = null;
