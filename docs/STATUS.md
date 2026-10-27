@@ -7,7 +7,16 @@
 - 직원 콘솔 세션 기록 보기: 알림의 '기록 보기'로 대화·저장된 값·세션 알림(규칙 id)을 읽기 전용으로 본다. 같은 화면에서 이어서 진행/종료(확인 단계 유지). 환자 발화는 메모리·DOM에만 두고 닫으면 지운다. `GET /v1/staff/sessions/{id}`(StaffSessionView)는 모의 서버에만 있고 실제 survey-service 구현은 확인하지 못했다.
 
 ## 계약 v2.0.2 정렬
-Dockerfile `BOUNDARY_CONTRACT=v2.0.2`, 모의 서버 오류 본문 `pipeline_schema_version` "2.0"(이전 "1.0"은 어떤 계약 버전과도 맞지 않던 값). `check-schema`가 계약 버전 표기를 대조하도록 확장했다. 공개 API 응답 모양 변화는 SSE `id:` 설명(이벤트 순번) 한 줄뿐이며 모의 서버는 이미 그렇게 동작한다. 이 영역은 토큰·비밀을 갖지 않는다(VAPID는 공개키만).
+Dockerfile `BOUNDARY_CONTRACT=v2.0.2`, 모의 서버 오류 본문 `pipeline_schema_version` "2.0"(이전 "1.0"은 어떤 계약 버전과도 맞지 않던 값). `check-schema`가 계약 버전 표기를 대조하도록 확장했다. 공개 API 응답 모양 변화는 SSE `id:` 설명(이벤트 순번) 한 줄뿐이며 모의 서버는 이미 그렇게 동작한다. 이미지·리포지토리에 비밀은 없다(VAPID는 공개키만).
+
+## D85 반영 (PUBLIC_API.md 추가 인터페이스 A·C·E·F)
+- 환자 참조(A): 키오스크가 시작 URL 조각 `#subject_ref=...` 또는 `/config.json`의 `subject_ref`를 읽어 세션 시작 본문에 넣는다. 값이 없으면 필드를 생략하고, 형식(1~128자 `[A-Za-z0-9._:/#=+-]`)이 틀리면 보내지 않고 직원 호출 화면을 띄운다. 서버가 필수로 해 400이면 직원 호출 화면이다. 쿼리 문자열은 쓰지 않는다.
+- 기기 인증(F): 토큰을 `#device=...` 조각(읽은 즉시 `history.replaceState`로 주소창에서 제거) 또는 `/config.json`의 `device_token`에서 받아 메모리에만 두고, `/v1/sessions*` 요청에만 `Authorization: Bearer`로 보낸다. 토큰이 없으면 요청 없이 "설정이 필요합니다" 화면, 서버 401·403이면 "인증이 거부" 화면(둘 다 직원 호출). 직원 콘솔 요청에는 붙이지 않는다.
+- 직원 콘솔(C, E): 기록 보기에 `subject_ref`(없으면 '(없음)')와 알림 표의 '해결한 직원'(`resolved_by`, 없으면 '(없음)')을 보인다. 개입 결정 본문에는 직원 ID를 넣지 않는다(게이트웨이 헤더 `X-Openit-User`).
+- 모의 서버: 시나리오 값 `deviceToken`(켜면 `/v1/sessions*`에 Bearer가 없거나 다르면 401; `MOCK_DEVICE_TOKEN` 환경 변수로도 켠다), `requireSubjectRef`(`MOCK_REQUIRE_SUBJECT_REF=1`), `subject_ref` 형식 400, StaffSessionView의 `subject_ref`·`resolved_by`(개입 요청의 `X-Openit-User` 헤더 값, 본문 값은 받지 않음). 기본은 토큰 검증 꺼짐(기존 시험용). 개입 결정은 기기 토큰이 아니라 직원 인증 몫이라 토큰 검사에서 뺐고, 헤더가 없으면 401 대신 `resolved_by`가 null이다(모의 서버 단순화, 실제 서비스는 401).
+- `check-schema`: 서버 스키마(`StaffSessionView.json`)가 `subject_ref`·`resolved_by`를 갖게 된 것을 확인했고(survey-service 갱신), 모의 응답(열린 알림, 해결된 알림, subject_ref 없음)이 PASS로 대조된다. 이 과정에서 모의 응답이 스키마와 어긋나 있던 곳(시각 밀리초, 상태 값 ACTIVE/ENDED, 값 상태·정확도 표기)을 스키마에 맞췄다.
+- 시험: `test/d85.test.ts`(조각·설정 파싱, 시작 본문, 헤더 범위, 흐름, 모의 규칙, 콘솔·로그 누출 없음), `test/staffview.test.ts`(DOM, 새 필드), 브라우저 시험 2건 추가(요청 본문·헤더·조각 제거·저장소·콘솔·기록 화면 표시, 토큰 없음·틀림·형식 오류 화면). `test/static.test.ts`는 `Authorization`/`Bearer` 문자열을 `api/client.ts`에만 허용하도록 바꿨고, 빌드 산출물에는 토큰 값이 박혀 있지 않음을 확인한다.
+- 확인 못 한 것: 실제 게이트웨이·survey-service와 연동하지 못했다(모의 서버만). 시작 요청의 `subject_ref`는 `FrontendMessage.json` 스키마에 아직 없다(봉투 필드로 보고 시험에서 `turn_id`처럼 떼어 낸다). 필요하면 헤드에게 변경 요청.
 
 ## 남은 일 / 막힌 것
 - 실제 survey-service와 연동하지 못했다(모의 서버만). 계약 어긋남은 CR-002, 003.
@@ -22,4 +31,4 @@ Dockerfile `BOUNDARY_CONTRACT=v2.0.2`, 모의 서버 오류 본문 `pipeline_sch
 turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤트 이름·ping, 위험 정지 상태 폴링, push-config. CR-002, CR-003은 회신으로 해소되었다(헤드 확인). 임시 방식(환자가 다시 말해 보기)은 폴링으로 대체했다.
 
 ## 세션 기록 보기와 스키마 대기
-`check-schema`는 `../survey-service/schema/schemas/StaffSessionView.json`이 생기면 모의 서버 응답을 그 스키마로 검증하고, 없으면 "대상 아님(서버 스키마 대기)"을 출력한다(PASS로 세지 않음). 지금은 대조되지 않은 상태다: 타입(`api/types.ts`)은 요청서의 모양을 그대로 따른 것이다. jsdom 시험은 호스트에 jsdom이 없으면 건너뛰므로(`npm test`의 skipped) `npm run test:dom`으로 컨테이너에서 확인한다.
+`check-schema`는 `../survey-service/schema/schemas/StaffSessionView.json`이 있으면 모의 서버 응답을 그 스키마로 검증해 PASS로 세고, 없으면 "대상 아님(서버 스키마 대기)"을 출력한다(PASS로 세지 않음). 서버 스키마가 생겼으므로 지금은 대조된다. jsdom 시험은 호스트에 jsdom이 없으면 건너뛰므로(`npm test`의 skipped) `npm run test:dom`으로 컨테이너에서 확인한다.

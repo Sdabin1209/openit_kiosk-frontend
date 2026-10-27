@@ -9,10 +9,11 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 const SRC = ["api", "apps"].flatMap((d) => walk(d)).filter((f) => /\.(ts|html|css)$/.test(f));
 
-test("소스에 저장소·쿠키·콘솔·토큰·CDN이 없다", () => {
-  const bad = /localStorage|sessionStorage|document\.cookie|indexedDB|console\.|Authorization|Bearer|https?:\/\/(?!www\.w3\.org)/;
-  const hits = SRC.filter((f) => bad.test(readFileSync(f, "utf8")));
-  assert.deepEqual(hits, []);
+test("소스에 저장소·쿠키·콘솔·CDN이 없고, 기기 토큰 헤더(Authorization/Bearer)는 api/client.ts에만 있다", () => {
+  const bad = /localStorage|sessionStorage|document\.cookie|indexedDB|console\.|https?:\/\/(?!www\.w3\.org)/;
+  assert.deepEqual(SRC.filter((f) => bad.test(readFileSync(f, "utf8"))), []);
+  const auth = SRC.filter((f) => /Authorization|Bearer/i.test(readFileSync(f, "utf8")));
+  assert.deepEqual(auth, ["api/client.ts"]);
 });
 
 test("빌드 산출물에 토큰과 외부 URL이 없다", { skip: !existsSync("dist") && "먼저 npm run build" }, () => {
@@ -20,7 +21,7 @@ test("빌드 산출물에 토큰과 외부 URL이 없다", { skip: !existsSync("
   assert.ok(files.length > 0);
   for (const f of files) {
     const s = readFileSync(f, "utf8");
-    assert.doesNotMatch(s, /Authorization|Bearer/i, f);
+    assert.doesNotMatch(s, /Bearer\s+(?!\$\{)[A-Za-z0-9_.-]{6,}/i, f); // 토큰 값이 박혀 있으면 안 된다(헤더 이름만 허용)
     assert.doesNotMatch(s, /https?:\/\/(?!www\.w3\.org|push\.example)/, f);
   }
 });

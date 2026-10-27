@@ -3,13 +3,14 @@ import { ApiError, CallStaffError } from "../../api/errors.ts";
 import { newSessionId, newTurnId } from "../../api/ids.ts";
 import type { PublicApiClient } from "../../api/client.ts";
 import type { FrontendInput } from "../../api/types.ts";
+import type { KioskStart } from "../../api/device.ts";
 import { isUsableTranscript, type SttResult } from "./stt.ts";
 
 export type KioskState =
   | "IDLE" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING"
   | "WAITING_STAFF" | "CALL_STAFF" | "ENDING" | "ENDED";
 
-export type CallStaffReason = "RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED";
+export type CallStaffReason = "RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "NO_DEVICE_TOKEN" | "BAD_SUBJECT_REF";
 export type RepeatReason = "EMPTY_STT" | "NOT_COMMITTED";
 
 export interface KioskView {
@@ -30,8 +31,10 @@ export class KioskFlow {
   private pollMs: number;
   private sleep: (ms: number) => Promise<void>;
   private gen = 0; // 폴링을 끊기 위한 세대 번호
-  constructor(api: PublicApiClient, o: { pollMs?: number; sleep?: (ms: number) => Promise<void> } = {}) {
+  private startValues: (() => Promise<KioskStart>) | null;
+  constructor(api: PublicApiClient, o: { pollMs?: number; sleep?: (ms: number) => Promise<void>; startValues?: () => Promise<KioskStart> } = {}) {
     this.api = api;
+    this.startValues = o.startValues ?? null; // 시작 URL 조각·기기 설정에서 읽은 값(메모리)
     this.pollMs = o.pollMs ?? 2000; // 계약: 2초 간격
     this.sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
@@ -52,7 +55,14 @@ export class KioskFlow {
     this.pendingTurnId = this.pendingUtterance = null;
     this.set({ state: "STARTING", text: null });
     try {
-      const r = await this.api.startSession(this.sessionId);
+      let subjectRef: string | null = null;
+      if (this.startValues) {
+        const v = await this.startValues();
+        if (!v.deviceToken) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "NO_DEVICE_TOKEN" }); // 서버로 보내지 않는다
+        if (v.subjectInvalid) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "BAD_SUBJECT_REF" });
+        subjectRef = v.subjectRef;
+      }
+      const r = await this.api.startSession(this.sessionId, subjectRef);
       this.handle(r);
     } catch (e) {
       this.fail(e, "START_FAILED");

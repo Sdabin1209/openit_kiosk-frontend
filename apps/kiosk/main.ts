@@ -1,9 +1,13 @@
 import { PublicApiClient } from "../../api/client.ts";
+import { loadKioskStart, type KioskStart } from "../../api/device.ts";
 import { KioskFlow, type KioskView } from "./flow.ts";
 import { WebSpeechStt } from "./stt.ts";
 
-const api = new PublicApiClient({ baseUrl: "/v1" });
-const flow = new KioskFlow(api);
+// 기기 토큰과 환자 참조는 메모리에만 둔다(주소창 조각은 읽자마자 지운다).
+const held: KioskStart = { deviceToken: null, subjectRef: null, subjectInvalid: false };
+const ready = loadKioskStart(window).then((s) => { Object.assign(held, s); return held; });
+const api = new PublicApiClient({ baseUrl: "/v1", deviceToken: () => held.deviceToken });
+const flow = new KioskFlow(api, { startValues: () => ready });
 const stt = new WebSpeechStt();
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const title = $("title"), text = $("text"), action = $("action") as HTMLButtonElement;
@@ -45,7 +49,11 @@ function render(v: KioskView) {
       title.textContent = "직원이 곧 도와드립니다"; action.hidden = true;
       if (!v.text) text.textContent = "그대로 기다려 주세요. 직원이 오면 이어서 안내해 드립니다."; break;
     case "CALL_STAFF":
-      title.textContent = "직원을 불러 주세요"; text.textContent = "가까이 있는 직원에게 알려 주세요."; action.hidden = false; action.textContent = "처음으로";
+      title.textContent = "직원을 불러 주세요";
+      text.textContent = v.callStaffReason === "NO_DEVICE_TOKEN" ? "이 기기는 설정이 필요합니다. 가까이 있는 직원에게 알려 주세요."
+        : v.callStaffReason === "AUTH" ? "이 기기의 인증이 거부되었습니다. 가까이 있는 직원에게 알려 주세요."
+        : v.callStaffReason === "BAD_SUBJECT_REF" ? "접수 정보를 확인할 수 없습니다. 가까이 있는 직원에게 알려 주세요."
+        : "가까이 있는 직원에게 알려 주세요."; action.hidden = false; action.textContent = "처음으로";
       onAction = () => flow.reset(); break;
     case "ENDING": title.textContent = "마무리하고 있어요"; action.hidden = true; break;
     case "ENDED": title.textContent = "수고하셨습니다"; action.hidden = true; idleTimer = window.setTimeout(() => flow.reset(), 8000); break;

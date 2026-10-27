@@ -13,6 +13,13 @@ export interface TurnFailureSignal {
   write_committed: WriteCommitted;
   staff_alert: StaffAlertState;
 }
+/** POST /v1/sessions 본문. subject_ref는 병원이 정한 불투명 환자 참조(없으면 필드 생략). */
+export interface SessionStart {
+  session_id: string;
+  kind: "SESSION_START";
+  subject_ref?: string;
+  turn_id?: string;
+}
 export interface FrontendInput {
   response_text: string | null;
   turn_failure_signal: TurnFailureSignal | null;
@@ -62,11 +69,15 @@ export interface StaffSessionAlert {
   status: "OPEN" | "RESOLVED" | (string & {});
   created_at: string;
   rule_id: string | null;
+  /** 해결한 직원 ID(게이트웨이 헤더에서 서비스가 기록). 열린 알림은 null. */
+  resolved_by: string | null;
 }
 export interface StaffSessionView {
   session_id: string;
   status: string;
   release_id: string | null;
+  /** 환자 참조(불투명). 환자 식별 정보이므로 화면에만 보인다. */
+  subject_ref: string | null;
   created_at: string;
   turns: StaffSessionTurn[];
   values: StaffSessionValue[];

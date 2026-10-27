@@ -33,14 +33,19 @@ if (existsSync(svUrl)) {
   const validateSv = new Ajv2020({ strict: false }).compile(JSON.parse(readFileSync(svUrl, "utf8")));
   const m = createMock({}); await new Promise((r) => m.server.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${m.server.address().port}`;
-  const post = (p, b) => fetch(base + p, { method: "POST", body: JSON.stringify(b) }).then((r) => r.json());
-  await post("/v1/sessions", { kind: "SESSION_START", session_id: "chk" });
+  const post = (p, b, h = {}) => fetch(base + p, { method: "POST", headers: h, body: JSON.stringify(b) }).then((r) => r.json());
+  await post("/v1/sessions", { kind: "SESSION_START", session_id: "chk", subject_ref: "visit:chk/1" });
   await post("/v1/sessions/chk/turns", { kind: "UTTERANCE", session_id: "chk", utterance: "가짜", turn_id: "t1" });
   await post("/v1/sessions/chk/turns", { kind: "UTTERANCE", session_id: "chk", utterance: "위험", turn_id: "t2" });
-  const view = await (await fetch(`${base}/v1/staff/sessions/chk`)).json();
+  const views = [await (await fetch(`${base}/v1/staff/sessions/chk`)).json()]; // 열린 알림(resolved_by null)
+  await post("/v1/sessions/chk/intervention", { session_id: "chk", decision: "RESUME", turn_id: "t3" }, { "x-openit-user": "staff-chk" });
+  views.push(await (await fetch(`${base}/v1/staff/sessions/chk`)).json()); // 해결된 알림(resolved_by 문자열)
+  await post("/v1/sessions", { kind: "SESSION_START", session_id: "chk2" });
+  views.push(await (await fetch(`${base}/v1/staff/sessions/chk2`)).json()); // subject_ref null
+  if (views[1].subject_ref !== "visit:chk/1" || views[1].alerts[0].resolved_by !== "staff-chk" || views[2].subject_ref !== null) { console.error("모의 서버가 subject_ref·resolved_by를 채우지 않음"); bad++; }
   m.reset(); m.server.closeAllConnections(); m.server.close();
-  if (validateSv(view)) sessionViewNote = "StaffSessionView: 모의 서버 응답이 서버 스키마와 일치(PASS)";
-  else { console.error("불일치 StaffSessionView:", JSON.stringify(validateSv.errors)); bad++; }
+  if (views.every((v) => validateSv(v))) sessionViewNote = "StaffSessionView: 모의 서버 응답이 서버 스키마와 일치(PASS)";
+  else { const v = views.find((x) => !validateSv(x)); validateSv(v); console.error("불일치 StaffSessionView:", JSON.stringify(validateSv.errors)); bad++; }
 }
 if (bad) process.exit(1);
 console.log(sessionViewNote);

@@ -1,10 +1,13 @@
 import { ApiError, CallStaffError } from "./errors.ts";
 import { isValidSessionId, newTurnId } from "./ids.ts";
-import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionState } from "./types.ts";
+import { isValidSubjectRef } from "./device.ts";
+import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionStart, SessionState } from "./types.ts";
 
 export interface ClientOptions {
-  /** 같은 출처의 /v1. 인증은 게이트웨이가 붙이므로 토큰 옵션은 없다. */
+  /** 같은 출처의 /v1. 직원 콘솔은 게이트웨이가 직원 인증을 붙인다. */
   baseUrl?: string;
+  /** 키오스크 기기 토큰(메모리 값). 있으면 /sessions* 요청에만 Authorization: Bearer로 보낸다. 직원 경로에는 보내지 않는다. */
+  deviceToken?: () => string | null;
   fetch?: typeof fetch;
   timeoutMs?: number; // 기본 10초
   maxAttempts?: number; // 기본 3
@@ -23,10 +26,12 @@ export class PublicApiClient {
   private retryDelayMs: number;
   private defaultRetryAfterMs: number;
   private sleep: (ms: number) => Promise<void>;
+  private deviceToken: () => string | null;
   private queues = new Map<string, Promise<unknown>>();
 
   constructor(o: ClientOptions = {}) {
     this.f = o.fetch ?? ((...a) => globalThis.fetch(...a));
+    this.deviceToken = o.deviceToken ?? (() => null);
     this.base = (o.baseUrl ?? "/v1").replace(/\/$/, "");
     this.timeoutMs = o.timeoutMs ?? 10_000;
     this.maxAttempts = o.maxAttempts ?? 3;
@@ -35,11 +40,15 @@ export class PublicApiClient {
     this.sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
-  startSession(sessionId: string): Promise<FrontendInput> {
+  /** subjectRef가 있으면 본문에 넣는다(없으면 필드 생략). 형식이 틀리면 보내지 않는다. */
+  startSession(sessionId: string, subjectRef?: string | null): Promise<FrontendInput> {
     this.check(sessionId);
-    return this.serial(sessionId, () =>
-      this.post(`/sessions`, { session_id: sessionId, kind: "SESSION_START" }),
-    );
+    const body: SessionStart = { session_id: sessionId, kind: "SESSION_START" };
+    if (subjectRef !== undefined && subjectRef !== null) {
+      if (!isValidSubjectRef(subjectRef)) throw new Error("subject_ref 형식 오류(1~128자 [A-Za-z0-9._:/#=+-])");
+      body.subject_ref = subjectRef;
+    }
+    return this.serial(sessionId, () => this.post(`/sessions`, body));
   }
 
   /** turnId를 주면 그 ID로 보낸다(재시도 모두 같은 ID). 빈 발화는 보내지 않는다. */
@@ -127,9 +136,12 @@ export class PublicApiClient {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), this.timeoutMs);
     try {
+      const headers: Record<string, string> = body === undefined ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" };
+      const token = /^\/sessions(\/|$)/.test(path) ? this.deviceToken() : null;
+      if (token) headers.authorization = `Bearer ${token}`;
       const res = await this.f(this.base + path, {
         method,
-        headers: body === undefined ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" },
+        headers,
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: ctl.signal,
         credentials: "same-origin",

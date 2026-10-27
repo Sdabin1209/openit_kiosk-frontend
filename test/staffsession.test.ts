@@ -20,7 +20,7 @@ test("GET /v1/staff/sessions/{id}: 모양이 StaffSessionView와 같고 위험 �
   await c.sendUtterance("s1", "가짜 문장");
   await c.sendUtterance("s1", "위험해요");
   const v = await staff.getSession("s1");
-  assert.deepEqual(Object.keys(v).sort(), ["alerts", "created_at", "release_id", "session_id", "status", "turns", "values"]);
+  assert.deepEqual(Object.keys(v).sort(), ["alerts", "created_at", "release_id", "session_id", "status", "subject_ref", "turns", "values"]);
   assert.equal(v.status, "PAUSED_RISK");
   assert.deepEqual(v.turns.map((t) => t.turn_index), [0, 1, 2]);
   assert.equal(v.turns[0].utterance, null);
@@ -28,7 +28,7 @@ test("GET /v1/staff/sessions/{id}: 모양이 StaffSessionView와 같고 위험 �
   assert.deepEqual(Object.keys(v.turns[1]).sort(), ["action", "at", "response_text", "turn_id", "turn_index", "utterance"]);
   assert.deepEqual(Object.keys(v.values[0]).sort(), ["key", "precision", "status", "value"]);
   assert.equal(v.alerts.length, 1);
-  assert.deepEqual(Object.keys(v.alerts[0]).sort(), ["alert_id", "created_at", "kind", "rule_id", "status"]);
+  assert.deepEqual(Object.keys(v.alerts[0]).sort(), ["alert_id", "created_at", "kind", "resolved_by", "rule_id", "status"]);
   assert.equal(v.alerts[0].kind, "RISK");
   assert.equal(typeof v.alerts[0].rule_id, "string");
 });
@@ -38,7 +38,7 @@ test("재개하면 같은 세션 기록에 직원 결정 턴이 붙고 알림이
   await c.startSession("s2"); await c.sendUtterance("s2", "위험해요");
   await c.intervene("s2", "RESUME", "t-1");
   const v = await staff.getSession("s2");
-  assert.equal(v.status, "ACTIVE");
+  assert.equal(v.status, "IN_PROGRESS");
   assert.equal(v.alerts[0].status, "RESOLVED");
   assert.equal(v.turns.at(-1)!.action, "STAFF_RESUME");
 });

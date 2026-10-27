@@ -13,8 +13,10 @@ export interface Scenario {
   retryAfterSec: number | null; // 429·503 오류에 Retry-After(초)를 붙임
   autoResumeMs: number;         // 0보다 크면 위험 정지 후 이 시간 뒤 직원이 RESUME한 것처럼 처리
   vapidPublicKey: string | null; // GET /v1/staff/push-config
+  deviceToken: string | null;   // 있으면 /v1/sessions* 에 Authorization: Bearer <이 값>이 없을 때 401(F절). null이면 검증하지 않음
+  requireSubjectRef: boolean;   // SURVEY_REQUIRE_SUBJECT_REF 대역: 켜면 subject_ref 없을 때 400(A절)
 }
-const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null };
+const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, requireSubjectRef: false };
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
@@ -30,7 +32,7 @@ const PRESETS: Record<string, Partial<Scenario>> = {
 interface MockTurn { turn_index: number; turn_id: string; at: string; utterance: string | null; response_text: string | null; action: string | null }
 interface MockValue { key: string; value: unknown; status: string; precision: string }
 // turnLog·values는 StaffSessionView 응답용이다(모의 전용). 발화는 요청 로그(state.log)에는 남기지 않는다.
-interface Session { id: string; turns: number; paused: boolean; alertId: string | null; ended: boolean; resumeText: string | null; createdAt: string; turnLog: MockTurn[]; values: MockValue[] }
+interface Session { id: string; turns: number; paused: boolean; alertId: string | null; ended: boolean; resumeText: string | null; createdAt: string; subjectRef: string | null; endedBy: string | null; turnLog: MockTurn[]; values: MockValue[] }
 export interface MockState {
   sc: Scenario; sessions: Map<string, Session>; alerts: any[]; subs: Map<string, any>;
   cache: Map<string, any>; events: { id: number; name: string; data: any }[]; sse: Set<ServerResponse>; seq: number; requests: number;
@@ -38,6 +40,8 @@ export interface MockState {
 }
 
 const QUESTIONS = ["어디가 불편하신가요?", "언제부터 그러셨나요?", "복용 중인 약이 있으신가요?", "문진이 끝났습니다. 감사합니다."];
+const SUBJECT_REF_RE = /^[A-Za-z0-9._:/#=+-]{1,128}$/; // PUBLIC_API.md A절
+const ts = (d = new Date()) => d.toISOString().replace(/\.\d+Z$/, "Z"); // 스키마 Timestamp: 초 단위, 끝에 Z
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 // boundary-contracts v2.0.2의 PIPELINE_SCHEMA_VERSION. scripts/check-schema.mjs가 계약과 대조한다.
 export const PIPELINE_SCHEMA_VERSION = "2.0";
@@ -45,12 +49,13 @@ const berr = (code: string, message: string, retryable = false) => ({ pipeline_s
 
 export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: number } = {}): { server: Server; state: MockState; reset: (s?: Partial<Scenario>) => void } {
   const state: MockState = { sc: { ...DEFAULT, ...initial }, sessions: new Map(), alerts: [], subs: new Map(), cache: new Map(), events: [], sse: new Set(), seq: 0, requests: 0, log: [] };
+  const resolvedBy = new Map<string, string | null>(); // StaffSessionView 전용: 알림 목록·SSE 모양은 바꾸지 않는다
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const pinger = setInterval(() => { for (const r of state.sse) r.write(": ping\n\n"); }, opt.pingMs ?? 15_000);
   pinger.unref();
   const reset = (s: Partial<Scenario> = {}) => {
     for (const t of timers) clearTimeout(t);
-    timers.clear();
+    timers.clear(); resolvedBy.clear();
     for (const r of state.sse) r.end();
     Object.assign(state, { sc: { ...DEFAULT, ...s }, sessions: new Map(), alerts: [], subs: new Map(), cache: new Map(), events: [], sse: new Set(), seq: 0, requests: 0, log: [] });
   };
@@ -62,10 +67,10 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     state.events.push({ id, name, data: a });
     for (const r of state.sse) r.write(`id: ${id}\nevent: ${name}\ndata: ${JSON.stringify(a)}\n\n`);
   };
-  const resolve = (s: Session, decision: "RESUME" | "END") => {
+  const resolve = (s: Session, decision: "RESUME" | "END", staffId: string | null = null) => {
     s.paused = false;
     const alert = state.alerts.find((a) => a.alert_id === s.alertId);
-    if (alert) { Object.assign(alert, { status: "RESOLVED", resolved_by_decision: decision, resolved_at: new Date().toISOString() }); publish("resolved", alert); }
+    if (alert) { Object.assign(alert, { status: "RESOLVED", resolved_by_decision: decision, resolved_at: ts() }); resolvedBy.set(s.alertId!, staffId); publish("resolved", alert); }
     if (decision === "END") s.ended = true; else s.resumeText = "다시 이어서 진행하겠습니다. " + QUESTIONS[Math.min(s.turns, 2)];
   };
   /** turn_id는 API 봉투 필드: 떼어 낸 나머지가 문진 스키마(FrontendMessage, InterventionDecision)와 같은 키 집합이어야 한다. */
@@ -75,18 +80,19 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     return JSON.stringify(Object.keys(rest).sort()) === JSON.stringify(want);
   };
   const logTurn = (s: Session, turnId: string, utterance: string | null, response: string | null, action: string) =>
-    s.turnLog.push({ turn_index: s.turnLog.length, turn_id: turnId, at: new Date().toISOString(), utterance, response_text: response, action });
+    s.turnLog.push({ turn_index: s.turnLog.length, turn_id: turnId, at: ts(), utterance, response_text: response, action });
   const input = (text: string | null, sig: any = null) => ({ response_text: text, turn_failure_signal: sig });
 
   /** StaffSessionView(서버 스키마 StaffSessionView.json). alert kind는 RISK_STOP → RISK로 옮긴다. */
   const sessionView = (s: Session) => ({
     session_id: s.id,
-    status: s.ended ? "ENDED" : s.paused ? "PAUSED_RISK" : "ACTIVE",
+    status: s.ended ? (s.endedBy ?? "ENDED_USER_STOP") : s.paused ? "PAUSED_RISK" : "IN_PROGRESS",
     release_id: "rel-mock-1",
+    subject_ref: s.subjectRef,
     created_at: s.createdAt,
     turns: s.turnLog,
     values: s.values,
-    alerts: state.alerts.filter((a) => a.session_id === s.id).map((a) => ({ alert_id: a.alert_id, kind: a.kind === "RISK_STOP" ? "RISK" : a.kind, status: a.status, created_at: a.created_at, rule_id: a.kind === "RISK_STOP" ? "mock-risk-keyword" : null })),
+    alerts: state.alerts.filter((a) => a.session_id === s.id).map((a) => ({ alert_id: a.alert_id, kind: a.kind === "RISK_STOP" ? "RISK" : a.kind, status: a.status, created_at: a.created_at, rule_id: a.kind === "RISK_STOP" ? "mock-risk-keyword" : null, resolved_by: resolvedBy.get(a.alert_id) ?? null })),
   });
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
@@ -111,13 +117,23 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       res.writeHead(s, headers); return res.end(JSON.stringify(berr(code, "scenario error", s === 429 || s === 503)));
     }
 
+    // F절: 기기 토큰. /v1/sessions* 만 대상이다. 직원 경로와 개입 결정(/intervention)은 게이트웨이의 직원 인증 몫이라 기기 토큰을 보지 않는다.
+    if (state.sc.deviceToken && /^\/v1\/sessions(\/|$)/.test(path) && !path.endsWith("/intervention") && req.headers.authorization !== `Bearer ${state.sc.deviceToken}`) {
+      return json(res, 401, berr("PERMISSION_DENIED", "device token required"));
+    }
+    const staffId = typeof req.headers["x-openit-user"] === "string" ? (req.headers["x-openit-user"] as string) : null; // E절: 게이트웨이가 붙이는 헤더. 본문 값은 믿지 않는다
+
     let body: any = {};
     if (m === "POST") { try { body = await readBody(req); } catch { return json(res, 400, berr("INVALID_RECORD", "bad json")); } }
 
     // ---- 문진 ----
     if (m === "POST" && path === "/v1/sessions") {
       if (body.kind !== "SESSION_START" || !ID_RE.test(body.session_id ?? "")) return json(res, 400, berr("INVALID_RECORD", "bad start"));
-      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, alertId: null, ended: false, resumeText: null, createdAt: new Date().toISOString(), turnLog: [], values: [] });
+      const { turn_id: _t, ...startRest } = body;
+      if (Object.keys(startRest).some((k) => !["kind", "session_id", "subject_ref"].includes(k))) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
+      if (body.subject_ref !== undefined && (typeof body.subject_ref !== "string" || !SUBJECT_REF_RE.test(body.subject_ref))) return json(res, 400, berr("INVALID_RECORD", "bad subject_ref")); // 값은 응답·로그에 되풀이하지 않는다
+      if (state.sc.requireSubjectRef && body.subject_ref === undefined) return json(res, 400, berr("INVALID_RECORD", "subject_ref required"));
+      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, alertId: null, ended: false, resumeText: null, createdAt: ts(), subjectRef: body.subject_ref ?? null, endedBy: null, turnLog: [], values: [] });
       const first = "안녕하세요. 문진을 시작합니다. " + QUESTIONS[0];
       logTurn(state.sessions.get(body.session_id)!, typeof body.turn_id === "string" ? body.turn_id : "start", null, first, "SESSION_START");
       return json(res, 200, input(first));
@@ -134,7 +150,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       const s = state.sessions.get(sid);
       if (!s) return json(res, 404, berr("NOT_FOUND", "unknown session"));
       if (body.session_id !== sid || !envelopeOk(body, op)) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
-      if (op === "end") { s.ended = true; return json(res, 200, input(null)); }
+      if (op === "end") { s.ended = true; s.endedBy = "ENDED_USER_STOP"; return json(res, 200, input(null)); }
       if (typeof body.turn_id !== "string" || body.turn_id === "") return json(res, 400, berr("INVALID_RECORD", "turn_id required"));
       const key = `${sid}:${op}:${body.turn_id}`;
       if (state.cache.has(key)) return json(res, 200, state.cache.get(key)); // 같은 turn_id는 같은 응답, 한 번만 처리
@@ -146,7 +162,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
         let out;
         if (state.sc.riskKeyword && body.utterance.includes(state.sc.riskKeyword)) {
           s.paused = true;
-          const alert = { alert_id: "a-" + (state.alerts.length + 1), session_id: sid, kind: "RISK_STOP", created_at: new Date().toISOString(), status: "OPEN", resolved_by_decision: null, resolved_at: null };
+          const alert = { alert_id: "a-" + (state.alerts.length + 1), session_id: sid, kind: "RISK_STOP", created_at: ts(), status: "OPEN", resolved_by_decision: null, resolved_at: null };
           s.alertId = alert.alert_id; state.alerts.push(alert); publish("alert", alert);
           if (state.sc.autoResumeMs > 0) { const t = setTimeout(() => { timers.delete(t); if (s.paused) resolve(s, "RESUME"); }, state.sc.autoResumeMs); timers.add(t); }
           logTurn(s, body.turn_id, body.utterance, "확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.", "RISK_STOP");
@@ -156,7 +172,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
         } else {
           s.turns++;
           const q = QUESTIONS[Math.min(s.turns, QUESTIONS.length - 1)];
-          s.values.push({ key: `answer_${s.turns}`, value: body.utterance, status: "CONFIRMED", precision: "EXACT" });
+          s.values.push({ key: `answer_${s.turns}`, value: body.utterance, status: "ANSWERED", precision: "exact" });
           logTurn(s, body.turn_id, body.utterance, q, "ASK_NEXT");
           out = input(q);
         }
@@ -166,7 +182,8 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       // intervention
       if (!["RESUME", "END"].includes(body.decision)) return json(res, 400, berr("INVALID_RECORD", "bad decision"));
       if (!s.paused) return json(res, 409, berr("CONFLICT", "session is not paused"));
-      resolve(s, body.decision);
+      resolve(s, body.decision, staffId);
+      if (body.decision === "END") s.endedBy = "ENDED_STAFF";
       logTurn(s, body.turn_id, null, body.decision === "RESUME" ? s.resumeText : null, body.decision === "RESUME" ? "STAFF_RESUME" : "STAFF_END");
       const out = input(body.decision === "RESUME" ? s.resumeText : null);
       state.cache.set(key, out);

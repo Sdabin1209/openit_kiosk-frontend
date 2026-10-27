@@ -12,13 +12,13 @@ try { ({ JSDOM } = await import(mod)); } catch { /* 호스트에 없음 */ }
 const opt = { skip: JSDOM ? false : "jsdom 없음(npm run test:dom으로 컨테이너에서 실행)" };
 
 const view = (o: Partial<StaffSessionView> = {}): StaffSessionView => ({
-  session_id: "s1", status: "PAUSED_RISK", release_id: "rel-1", created_at: "2026-01-01T00:00:00Z",
+  session_id: "s1", status: "PAUSED_RISK", release_id: "rel-1", subject_ref: "pt:abc/1", created_at: "2026-01-01T00:00:00Z",
   turns: [
     { turn_index: 1, turn_id: "t2", at: "2026-01-01T00:00:10Z", utterance: "가짜 증상 <b>문장</b>", response_text: "언제부터인가요?", action: "ASK_NEXT" },
     { turn_index: 0, turn_id: "t1", at: "2026-01-01T00:00:01Z", utterance: null, response_text: "안녕하세요", action: "SESSION_START" },
   ],
   values: [{ key: "chief", value: "두통", status: "CONFIRMED", precision: "EXACT" }, { key: "age", value: { n: 3 }, status: "DRAFT", precision: "APPROX" }],
-  alerts: [{ alert_id: "a1", kind: "RISK", status: "OPEN", created_at: "2026-01-01T00:00:09Z", rule_id: "rule-7" }, { alert_id: "a2", kind: "CALL_STAFF", status: "RESOLVED", created_at: "2026-01-01T00:00:20Z", rule_id: null }],
+  alerts: [{ alert_id: "a1", kind: "RISK", status: "OPEN", created_at: "2026-01-01T00:00:09Z", rule_id: "rule-7", resolved_by: null }, { alert_id: "a2", kind: "CALL_STAFF", status: "RESOLVED", created_at: "2026-01-01T00:00:20Z", rule_id: null, resolved_by: "staff-7" }],
   ...o,
 });
 function setup(fetchSession: (id: string) => Promise<StaffSessionView>, decide: (a: string, s: string, d: any) => Promise<boolean> = async () => true) {
@@ -35,7 +35,7 @@ test("대화와 값과 알림이 렌더되고 발화는 시간순, HTML은 글�
   await v.open("s1");
   assert.match(doc.getElementById("record-title")!.textContent!, /s1/);
   const info = text("dl.info dd");
-  assert.deepEqual(info, ["PAUSED_RISK", "2026-01-01T00:00:00Z", "rel-1"]);
+  assert.deepEqual(info, ["PAUSED_RISK", "2026-01-01T00:00:00Z", "rel-1", "pt:abc/1"]);
   const bubbles = [...doc.querySelectorAll("ol.chat li")];
   assert.equal(bubbles.length, 3); // 시스템(0), 환자(1), 시스템(1)
   assert.ok(bubbles[0].classList.contains("system") && bubbles[0].textContent!.includes("안녕하세요"));
@@ -44,11 +44,11 @@ test("대화와 값과 알림이 렌더되고 발화는 시간순, HTML은 글�
   const rows = [...doc.querySelectorAll('table[aria-label="저장된 값"] tbody tr')].map((r) => [...r.children].map((c) => c.textContent));
   assert.deepEqual(rows, [["chief", "두통", "CONFIRMED", "EXACT"], ["age", '{"n":3}', "DRAFT", "APPROX"]]);
   const alerts = [...doc.querySelectorAll('table[aria-label="이 세션의 알림"] tbody tr')].map((r) => [...r.children].map((c) => c.textContent));
-  assert.deepEqual(alerts.map((r) => [r[0], r[3]]), [["RISK", "rule-7"], ["CALL_STAFF", "-"]]);
+  assert.deepEqual(alerts.map((r) => [r[0], r[3], r[4]]), [["RISK", "rule-7", "(없음)"], ["CALL_STAFF", "-", "staff-7"]]); // 해결한 직원 열
 });
 
 test("turns·values·alerts가 비면 안내 문구, release_id가 null이면 '(없음)'", opt, async () => {
-  const { doc, v } = setup(async () => view({ turns: [], values: [], alerts: [], release_id: null }));
+  const { doc, v } = setup(async () => view({ turns: [], values: [], alerts: [], release_id: null, subject_ref: null }));
   await v.open("s1");
   const t = doc.getElementById("record-body")!.textContent!;
   assert.ok(t.includes("대화 기록이 없습니다.") && t.includes("저장된 값이 없습니다.") && t.includes("알림이 없습니다.") && t.includes("(없음)"));
@@ -121,4 +121,14 @@ test("열린 알림마다 결정 버튼이 있고, 결정은 decide 콜백(확�
   (r2.doc.querySelector('[aria-label="개입 결정"] button') as HTMLButtonElement).click();
   await new Promise((r) => setTimeout(r, 10));
   assert.equal(loads, 0);
+});
+
+test("환자 참조와 해결한 직원: 값이 없으면 '(없음)', HTML은 글자로만 보인다", opt, async () => {
+  const { doc, v, text } = setup(async () => view({ subject_ref: null, alerts: [{ alert_id: "a1", kind: "RISK", status: "OPEN", created_at: "x", rule_id: null, resolved_by: null }, { alert_id: "a2", kind: "RISK", status: "RESOLVED", created_at: "y", rule_id: null, resolved_by: "<i>staff-1</i>" }] }));
+  await v.open("s1");
+  assert.deepEqual(text("dl.info dt").slice(-1), ["환자 참조"]);
+  assert.deepEqual(text("dl.info dd").slice(-1), ["(없음)"]);
+  const rows = [...doc.querySelectorAll('table[aria-label="이 세션의 알림"] tbody tr')].map((r) => r.lastElementChild!.textContent);
+  assert.deepEqual(rows, ["(없음)", "<i>staff-1</i>"]);
+  assert.equal(doc.querySelectorAll("#record i").length, 0);
 });

@@ -71,7 +71,7 @@ export function createRecordViewer(deps: RecordViewerDeps) {
   function render(view: StaffSessionView, body: HTMLElement) {
     body.replaceChildren();
     const info = el("dl", undefined, "info");
-    for (const [k, v] of [["상태", view.status], ["시작 시각", view.created_at], ["릴리스", view.release_id ?? "(없음)"]] as const) {
+    for (const [k, v] of [["상태", view.status], ["시작 시각", view.created_at], ["릴리스", view.release_id ?? "(없음)"], ["환자 참조", view.subject_ref ?? "(없음)"]] as const) {
       info.append(el("dt", k), el("dd", v));
     }
     body.append(info);
@@ -106,7 +106,7 @@ export function createRecordViewer(deps: RecordViewerDeps) {
     const alerts = view.alerts ?? [];
     if (alerts.length === 0) al.append(el("p", "알림이 없습니다.", "empty"));
     else {
-      al.append(table("이 세션의 알림", ["종류", "상태", "시각", "규칙 id"], alerts.map((a) => [a.kind, a.status, a.created_at, a.rule_id ?? "-"])));
+      al.append(table("이 세션의 알림", ["종류", "상태", "시각", "규칙 id", "해결한 직원"], alerts.map((a) => [a.kind, a.status, a.created_at, a.rule_id ?? "-", a.resolved_by ?? "(없음)"])));
       const open = alerts.filter((a) => a.status === "OPEN");
       if (open.length > 0) {
         const bar = el("div", undefined, "actions"); bar.setAttribute("role", "group"); bar.setAttribute("aria-label", "개입 결정");
