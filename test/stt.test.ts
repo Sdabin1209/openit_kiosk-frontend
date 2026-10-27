@@ -60,3 +60,12 @@ test("외부 허용 설정(allowRemote)을 켠 기기에서만 외부 인식으�
   const off = new WebSpeechStt(); await off.init(); assert.equal(off.available(), false);
   off.setAllowRemote(true); assert.equal(off.available(), true);
 });
+
+test("L: install()이 끝나지 않으면 상한 뒤 지원 안 함으로 보고 글자 입력으로 대체한다", async () => {
+  const f = fakeCtor({ avail: ["downloadable"] });
+  (g.SpeechRecognition as any).install = () => new Promise(() => {}); // 끝나지 않는다
+  const stt = new WebSpeechStt({ installTimeoutMs: 20 });
+  await stt.init(); // 영원히 기다리지 않는다
+  assert.equal(stt.available(), false);
+  assert.equal(f.calls.filter((c) => c.startsWith("available")).length, 1, "시간 초과 뒤 다시 확인하지 않는다");
+});

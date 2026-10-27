@@ -32,7 +32,8 @@ export class WebSpeechStt implements SttAdapter {
   private localOk = false;
   private ready = false;
   private allowRemote: boolean;
-  constructor(o: { allowRemote?: boolean } = {}) { this.allowRemote = o.allowRemote === true; }
+  private installTimeoutMs: number;
+  constructor(o: { allowRemote?: boolean; installTimeoutMs?: number } = {}) { this.allowRemote = o.allowRemote === true; this.installTimeoutMs = o.installTimeoutMs ?? 10_000; /* 임의(측정 안 함) */ }
   setAllowRemote(v: boolean): void { this.allowRemote = v === true; }
   private ctor(): any {
     const w = globalThis as any;
@@ -46,7 +47,13 @@ export class WebSpeechStt implements SttAdapter {
         const opts = { langs: ["ko-KR"], processLocally: true };
         let st = await C.available(opts);
         if ((st === "downloadable" || st === "downloading") && typeof C.install === "function") {
-          try { await C.install(opts); st = await C.available(opts); } catch { /* 설치 실패는 지원 안 함으로 */ }
+          try {
+            // 언어 팩 내려받기가 끝나지 않으면 환자가 음성 입력만 기다리지 않게 상한 뒤 글자 입력으로 대체한다.
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const limit = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error("install timeout")), this.installTimeoutMs); });
+            try { await Promise.race([C.install(opts), limit]); } finally { clearTimeout(timer); }
+            st = await C.available(opts);
+          } catch { st = "unavailable"; /* 설치 실패·시간 초과는 지원 안 함으로 */ }
         }
         this.localOk = st === "available";
       }

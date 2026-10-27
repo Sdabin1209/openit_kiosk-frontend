@@ -76,11 +76,13 @@ export class KioskFlow {
   private armIdle() {
     if (this.idleTimer !== null) { this.timers.clear(this.idleTimer); this.idleTimer = null; }
     const s = this.view.state;
-    if (this.idleMs <= 0 || (s !== "LISTENING" && s !== "REPEAT_PROMPT" && s !== "CALL_STAFF")) return;
+    // 직원 개입을 기다리는 화면(CALL_STAFF, WAITING_STAFF, 종료 실패 안내 등)에는 걸지 않는다: 그 화면에서는 reset()이
+    // 서버 세션(PAUSED_RISK 등)을 그대로 두고 다음 사람이 시작할 수 있게 되기 때문이다(재점검 K-1). 벗어나는 길은 직원 결정이나 환자의 명시적 동작뿐이다.
+    if (this.idleMs <= 0 || (s !== "LISTENING" && s !== "REPEAT_PROMPT")) return;
     this.idleTimer = this.timers.set(() => {
       this.idleTimer = null;
-      if (this.view.state === "CALL_STAFF") return this.reset();
-      void this.end().then(() => this.reset());
+      // 서버에 종료 요청을 먼저 보내고, 성공했을 때만 처음 화면으로 돌린다. 실패하면 종료 실패 안내(ENDED, endFailed)를 유지한다.
+      void this.end().then(() => { if (this.view.state === "ENDED" && !this.view.endFailed) this.reset(); });
     }, this.idleMs);
   }
   /** 환자 조작(버튼·입력)이 있었다: 유휴 시간을 다시 센다. */
@@ -94,16 +96,18 @@ export class KioskFlow {
     this.set({ state: "STARTING", text: null });
     try {
       let subjectRef: string | null = null;
+      let confirm: (() => void) | undefined;
       if (this.startValues) {
         const v = await this.startValues();
         if (!v.deviceToken) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "NO_DEVICE_TOKEN" }); // 서버로 보내지 않는다
         if (v.subjectInvalid) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "BAD_SUBJECT_REF" });
-        subjectRef = v.subjectRef;
+        subjectRef = v.subjectRef; confirm = v.confirm;
         if (subjectRef === null) this.notice = "NO_SUBJECT_REF"; // 참조 없이 시작한다(이전 환자 값을 쓰지 않는다)
       }
       const ctl = this.begin();
       const r = await this.api.startSession(this.sessionId, subjectRef, this.opts(ctl));
       this.inflight = null;
+      confirm?.(); // 시작이 서버에 접수된 뒤에만 한 번 쓴 환자 참조를 비운다(실패한 시작은 같은 참조로 다시 시작할 수 있다)
       this.handle(r);
     } catch (e) {
       if (e instanceof AbortedError) return; // 환자가 직원 호출·그만하기를 눌러 이미 화면이 바뀌었다
@@ -117,7 +121,7 @@ export class KioskFlow {
     const s = this.view.state;
     if (s !== "LISTENING" && s !== "REPEAT_PROMPT") return; // 위험 정지 중에는 말을 받지 않는다
     if (!isUsableTranscript(r)) return this.repeat({ state: "REPEAT_PROMPT", text: null, repeatReason: "EMPTY_STT" });
-    const text = r!.text.replace(/\u0000/g, "").trim().slice(0, MAX_INPUT_CHARS);
+    const text = Array.from(r!.text.replace(/\u0000/g, "").trim()).slice(0, MAX_INPUT_CHARS).join("").trim(); // 코드 포인트 단위로 자른다(이모지 서로게이트 쌍을 가르지 않는다)
     if (text === "") return this.repeat({ state: "REPEAT_PROMPT", text: null, repeatReason: "EMPTY_STT" });
     // 직전 발화가 응답 없이 실패해 같은 발화를 다시 보내는 경우만 같은 turn_id를 쓴다.
     const turnId = this.pendingUtterance === text && this.pendingTurnId ? this.pendingTurnId : newTurnId();

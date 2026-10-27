@@ -35,7 +35,10 @@ const manualSleep = () => { const s: Array<() => void> = []; return { sleep: () 
 // ---- P1 ----
 test("P1: 한 번 쓴 환자 참조는 다음 시작에 다시 쓰이지 않는다(기기 토큰은 유지)", async () => {
   const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:1", subjectInvalid: false }));
-  const a = await h.take(), b = await h.take();
+  const a = await h.take();
+  assert.equal((await h.take()).subjectRef, "visit:1", "시작이 접수되기 전에는 비우지 않는다(실패한 시작을 같은 참조로 다시 할 수 있다)");
+  a.confirm!(); // 시작이 서버에 접수됨
+  const b = await h.take();
   assert.equal(a.subjectRef, "visit:1");
   assert.equal(b.subjectRef, null);
   assert.equal(b.deviceToken, "tok");
@@ -69,17 +72,6 @@ test("P3: 말하기 대기에서 입력이 없으면 세션을 끝내고 처음 
   assert.equal(flow.current.state, "IDLE");
   assert.equal(flow.current.text, null, "응답 문장을 지운다");
   assert.deepEqual(bodies.map((b) => b.kind), ["SESSION_START", "SESSION_END"]);
-});
-
-test("P3: 직원 호출 화면도 유휴 시간이 지나면 처음 화면으로, 위험 정지 대기에는 유휴 타이머가 없다", async () => {
-  const { api } = server({ turn: () => ok(RISK, sig("DELIVERED")) }); const t = fakeTimers();
-  const flow = new KioskFlow(api, { idleMs: 1000, timers: t.timers, sleep: () => new Promise(() => {}) });
-  await flow.start(); await flow.hear(say("위험"));
-  assert.equal(flow.current.state, "WAITING_STAFF");
-  assert.equal(t.q.length, 0, "위험 정지 대기는 세션을 끝내지 않는다");
-  flow.reset(); await flow.start();
-  flow.callStaff(); assert.equal(flow.current.state, "CALL_STAFF");
-  t.q[0]!.fn(); assert.equal(flow.current.state, "IDLE");
 });
 
 // ---- P4 ----
@@ -196,4 +188,105 @@ test("임상 판단 값은 clinical.ts 한 곳에 있고 사용자 결정 U10 �
   assert.doesNotMatch(stt, /MIN_CONFIDENCE\s*=\s*0/);
   const main = readFileSync(new URL("../apps/kiosk/main.ts", import.meta.url), "utf8");
   assert.doesNotMatch(main, /\b8000\b/);
+});
+
+// ---- K-1: 상태 x 유휴 타이머 ----
+/** 가짜 서버(요청마다 제어 가능). hold가 켜지면 해당 종류 요청은 끝나지 않는다. */
+function rig(o: { hold?: "SESSION_START" | "UTTERANCE"; turn?: () => Response; endFail?: boolean } = {}) {
+  const kinds: string[] = []; const t = fakeTimers();
+  const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: ((_u: string, init: RequestInit) => {
+    if (init.method === "GET") return Promise.resolve(json({ session_id: "s", state: "PAUSED_RISK", resume_text: null }));
+    const b = JSON.parse(init.body as string); kinds.push(b.kind);
+    if (o.hold === b.kind) return new Promise<Response>(() => {});
+    if (b.kind === "SESSION_START") return Promise.resolve(ok("첫 질문"));
+    if (b.kind === "SESSION_END") return Promise.resolve(o.endFail ? json({ code: "UNAVAILABLE" }, 503) : ok(null));
+    return Promise.resolve((o.turn ?? (() => ok("다음 질문")))());
+  }) as any });
+  const flow = new KioskFlow(api, { idleMs: 60_000, timers: t.timers, sleep: () => new Promise(() => {}) });
+  return { flow, kinds, t, ends: () => kinds.filter((k) => k === "SESSION_END").length };
+}
+const DF = () => ok(RISK, sig("DELIVERY_FAILED")), DEL = () => ok(RISK, sig("DELIVERED")), NC = () => ok("저장 못 함", sig("NONE", "NOT_COMMITTED"));
+
+const TABLE: Array<{ name: string; setup: (r: ReturnType<typeof rig>) => Promise<void>; state: string; timer: boolean; after: string; ends: number }> = [
+  { name: "IDLE", setup: async () => {}, state: "IDLE", timer: false, after: "IDLE", ends: 0 },
+  { name: "LISTENING", setup: async (r) => { await r.flow.start(); }, state: "LISTENING", timer: true, after: "IDLE", ends: 1 },
+  { name: "REPEAT_PROMPT", setup: async (r) => { await r.flow.start(); await r.flow.hear(null); }, state: "REPEAT_PROMPT", timer: true, after: "IDLE", ends: 1 },
+  { name: "CALL_STAFF(DELIVERY_FAILED)", setup: async (r) => { await r.flow.start(); await r.flow.hear(say("위험")); }, state: "CALL_STAFF", timer: false, after: "CALL_STAFF", ends: 0 },
+  { name: "CALL_STAFF(환자가 직원 부르기)", setup: async (r) => { await r.flow.start(); r.flow.callStaff(); }, state: "CALL_STAFF", timer: false, after: "CALL_STAFF", ends: 0 },
+  { name: "CALL_STAFF(다시 말하기 상한)", setup: async (r) => { await r.flow.start(); for (let i = 0; i <= clinical.MAX_REPEAT; i++) await r.flow.hear(null); }, state: "CALL_STAFF", timer: false, after: "CALL_STAFF", ends: 0 },
+  { name: "WAITING_STAFF", setup: async (r) => { await r.flow.start(); await r.flow.hear(say("위험")); }, state: "WAITING_STAFF", timer: false, after: "WAITING_STAFF", ends: 0 },
+  { name: "ENDED(종료 성공)", setup: async (r) => { await r.flow.start(); await r.flow.end(); }, state: "ENDED", timer: false, after: "ENDED", ends: 1 },
+  { name: "ENDED(종료 요청 실패 안내)", setup: async (r) => { await r.flow.start(); await r.flow.end(); }, state: "ENDED", timer: false, after: "ENDED", ends: 1 },
+];
+for (const row of TABLE) {
+  test(`K-1 표: ${row.name} -> 유휴 타이머 ${row.timer ? "있음" : "없음"}, 60초 뒤 ${row.after}, 종료 요청 ${row.ends}회`, async () => {
+    const turn = row.name.includes("DELIVERY_FAILED") ? DF : row.name === "WAITING_STAFF" ? DEL : row.name.includes("다시 말하기") ? NC : undefined;
+    const r = rig({ turn, endFail: row.name.includes("실패") });
+    await row.setup(r);
+    assert.equal(r.flow.current.state, row.state);
+    if (row.name.includes("실패")) assert.equal(r.flow.current.endFailed, true);
+    assert.equal(r.t.q.length, row.timer ? 1 : 0, "타이머 개수");
+    for (const x of r.t.q.splice(0)) x.fn(); // 60초 경과(실제 타이머처럼 발화하면 큐에서 빠진다)
+    await settle();
+    assert.equal(r.flow.current.state, row.after);
+    assert.equal(r.ends(), row.ends, "SESSION_END 요청 횟수");
+    assert.equal(r.t.q.length, 0, "이후에도 타이머가 새로 걸리지 않는다");
+  });
+}
+
+test("K-1 표: STARTING·SENDING(요청 진행 중)에는 유휴 타이머가 없다", async () => {
+  const a = rig({ hold: "SESSION_START" }); void a.flow.start(); await settle();
+  assert.equal(a.flow.current.state, "STARTING"); assert.equal(a.t.q.length, 0);
+  const b = rig({ hold: "UTTERANCE" }); await b.flow.start(); void b.flow.hear(say("네")); await settle();
+  assert.equal(b.flow.current.state, "SENDING"); assert.equal(b.t.q.length, 0);
+});
+
+test("K-1: 유휴 종료 요청이 실패하면 처음 화면으로 돌리지 않고 종료 실패 안내를 유지한다", async () => {
+  const r = rig({ endFail: true });
+  await r.flow.start();
+  r.t.q.splice(0)[0]!.fn(); await settle();
+  assert.equal(r.flow.current.state, "ENDED"); assert.equal(r.flow.current.endFailed, true);
+  assert.equal(r.ends(), 1);
+  assert.equal(r.t.q.length, 0, "안내에 자동 초기화 타이머가 없다");
+  r.flow.reset(); assert.equal(r.flow.current.state, "IDLE"); // 명시적 동작(직원/환자가 처음으로)
+});
+
+test("K-1: DELIVERY_FAILED 화면은 오래 두어도 IDLE로 가지 않고 서버 세션을 건드리지 않는다(재현 시험)", async () => {
+  const r = rig({ turn: DF });
+  await r.flow.start(); await r.flow.hear(say("위험"));
+  assert.equal(r.flow.current.callStaffReason, "DELIVERY_FAILED");
+  assert.equal(r.t.q.length, 0);
+  await settle(100);
+  assert.equal(r.flow.current.state, "CALL_STAFF"); assert.equal(r.ends(), 0);
+});
+
+// ---- K-2 ----
+test("K-2: 시작이 실패하면 환자 참조가 남아 같은 참조로 다시 시작하고, 성공한 뒤에는 다음 시작에 쓰이지 않는다", async () => {
+  const bodies: any[] = []; let fail = true;
+  const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
+    const b = JSON.parse(init.body as string); bodies.push(b);
+    if (b.kind === "SESSION_START" && fail) return json({ code: "UNAVAILABLE" }, 503);
+    return ok("질문");
+  }) as any });
+  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:9", subjectInvalid: false }));
+  const flow = new KioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
+  await flow.start();
+  assert.equal(flow.current.state, "CALL_STAFF");
+  assert.equal(bodies[0].subject_ref, "visit:9");
+  fail = false; flow.reset(); await flow.start();
+  assert.equal(bodies[1].subject_ref, "visit:9", "실패한 시작은 참조를 쓰지 않은 것으로 본다");
+  assert.equal(flow.current.state, "LISTENING");
+  await flow.end(); flow.reset(); await flow.start();
+  assert.equal("subject_ref" in bodies.filter((b) => b.kind === "SESSION_START").at(-1), false, "성공한 시작에 쓴 값은 재사용되지 않는다");
+});
+
+// ---- L ----
+test("L: 입력 자르기는 코드 포인트 단위라 이모지 서로게이트 쌍을 가르지 않는다", async () => {
+  const { api, bodies } = server(); const flow = new KioskFlow(api, { idleMs: 0 });
+  await flow.start();
+  await flow.hear(say("가".repeat(clinical.MAX_INPUT_CHARS - 1) + "😀😀😀"));
+  const sent = bodies.find((b) => b.kind === "UTTERANCE").utterance as string;
+  assert.equal(Array.from(sent).length, clinical.MAX_INPUT_CHARS);
+  assert.ok(sent.endsWith("😀"));
+  assert.doesNotMatch(sent, /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/, "외톨이 서로게이트 없음");
 });

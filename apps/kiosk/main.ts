@@ -50,7 +50,7 @@ function render(v: KioskView) {
   document.body.classList.toggle("warn", v.state === "CALL_STAFF");
   const listening = v.state === "LISTENING" || v.state === "REPEAT_PROMPT";
   manual.hidden = !listening || (stt.available() && !v.textFallback);
-  if (!listening) input.value = ""; // 미전송 입력을 남기지 않는다(다음 사람에게 보이지 않게)
+  if (!listening) { input.value = ""; stt.cancel(); } // 미전송 입력을 남기지 않고, 듣고 있던 마이크도 멈춘다
   action.hidden = false;
   staffBtn.hidden = !listening; // 말하기 대기·다시 말하기에서도 언제든 직원을 부를 수 있다
   secondary.hidden = true; onSecondary = null; action.disabled = false; text.textContent = v.text ?? "";
@@ -91,7 +91,10 @@ function render(v: KioskView) {
     case "ENDED":
       title.textContent = v.endFailed ? "종료를 서버에 알리지 못했습니다" : "수고하셨습니다";
       if (v.endFailed) text.textContent = "가까이 있는 직원에게 알려 주세요."; // 종료 실패를 숨기지 않는다(임시 UI 문구)
-      action.hidden = true; idleTimer = window.setTimeout(() => flow.reset(), v.endFailed ? ENDED_RESET_MS * 3 : ENDED_RESET_MS); break;
+      // 종료 실패 안내는 자동으로 사라지지 않는다: 직원이 확인하고 "처음으로"를 누를 때까지 유지한다(재점검 K-1).
+      if (v.endFailed) { action.hidden = false; action.textContent = "처음으로"; onAction = () => flow.reset(); }
+      else { action.hidden = true; idleTimer = window.setTimeout(() => flow.reset(), ENDED_RESET_MS); }
+      break;
   }
   if (v.state === "IDLE") action.hidden = false;
   if (v.state === "REPEAT_PROMPT" && v.repeatReason === "NOT_COMMITTED") text.textContent = v.text ?? "저장하지 못했어요. 다시 말씀해 주세요.";

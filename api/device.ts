@@ -16,6 +16,8 @@ export interface KioskStart {
   subjectInvalid: boolean;
   /** 기기 설정(/config.json allow_remote_stt: true)에서만 켠다. 없으면 필드를 두지 않는다(기본 꺼짐, D88 U3). */
   allowRemoteStt?: boolean;
+  /** 시작 요청이 서버에 접수된 뒤 부른다. 그때에야 한 번 쓴 환자 참조를 비운다. */
+  confirm?: () => void;
 }
 
 /** '#a=b&c=d' 파싱. '+'를 공백으로 바꾸지 않는다(subject_ref에 '+'가 허용된다). 첫 '='에서만 나눈다. */
@@ -75,12 +77,13 @@ export function createStartHolder(load: () => Promise<KioskStart>) {
     loaded: ready.then((h) => ({ allowRemoteStt: h.allowRemoteStt === true })),
     /** 기기 토큰(요청 헤더용, 계속 유지). */
     deviceToken: (): string | null => held.deviceToken,
-    /** 시작할 때마다 부른다. 참조와 형식 오류 표시는 이번 한 번만 돌려주고 비운다. */
+    /** 시작할 때마다 부른다. 돌려준 confirm()을 시작 성공 뒤에 부르면 참조와 형식 오류 표시를 비운다. */
     async take(): Promise<KioskStart> {
       await ready;
-      const out: KioskStart = { deviceToken: held.deviceToken, subjectRef: held.subjectRef, subjectInvalid: held.subjectInvalid, ...(held.allowRemoteStt ? { allowRemoteStt: true } : {}) };
-      held.subjectRef = null; held.subjectInvalid = false;
-      return out;
+      const ref = held.subjectRef, invalid = held.subjectInvalid;
+      // 비우는 것은 시작이 서버에 접수된 뒤(confirm)다. 시작이 실패하면 같은 참조로 다시 시작할 수 있고, 성공한 시작에 쓴 값은 다음 시작에 다시 나오지 않는다.
+      const confirm = () => { if (held.subjectRef === ref) held.subjectRef = null; if (held.subjectInvalid === invalid) held.subjectInvalid = false; };
+      return { deviceToken: held.deviceToken, subjectRef: ref, subjectInvalid: invalid, ...(held.allowRemoteStt ? { allowRemoteStt: true } : {}), confirm };
     },
   };
 }
