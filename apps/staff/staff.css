@@ -10,3 +10,17 @@ button.alt { background:#fff; color:#0b3d91; }
 button:focus-visible { outline:4px solid #f5a300; }
 #banner { background:#8a1c1c; color:#fff; padding:12px 24px; font-weight:bold; }
 dialog { border-radius:8px; }
+#record { width:min(860px,94vw); max-height:90vh; overflow:auto; }
+#record .record-head { display:flex; gap:12px; align-items:center; justify-content:space-between; }
+#record h2 { margin:0; font-size:20px; word-break:break-all; }
+#record dl.info { display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; }
+#record dt { font-weight:bold; } #record dd { margin:0; }
+#record ol.chat { display:grid; gap:8px; padding:0; }
+#record .bubble { display:block; border-radius:12px; padding:8px 12px; max-width:80%; border:1px solid #ccd; }
+#record .bubble.patient { background:#e8f0fe; justify-self:start; }
+#record .bubble.system { background:#fff; justify-self:end; }
+#record .at { color:#555; font-size:14px; }
+#record table { border-collapse:collapse; width:100%; }
+#record th, #record td { border:1px solid #ccd; padding:4px 8px; text-align:left; word-break:break-word; }
+#record .actions { display:flex; gap:8px; margin-top:8px; }
+#record .empty { color:#555; }

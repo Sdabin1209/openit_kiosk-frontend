@@ -177,6 +177,51 @@ test("직원 콘솔: 위험 알림이 실시간으로 뜨고 '이어서 진행'�
   await staff.ctx.close(); await kiosk.ctx.close();
 });
 
+test("직원 콘솔: 알림 → 기록 보기 → 재개 (읽기 전용 기록, 확인 단계 유지, Esc로 닫기)", async () => {
+  await scenario("risk_stop");
+  const staff = await open("none"); await staff.page.goto(base + "/staff/");
+  await staff.page.getByText("실시간 연결됨").waitFor();
+  const kiosk = await open("none"); await kiosk.page.goto(base + "/");
+  await kiosk.page.getByRole("button", { name: "시작하기" }).click();
+  await kiosk.page.getByText("어디가 불편하신가요?").waitFor();
+  await kiosk.page.locator("#manual-input").fill("가짜 두통 문장");
+  await kiosk.page.getByRole("button", { name: "말하기" }).click();
+  await kiosk.page.getByText("언제부터 그러셨나요?").waitFor();
+  await kiosk.page.locator("#manual-input").fill("위험해요");
+  await kiosk.page.getByRole("button", { name: "말하기" }).click();
+  await staff.page.locator("#banner").getByText("새 알림").waitFor();
+  // 키보드로 열기
+  const recBtn = staff.page.locator("#open").getByRole("button", { name: /기록 보기/ });
+  await recBtn.focus(); await staff.page.keyboard.press("Enter");
+  const dlg = staff.page.getByRole("dialog", { name: /세션 기록/ });
+  await dlg.waitFor();
+  await dlg.getByRole("list", { name: "대화 기록(시간순)" }).getByText("가짜 두통 문장").waitFor();
+  assert.ok(await dlg.getByText("위험해요").count() >= 1);
+  assert.equal(await dlg.getByRole("table", { name: "저장된 값" }).count(), 1);
+  assert.equal(await dlg.getByRole("table", { name: "이 세션의 알림" }).getByText("mock-risk-keyword").count(), 1);
+  await staff.page.screenshot({ path: `${SHOTS}/staff-4-record.png` });
+  // 확인 단계: 취소하면 해결되지 않는다
+  await dlg.getByRole("button", { name: "이어서 진행" }).click();
+  await staff.page.locator("#confirm-no").click();
+  assert.equal(await staff.page.locator("#resolved li").count(), 0);
+  await dlg.getByRole("button", { name: "이어서 진행" }).click();
+  await staff.page.locator("#confirm-yes").click();
+  await dlg.getByText("STAFF_RESUME").waitFor(); // 기록이 다시 불러와져 직원 결정 턴이 보인다
+  assert.equal(await dlg.getByRole("button", { name: "이어서 진행" }).count(), 0);
+  await staff.page.screenshot({ path: `${SHOTS}/staff-5-record-resumed.png` });
+  await dlg.getByRole("button", { name: "닫기" }).click();
+  assert.equal(await staff.page.locator("#record").evaluate((d: HTMLDialogElement) => d.open || d.textContent !== ""), false);
+  await staff.page.locator("#resolved li").waitFor();
+  // Esc로도 닫힌다
+  await staff.page.locator("#resolved").getByRole("button", { name: /기록 보기/ }).click();
+  await dlg.waitFor();
+  await staff.page.keyboard.press("Escape");
+  await dlg.waitFor({ state: "hidden" });
+  await kiosk.page.getByText("다시 이어서 진행하겠습니다").waitFor({ timeout: 15_000 });
+  assert.deepEqual(staff.errors, []);
+  await staff.ctx.close(); await kiosk.ctx.close();
+});
+
 test("웹 푸시(헤드리스 가능 범위): 서비스 워커 등록·활성화, 구독 요청, 푸시 수신→알림 표시", async () => {
   await scenario("normal", { vapidPublicKey: vapid });
   const { page, ctx } = await open("none", "", { permissions: ["notifications"] });

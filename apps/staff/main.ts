@@ -3,6 +3,7 @@ import { StaffApi } from "../../api/staff.ts";
 import type { StaffAlert } from "../../api/types.ts";
 import { InterventionDeciding } from "./decide.ts";
 import { enablePush } from "./push.ts";
+import { createRecordViewer } from "./record.ts";
 
 const client = new PublicApiClient({ baseUrl: "/v1" });
 const api = new StaffApi(client);
@@ -21,6 +22,19 @@ function confirmDialog(msg: string): Promise<boolean> {
 }
 const deciding = new InterventionDeciding((s, d, t) => api.intervene(s, d, t), confirmDialog);
 
+const viewer = createRecordViewer({
+  doc: document,
+  dialog: $("record") as HTMLDialogElement,
+  fetchSession: (id) => api.getSession(id),
+  decide: async (alertId, sessionId, d) => {
+    const r = await deciding.decide(alertId, sessionId, d);
+    if (!r) return false;
+    const a = alerts.get(alertId);
+    if (a) { a.status = "RESOLVED"; a.resolved_by_decision = d; draw(); }
+    return true;
+  },
+});
+
 function row(a: StaffAlert): HTMLLIElement {
   const li = document.createElement("li");
   const meta = document.createElement("span");
@@ -28,6 +42,11 @@ function row(a: StaffAlert): HTMLLIElement {
   // textContent만 쓴다. 모르는 kind/status도 그대로 보인다.
   meta.textContent = `${a.kind} · 세션 ${a.session_id} · ${a.created_at}` + (a.status !== "OPEN" ? ` · ${a.status}/${a.resolved_by_decision ?? "-"}` : "");
   li.append(meta);
+  const rec = document.createElement("button");
+  rec.type = "button"; rec.className = "alt"; rec.textContent = "기록 보기";
+  rec.setAttribute("aria-label", `세션 ${a.session_id} 기록 보기`);
+  rec.onclick = () => { void viewer.open(a.session_id, rec); };
+  li.append(rec);
   if (a.status === "OPEN") {
     for (const [d, label, cls] of [["RESUME", "이어서 진행", ""], ["END", "종료", "alt"]] as const) {
       const b = document.createElement("button");

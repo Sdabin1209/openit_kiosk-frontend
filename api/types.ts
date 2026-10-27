@@ -40,6 +40,38 @@ export interface SessionState {
   state: "ACTIVE" | "PAUSED_RISK" | "ENDED" | (string & {});
   resume_text: string | null;
 }
+// StaffSessionView: GET /v1/staff/sessions/{session_id}. 직원이 기록을 읽기 전용으로 본다.
+// 서버 스키마(StaffSessionView.json)가 배포되면 check-schema가 대조한다. 읽을 때는 관대하게: 모르는 값도 그대로 보인다.
+export interface StaffSessionTurn {
+  turn_index: number;
+  turn_id: string;
+  at: string;
+  utterance: string | null;
+  response_text: string | null;
+  action: string | null;
+}
+export interface StaffSessionValue {
+  key: string;
+  value: unknown;
+  status: string;
+  precision: string;
+}
+export interface StaffSessionAlert {
+  alert_id: string;
+  kind: "RISK" | "CALL_STAFF" | "USER_CALLED_STAFF" | (string & {});
+  status: "OPEN" | "RESOLVED" | (string & {});
+  created_at: string;
+  rule_id: string | null;
+}
+export interface StaffSessionView {
+  session_id: string;
+  status: string;
+  release_id: string | null;
+  created_at: string;
+  turns: StaffSessionTurn[];
+  values: StaffSessionValue[];
+  alerts: StaffSessionAlert[];
+}
 export interface PushConfig {
   vapid_public_key: string | null;
 }

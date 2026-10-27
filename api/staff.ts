@@ -1,5 +1,5 @@
 import { PublicApiClient } from "./client.ts";
-import type { Decision, FrontendInput, PushSubscriptionJson, StaffAlert, StaffAlertPage } from "./types.ts";
+import type { Decision, FrontendInput, PushSubscriptionJson, StaffAlert, StaffAlertPage, StaffSessionView } from "./types.ts";
 
 export interface StaffApiOptions {
   baseUrl?: string;
@@ -14,6 +14,10 @@ export class StaffApi {
   listAlerts(status: "OPEN" | "RESOLVED", limit = 50, cursor?: string): Promise<StaffAlertPage> {
     const c = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
     return this.client.request("GET", `/staff/alerts?status=${status}&limit=${limit}${c}`);
+  }
+  /** 세션 기록(읽기 전용). 404는 ApiError(status 404)로 올라온다. */
+  getSession(sessionId: string): Promise<StaffSessionView> {
+    return this.client.request("GET", `/staff/sessions/${encodeURIComponent(sessionId)}`);
   }
   /** vapid_public_key가 null이면 푸시는 꺼져 있고 SSE만 동작한다. */
   pushConfig() { return this.client.getPushConfig(); }

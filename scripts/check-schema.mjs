@@ -1,5 +1,5 @@
 // ../survey-service/schema/schemas(읽기 전용)의 열거값이 api/types.ts와 같은지 대조한다. 스키마 복사본은 두지 않는다.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 const dir = new URL("../../survey-service/schema/schemas/", import.meta.url);
 const bdir = new URL("../../boundary-contracts/schemas/", import.meta.url);
 const read = (n) => JSON.parse(readFileSync(new URL(n, dir), "utf8"));
@@ -24,5 +24,24 @@ const docker = readFileSync(new URL("../Dockerfile", import.meta.url), "utf8").m
 const mock = readFileSync(new URL("../mock-server/app.ts", import.meta.url), "utf8").match(/PIPELINE_SCHEMA_VERSION = "([^"]+)"/)?.[1];
 if (docker !== `v${ver}`) { console.error(`불일치 Dockerfile BOUNDARY_CONTRACT=${docker} 계약=v${ver}`); bad++; }
 if (mock !== pipe) { console.error(`불일치 모의 서버 pipeline_schema_version=${mock} 계약=${pipe}`); bad++; }
+// StaffSessionView: 서버 스키마가 아직 없으면 대조하지 않는다. PASS로 세지 않는다.
+let sessionViewNote = "StaffSessionView: 대상 아님(서버 스키마 대기) - PASS로 세지 않음";
+const svUrl = new URL("StaffSessionView.json", dir);
+if (existsSync(svUrl)) {
+  const { Ajv2020 } = await import("ajv/dist/2020.js");
+  const { createMock } = await import("../mock-server/app.ts");
+  const validateSv = new Ajv2020({ strict: false }).compile(JSON.parse(readFileSync(svUrl, "utf8")));
+  const m = createMock({}); await new Promise((r) => m.server.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${m.server.address().port}`;
+  const post = (p, b) => fetch(base + p, { method: "POST", body: JSON.stringify(b) }).then((r) => r.json());
+  await post("/v1/sessions", { kind: "SESSION_START", session_id: "chk" });
+  await post("/v1/sessions/chk/turns", { kind: "UTTERANCE", session_id: "chk", utterance: "가짜", turn_id: "t1" });
+  await post("/v1/sessions/chk/turns", { kind: "UTTERANCE", session_id: "chk", utterance: "위험", turn_id: "t2" });
+  const view = await (await fetch(`${base}/v1/staff/sessions/chk`)).json();
+  m.reset(); m.server.closeAllConnections(); m.server.close();
+  if (validateSv(view)) sessionViewNote = "StaffSessionView: 모의 서버 응답이 서버 스키마와 일치(PASS)";
+  else { console.error("불일치 StaffSessionView:", JSON.stringify(validateSv.errors)); bad++; }
+}
 if (bad) process.exit(1);
+console.log(sessionViewNote);
 console.log(`스키마 열거값 일치, 계약 v${ver}(pipeline ${pipe}) 표기 일치`);

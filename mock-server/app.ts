@@ -27,7 +27,10 @@ const PRESETS: Record<string, Partial<Scenario>> = {
   risk_resume: { alertDelivery: "DELIVERED", autoResumeMs: 4000 },
 };
 
-interface Session { id: string; turns: number; paused: boolean; alertId: string | null; ended: boolean; resumeText: string | null }
+interface MockTurn { turn_index: number; turn_id: string; at: string; utterance: string | null; response_text: string | null; action: string | null }
+interface MockValue { key: string; value: unknown; status: string; precision: string }
+// turnLog·values는 StaffSessionView 응답용이다(모의 전용). 발화는 요청 로그(state.log)에는 남기지 않는다.
+interface Session { id: string; turns: number; paused: boolean; alertId: string | null; ended: boolean; resumeText: string | null; createdAt: string; turnLog: MockTurn[]; values: MockValue[] }
 export interface MockState {
   sc: Scenario; sessions: Map<string, Session>; alerts: any[]; subs: Map<string, any>;
   cache: Map<string, any>; events: { id: number; name: string; data: any }[]; sse: Set<ServerResponse>; seq: number; requests: number;
@@ -71,7 +74,20 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     const want = op === "turns" ? ["kind", "session_id", "utterance"] : op === "intervention" ? ["decision", "session_id"] : ["kind", "session_id"];
     return JSON.stringify(Object.keys(rest).sort()) === JSON.stringify(want);
   };
+  const logTurn = (s: Session, turnId: string, utterance: string | null, response: string | null, action: string) =>
+    s.turnLog.push({ turn_index: s.turnLog.length, turn_id: turnId, at: new Date().toISOString(), utterance, response_text: response, action });
   const input = (text: string | null, sig: any = null) => ({ response_text: text, turn_failure_signal: sig });
+
+  /** StaffSessionView(서버 스키마 StaffSessionView.json). alert kind는 RISK_STOP → RISK로 옮긴다. */
+  const sessionView = (s: Session) => ({
+    session_id: s.id,
+    status: s.ended ? "ENDED" : s.paused ? "PAUSED_RISK" : "ACTIVE",
+    release_id: "rel-mock-1",
+    created_at: s.createdAt,
+    turns: s.turnLog,
+    values: s.values,
+    alerts: state.alerts.filter((a) => a.session_id === s.id).map((a) => ({ alert_id: a.alert_id, kind: a.kind === "RISK_STOP" ? "RISK" : a.kind, status: a.status, created_at: a.created_at, rule_id: a.kind === "RISK_STOP" ? "mock-risk-keyword" : null })),
+  });
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url ?? "/", "http://m");
@@ -101,8 +117,10 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     // ---- 문진 ----
     if (m === "POST" && path === "/v1/sessions") {
       if (body.kind !== "SESSION_START" || !ID_RE.test(body.session_id ?? "")) return json(res, 400, berr("INVALID_RECORD", "bad start"));
-      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, alertId: null, ended: false, resumeText: null });
-      return json(res, 200, input("안녕하세요. 문진을 시작합니다. " + QUESTIONS[0]));
+      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, alertId: null, ended: false, resumeText: null, createdAt: new Date().toISOString(), turnLog: [], values: [] });
+      const first = "안녕하세요. 문진을 시작합니다. " + QUESTIONS[0];
+      logTurn(state.sessions.get(body.session_id)!, typeof body.turn_id === "string" ? body.turn_id : "start", null, first, "SESSION_START");
+      return json(res, 200, input(first));
     }
     const sm = path.match(/^\/v1\/sessions\/([^/]+)\/state$/);
     if (m === "GET" && sm) {
@@ -131,12 +149,16 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
           const alert = { alert_id: "a-" + (state.alerts.length + 1), session_id: sid, kind: "RISK_STOP", created_at: new Date().toISOString(), status: "OPEN", resolved_by_decision: null, resolved_at: null };
           s.alertId = alert.alert_id; state.alerts.push(alert); publish("alert", alert);
           if (state.sc.autoResumeMs > 0) { const t = setTimeout(() => { timers.delete(t); if (s.paused) resolve(s, "RESUME"); }, state.sc.autoResumeMs); timers.add(t); }
+          logTurn(s, body.turn_id, body.utterance, "확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.", "RISK_STOP");
           out = input("확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.", { session_id: sid, write_committed: "COMMITTED", staff_alert: state.sc.alertDelivery });
         } else if (state.sc.notCommitted) {
           out = input("저장하지 못했습니다. 다시 말씀해 주세요.", { session_id: sid, write_committed: "NOT_COMMITTED", staff_alert: "NONE" });
         } else {
           s.turns++;
-          out = input(QUESTIONS[Math.min(s.turns, QUESTIONS.length - 1)]);
+          const q = QUESTIONS[Math.min(s.turns, QUESTIONS.length - 1)];
+          s.values.push({ key: `answer_${s.turns}`, value: body.utterance, status: "CONFIRMED", precision: "EXACT" });
+          logTurn(s, body.turn_id, body.utterance, q, "ASK_NEXT");
+          out = input(q);
         }
         state.cache.set(key, out);
         return json(res, 200, out);
@@ -145,6 +167,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       if (!["RESUME", "END"].includes(body.decision)) return json(res, 400, berr("INVALID_RECORD", "bad decision"));
       if (!s.paused) return json(res, 409, berr("CONFLICT", "session is not paused"));
       resolve(s, body.decision);
+      logTurn(s, body.turn_id, null, body.decision === "RESUME" ? s.resumeText : null, body.decision === "RESUME" ? "STAFF_RESUME" : "STAFF_END");
       const out = input(body.decision === "RESUME" ? s.resumeText : null);
       state.cache.set(key, out);
       return json(res, 200, out);
@@ -165,6 +188,12 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       for (const e of state.events) if (e.id > last) res.write(`id: ${e.id}\nevent: ${e.name}\ndata: ${JSON.stringify(e.data)}\n\n`);
       state.sse.add(res); req.on("close", () => state.sse.delete(res));
       return;
+    }
+    const vm = path.match(/^\/v1\/staff\/sessions\/([^/]+)$/);
+    if (m === "GET" && vm) {
+      const s = state.sessions.get(vm[1]);
+      if (!s) return json(res, 404, berr("NOT_FOUND", "unknown session"));
+      return json(res, 200, sessionView(s));
     }
     if (m === "GET" && path === "/v1/staff/push-config") return json(res, 200, { vapid_public_key: state.sc.vapidPublicKey });
     if (m === "POST" && path === "/v1/staff/push-subscriptions") {

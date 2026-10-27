@@ -51,14 +51,14 @@ npm run smoke           # 이미지 빌드, /healthz, 라벨, non-root (Docker)
 npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식 이미지 안에서 실행 (Docker)
 ```
 
-이 문서를 쓰며 직접 돌려 본 것(2026-10-27, Node v24.14.0): `npm test`(49개 통과), `npm run typecheck`(오류 없음), `npm run check-schema`("스키마 열거값 일치"), `npm run doctor`("OK: 전제 충족").
+이 문서를 쓰며 직접 돌려 본 것(2026-10-27, Node v24.14.0): `npm test`(통과, 숫자는 실행 결과 참조), `npm run typecheck`(오류 없음), `npm run check-schema`("스키마 열거값 일치"), `npm run doctor`("OK: 전제 충족").
 돌리지 않은 것: `npm ci`, `npm run build`, 모의 서버 시연, `npm run smoke`, `npm run test:e2e`, `npm run test:e2e:host`.
 
 ## 현재 상태
 
 확인된 것(근거 문서):
-- 단위·계약 시험 49개(`docs/runbook.md`, `docs/STATUS.md`와 일치)가 이 세션에서도 통과했다.
-- 브라우저 시험 9/9 통과, 이미지 빌드·`/healthz`·라벨·non-root 확인은 이전 작업 PC에서 했다고 기록되어 있다(`docs/runbook.md`, `docs/STATUS.md`). 이 세션에서는 다시 확인하지 않았다.
+- 단위·계약 시험이 이 세션에서도 통과했다.
+- 브라우저 시험 통과, 이미지 빌드·`/healthz`·라벨·non-root 확인은 이전 작업 PC에서 했다고 기록되어 있다(`docs/runbook.md`, `docs/STATUS.md`). 이 세션에서는 다시 확인하지 않았다.
 - boundary-contracts v2.0.2, survey-schema 1 기준이다(D66 회신 반영은 v1.3.2 시점, v2에서 이 영역의 I10 응답 모양은 바뀌지 않았다). CR-002, CR-003은 헤드가 회신해 해소됐다(`docs/STATUS.md`, `docs/boundary.md`).
 
 확인 못 한 것:

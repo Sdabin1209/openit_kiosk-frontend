@@ -4,10 +4,11 @@
 | 명령 | 내용 |
 |---|---|
 | `npm ci` | 의존 설치(리포 안 `node_modules`) |
-| `npm test` | 단위·계약 시험(49개, doctor 판정 시험 6개 포함) |
+| `npm test` | 단위·계약 시험(doctor 판정 시험 포함. jsdom 시험은 호스트에 jsdom이 없으면 건너뜀) |
 | `npm run typecheck`, `npm run check-schema` | 타입, 스키마 열거값 |
 | `npm run smoke` | 이미지 빌드, `/healthz`, 라벨, non-root (Docker 필요) |
-| `npm run test:e2e` | 실제 헤드리스 Chromium 화면 흐름(9개). Playwright 공식 이미지 안에서 돈다(아래) |
+| `npm run test:dom` | 기록 보기 DOM 시험(jsdom, node 컨테이너) |
+| `npm run test:e2e` | 실제 헤드리스 Chromium 화면 흐름. Playwright 공식 이미지 안에서 돈다(아래) |
 | `npm run doctor` | 전제 점검: Docker 명령과 데몬. 없으면 `FAIL: 전제 미충족`, 종료 코드 1 |
 | `npm run test:e2e:host` | 선택 사항. 호스트에 설치된 브라우저로 직접 실행(아래) |
 
@@ -23,13 +24,16 @@
 `npm run test:e2e:host`(선택): `npm ci`, `npx playwright install chromium`, 필요하면 `sudo npx playwright install-deps chromium`, `sudo apt-get install -y fonts-noto-cjk`가 필요하다. `doctor --host`가 부족한 라이브러리 이름과 글꼴 없음을 안내만 한다(FAIL 아님, 글꼴은 시험 통과와 무관). 표준 경로는 컨테이너 방식이다.
 
 ### 검증 환경과 한계
-브라우저 시험 9/9 통과는 이 작업 PC에서 `npm run test:e2e`(Docker 컨테이너, Playwright 1.55.0 공식 이미지, 우회 없음, 호스트 설치 없음)로 확인했다. 컨테이너 안에서 한글 글꼴(Noto CJK)로 스크린샷의 한글이 정상 표시되는 것도 확인했다. 호스트 직접 실행(`test:e2e:host`)은 이 PC에서 돌려 보지 못했다(sudo 암호가 필요해 시스템 라이브러리를 설치할 수 없다). 이 시험은 모의 서버와 헤드리스 Chromium이고 실제 기기·마이크·푸시 서비스가 아니다.
+브라우저 시험 통과는 이 작업 PC에서 `npm run test:e2e`(Docker 컨테이너, Playwright 1.55.0 공식 이미지, 우회 없음, 호스트 설치 없음)로 확인했다. 컨테이너 안에서 한글 글꼴(Noto CJK)로 스크린샷의 한글이 정상 표시되는 것도 확인했다. 호스트 직접 실행(`test:e2e:host`)은 이 PC에서 돌려 보지 못했다(sudo 암호가 필요해 시스템 라이브러리를 설치할 수 없다). 이 시험은 모의 서버와 헤드리스 Chromium이고 실제 기기·마이크·푸시 서비스가 아니다.
 
 ### 자동으로 확인하는 것
+직원 콘솔 기록 보기(알림 → 기록 보기 → 대화·값·알림 표시 → 확인 단계를 거친 재개 → 닫기/Esc)는 브라우저 시험에 있고, 렌더 세부(빈 turns, null 필드, 404·권한·네트워크 오류 문구, 닫을 때 발화 삭제)는 `npm run test:dom`(node 컨테이너, jsdom)이 확인한다.
+
 시작 → 질문 → 텍스트 제출 → 다음 질문 → 종료, 가짜 SpeechRecognition 경계(ko-KR 어댑터가 텍스트를 서버로 전달), 위험 발화 대기 화면, 직원 호출 화면(알림 전달 실패)과 처음으로, 503 지속 시 직원 호출 화면, 저장 실패 시 다시 말하기, 지연 중 대기 화면, 직원 콘솔 실시간 알림과 이어서 진행(키오스크가 폴링으로 재개), 서비스 워커 등록·활성화와 푸시 핸들러의 알림 표시(합성 PushEvent).
 
 ### 사람 확인 필요(구멍) 체크리스트
 실제 기기·실제 브라우저(Chrome, 키오스크 단말)에서 사람이 한다.
+- [ ] 직원 콘솔 기록 보기: 실제 survey-service에 붙였을 때 `GET /v1/staff/sessions/{id}` 응답이 화면에 맞게 나오는지(모의 서버로만 확인했다), 스크린 리더로 읽히는지.
 - [ ] 마이크 권한 요청 창이 뜨고, 허용하면 "말하기" 버튼이 듣기 상태가 된다. 거부하면 텍스트 입력 또는 다시 말하기로 이어진다.
 - [ ] 한국어 STT 정확도: 실제 음성으로 증상 문장 10개 이상을 말하고 인식문과 신뢰도(confidence)를 기록한다. `MIN_CONFIDENCE`(0.4) 적정성 판단. 소음 환경 포함. (Web Speech API는 Chrome에서 인터넷 연결과 구글 음성 서비스에 의존한다.)
 - [ ] 인식 결과가 비었을 때(침묵) "다시 말씀해 주세요"가 나온다.
