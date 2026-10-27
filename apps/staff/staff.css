@@ -24,3 +24,7 @@ dialog { border-radius:8px; }
 #record th, #record td { border:1px solid #ccd; padding:4px 8px; text-align:left; word-break:break-word; }
 #record .actions { display:flex; gap:8px; margin-top:8px; }
 #record .empty { color:#555; }
+
+#conn.bad { background:#8a1c1c; color:#fff; padding:6px 12px; font-weight:bold; }
+#list-status { background:#7a5a00; color:#fff; padding:12px 24px; font-weight:bold; }
+#push-status { background:#444; color:#fff; padding:8px 24px; }

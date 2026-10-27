@@ -1,4 +1,5 @@
 import { PublicApiClient } from "./client.ts";
+import { STAFF_STREAM_RETRY, backoffMs } from "./retry.ts";
 import type { Decision, FrontendInput, PushSubscriptionJson, StaffAlert, StaffAlertPage, StaffSessionView } from "./types.ts";
 
 export interface StaffApiOptions {
@@ -34,24 +35,45 @@ export class StaffApi {
   }
 
   /**
-   * SSE 구독. 끊기면 EventSource가 Last-Event-ID로 자동 재연결한다.
+   * SSE 구독. 재연결은 EventSource에 맡기지 않고 직접 한다: 브라우저는 HTTP 오류(502·503·504 등)를 받으면
+   * 재연결 없이 CLOSED로 끝내고, 재연결 간격에도 백오프·지터가 없다. 그래서 오류가 나면 늘 닫고
+   * 지수 백오프(+지터, 예산 없음)로 새로 연다. 새 EventSource는 Last-Event-ID를 보내지 않으므로
+   * 놓친 알림은 호출자가 onState(true) 때 목록 API로 보충해야 한다.
    * 모르는 형식의 이벤트는 무시한다(죽지 않음).
    */
-  stream(onAlert: (a: StaffAlert) => void, onState: (connected: boolean) => void): () => void {
+  stream(
+    onAlert: (a: StaffAlert) => void,
+    onState: (connected: boolean, info?: { attempt: number; nextRetryMs: number | null }) => void,
+    t: { setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void; rand?: () => number } = {},
+  ): () => void {
     const base = (this.o.baseUrl ?? "/v1").replace(/\/$/, "");
     const url = base + "/staff/alerts/stream";
-    const es = this.o.eventSource ? this.o.eventSource(url) : new EventSource(url);
-    es.onopen = () => onState(true);
-    es.onerror = () => onState(false);
+    const setT = t.setTimeout ?? ((fn, ms) => setTimeout(fn, ms)), clearT = t.clearTimeout ?? ((h) => clearTimeout(h as number));
+    let es: EventSource | null = null, timer: unknown = null, attempt = 0, stopped = false;
     const handle = (ev: MessageEvent) => {
       try {
         const a = JSON.parse(ev.data) as StaffAlert;
         if (a && typeof a.alert_id === "string") onAlert(a);
       } catch { /* 무시 */ }
     };
-    // 계약: 이벤트 이름 alert(새 알림), resolved(해결). 이름 없는 이벤트도 받는다.
-    es.onmessage = handle;
-    for (const name of ["alert", "resolved"]) es.addEventListener(name, handle as EventListener);
-    return () => es.close();
+    const open = () => {
+      timer = null;
+      let cur: EventSource;
+      try { cur = es = this.o.eventSource ? this.o.eventSource(url) : new EventSource(url); }
+      catch { return fail(); }
+      cur.onopen = () => { if (cur !== es || stopped) return; attempt = 0; onState(true); };
+      cur.onerror = () => { if (cur !== es || stopped) return; cur.close(); es = null; fail(); };
+      // 계약: 이벤트 이름 alert(새 알림), resolved(해결). 이름 없는 이벤트도 받는다.
+      cur.onmessage = handle;
+      for (const name of ["alert", "resolved"]) cur.addEventListener(name, handle as EventListener);
+    };
+    const fail = () => {
+      attempt++;
+      const ms = backoffMs(attempt, STAFF_STREAM_RETRY, t.rand);
+      onState(false, { attempt, nextRetryMs: ms });
+      timer = setT(open, ms);
+    };
+    open();
+    return () => { stopped = true; if (timer !== null) clearT(timer); es?.close(); es = null; };
   }
 }

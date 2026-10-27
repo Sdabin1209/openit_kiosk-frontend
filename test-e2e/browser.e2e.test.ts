@@ -173,6 +173,40 @@ test("키오스크: 응답 지연 중에는 '확인하고 있어요' 대기 화�
   await ctx.close();
 });
 
+test("직원 콘솔: 스트림이 5xx로 거절되면 '연결 끊김'을 보이고 백오프 재연결로 사람 개입 없이 복구된다", async () => {
+  await scenario("risk_stop", { streamErrorStatus: 503, streamErrorTimes: 2 });
+  const staff = await open("none"); await staff.page.goto(base + "/staff/");
+  await staff.page.getByText("연결 끊김").first().waitFor({ timeout: 5_000 });
+  assert.equal(await staff.page.locator("#conn").getAttribute("role"), "alert");
+  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: 15_000 }); // 1~2초 + 지터 후 복구
+  await staff.ctx.close();
+});
+
+test("직원 콘솔: 스트림이 끊긴 사이 생긴 알림이 재연결 뒤 목록 보충으로 나타난다", async () => {
+  await scenario("risk_stop");
+  const staff = await open("none"); await staff.page.goto(base + "/staff/");
+  await staff.page.getByText("실시간 연결됨").waitFor();
+  await fetch(base + "/__mock/scenario", { method: "POST", body: JSON.stringify({ name: "risk_stop", streamErrorStatus: 503, streamErrorTimes: 3 }) });
+  await fetch(base + "/__mock/drop-sse", { method: "POST" });
+  await staff.page.getByText("연결 끊김").first().waitFor({ timeout: 5_000 });
+  // 끊긴 동안 환자 쪽에서 위험 발화(가짜 입력)
+  const post = (path: string, body: object) => fetch(base + "/v1" + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  await post("/sessions", { session_id: "gap-1", kind: "SESSION_START" });
+  await post("/sessions/gap-1/turns", { session_id: "gap-1", kind: "UTTERANCE", utterance: "위험해요", turn_id: "gap-t1" });
+  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: 20_000 });
+  await staff.page.locator("#open").getByText("gap-1").waitFor({ timeout: 10_000 });
+  await staff.ctx.close();
+});
+
+test("직원 콘솔: 목록 API가 실패하면 빈 목록이 아니라 '불러오지 못했습니다'를 보이고 복구되면 사라진다", async () => {
+  await scenario("risk_stop", { errorStatus: 500, errorTimes: 1000 });
+  const staff = await open("none"); await staff.page.goto(base + "/staff/");
+  await staff.page.getByText("알림 목록을 불러오지 못했습니다").waitFor({ timeout: 10_000 });
+  await scenario("risk_stop");
+  await staff.page.locator("#list-status").waitFor({ state: "hidden", timeout: 30_000 }); // 15초 주기 재읽기
+  await staff.ctx.close();
+});
+
 test("직원 콘솔: 위험 알림이 실시간으로 뜨고 '이어서 진행'으로 해결된다", async () => {
   await scenario("risk_stop");
   const staff = await open("none"); await staff.page.goto(base + "/staff/");

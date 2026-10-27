@@ -33,6 +33,11 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 ## 세션 기록 보기와 스키마 대기
 `check-schema`는 `../survey-service/schema/schemas/StaffSessionView.json`이 있으면 모의 서버 응답을 그 스키마로 검증해 PASS로 세고, 없으면 "대상 아님(서버 스키마 대기)"을 출력한다(PASS로 세지 않음). 서버 스키마가 생겼으므로 지금은 대조된다. jsdom 시험은 호스트에 jsdom이 없으면 건너뛰므로(`npm test`의 skipped) `npm run test:dom`으로 컨테이너에서 확인한다.
 
+## 직원 콘솔 연결 복구 (FAULT_MATRIX A10·A9, FAULT_POLICY 7·12)
+- 변경: 스트림 재연결을 직접 구현(지수 백오프+지터, 예산 없음), 붙을 때마다·15초마다 목록 재읽기(catch-up), 연결 끊김·목록 실패 상태를 명시적으로 표시, 푸시 구독 실패는 알림 배너와 분리. 코드 `api/staff.ts`, `apps/staff/sync.ts`, `main.ts`. 이전에는 EventSource 자동 재연결만 믿었고, 502·503·504로 거절되면 브라우저가 재연결을 포기해 화면이 "연결 끊김"인 채 영원히 복구되지 않을 수 있었다(브라우저 사양에 따른 추정이며 실제 Chromium으로 재현 확인은 하지 않았다).
+- 시험: `test/sync.test.ts`(가짜 EventSource, 가짜 타이머), 브라우저 시험 3건(스트림 503 거절 후 복구, 끊긴 사이 알림 보충, 목록 실패 표시와 복구), 모의 서버에 스트림 거절·연결 끊기 추가.
+- 확인하지 못한 것: 실제 gateway·survey-service 재시작 중 SSE 동작(Caddy의 502/503/504와 하트비트 형식), 푸시 구독 실패 화면의 브라우저 시험(헤드리스는 VAPID·권한이 없다), 정적 화면 장애(A3)의 키오스크 최초 로드 실패 화면. CR-004 참조.
+
 ## 재시도 정책 (FAULT_POLICY 원칙 2·3·7)
 - 변경: 502·503·504·429·네트워크 오류·무응답은 같은 `turn_id`로 지수 백오프(지터) 재시도, 총 예산 20초 뒤 직원 호출. 409 `CONFLICT` + `details.reason = TURN_IN_PROGRESS`는 `Retry-After` 이상 기다린 뒤 같은 `turn_id` 재시도(reason이 없거나 다른 409는 기존대로 위험 정지 폴링). 500·4xx(429 제외)는 재시도 없음. 재시도 중 직원 부르기·그만하기 버튼. 이전의 "3회 시도" 상한은 없어졌다(`retry.maxAttempts`로 시험에서만 둘 수 있다).
 - 시험 변경: 기존 시험 중 "시도 3회"에 의존한 곳은 `retry: { maxAttempts: 3 }`를 명시하게 했고, Retry-After 없을 때 1초라는 단언은 백오프 값(지터 0 기준 250/500ms)으로 바꿨다. 새 시험은 `test/retry.test.ts`.

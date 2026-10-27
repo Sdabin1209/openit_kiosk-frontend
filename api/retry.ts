@@ -30,6 +30,10 @@ export const RETRYABLE_STATUS: ReadonlySet<number> = new Set([429, 502, 503, 504
 /** 409(code CONFLICT) 중 details.reason이 이 값일 때만 재시도한다(처리 중인 같은 turn_id, PUBLIC_API.md 409 행). 그 밖의 409는 순서 어긋남·위험 정지로 보고 재시도하지 않는다. */
 export const TURN_IN_PROGRESS = "TURN_IN_PROGRESS";
 
+/** 직원 콘솔 실시간 스트림 재연결(예산 없음: 복구되면 사람 개입 없이 다시 붙는다, 원칙 12).
+ * 직원은 화면 앞에서 계속 기다리는 사람이 아니므로 상한을 키오스크(5초)보다 길게 15초로 두고, 상류가 재시작 중일 때 몰려들지 않게 지터를 둔다. */
+export const STAFF_STREAM_RETRY: RetryPolicy = { baseMs: 1_000, factor: 2, maxMs: 15_000, budgetMs: Number.POSITIVE_INFINITY, maxAttempts: Number.POSITIVE_INFINITY, minJitter: 0.5 };
+
 /** n번째 재시도(1부터) 앞의 지터 포함 대기. rand는 [0,1) (시험에서 주입). */
 export function backoffMs(attempt: number, p: RetryPolicy = DEFAULT_RETRY, rand: () => number = Math.random): number {
   const ceil = Math.min(p.maxMs, p.baseMs * p.factor ** (attempt - 1));

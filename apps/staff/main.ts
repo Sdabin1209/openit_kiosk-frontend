@@ -4,6 +4,7 @@ import type { StaffAlert } from "../../api/types.ts";
 import { InterventionDeciding } from "./decide.ts";
 import { enablePush } from "./push.ts";
 import { createRecordViewer } from "./record.ts";
+import { createAlertSync, type SyncStatus } from "./sync.ts";
 
 const client = new PublicApiClient({ baseUrl: "/v1" });
 const api = new StaffApi(client);
@@ -70,20 +71,30 @@ function draw() {
 }
 function banner(t: string) { const b = $("banner"); b.textContent = t; b.hidden = false; }
 
-async function load() {
-  try {
-    for (const s of ["OPEN", "RESOLVED"] as const) for (const a of (await api.listAlerts(s)).items) alerts.set(a.alert_id, a);
-    draw();
-  } catch { banner("알림 목록을 불러오지 못했습니다."); }
+function drawStatus(s: SyncStatus) {
+  const conn = $("conn");
+  conn.textContent = s.conn === "CONNECTED" ? "실시간 연결됨"
+    : s.conn === "CONNECTING" ? "연결 중"
+    : `연결 끊김 - 다시 연결 중${s.nextRetryMs !== null ? ` (${Math.max(1, Math.round(s.nextRetryMs / 1000))}초 뒤)` : ""}. 새 알림이 바로 보이지 않을 수 있습니다.`;
+  conn.className = s.conn === "DISCONNECTED" ? "bad" : "";
+  conn.setAttribute("role", s.conn === "DISCONNECTED" ? "alert" : "status");
+  const ls = $("list-status");
+  ls.hidden = !s.listStale;
+  ls.textContent = s.listLoaded ? "알림 목록을 새로 읽지 못했습니다. 화면이 최신이 아닐 수 있습니다. 다시 시도하는 중입니다."
+    : "알림 목록을 불러오지 못했습니다. 비어 있는 것이 아닙니다. 다시 시도하는 중입니다.";
 }
-api.stream(
-  (a) => { const isNew = !alerts.has(a.alert_id) && a.status === "OPEN"; alerts.set(a.alert_id, a); draw(); if (isNew) banner(`새 알림: ${a.kind} 세션 ${a.session_id}`); },
-  (ok) => { $("conn").textContent = ok ? "실시간 연결됨" : "연결 끊김(다시 연결 중)"; if (ok) void load(); },
-);
+const sync = createAlertSync({
+  api,
+  onChange: (m) => { alerts.clear(); for (const [k, v] of m) alerts.set(k, v); draw(); },
+  onNew: (a) => banner(`새 알림: ${a.kind} 세션 ${a.session_id}`),
+  onStatus: drawStatus,
+});
+void sync;
+// 푸시 구독 실패는 알림 배너와 섞지 않는다(실시간 화면 알림은 푸시와 무관하게 동작한다).
 $("push").onclick = async () => {
+  const ps = $("push-status"); ps.hidden = true;
   try { await enablePush(async () => (await api.pushConfig()).vapid_public_key, (s) => api.registerPush(s)); $("push").textContent = "푸시 알림 켜짐"; }
-  catch (e) { banner((e as Error).message); }
+  catch (e) { ps.textContent = `푸시 알림을 켜지 못했습니다: ${(e as Error).message}. 이 화면의 실시간 알림은 그대로 동작합니다.`; ps.hidden = false; }
 };
-void load();
 // 푸시가 꺼져 있으면(공개키 null) 버튼을 숨기고 SSE만 쓴다.
 api.pushConfig().then((c) => { if (!c.vapid_public_key) $("push").hidden = true; }).catch(() => { /* 설정을 못 읽으면 버튼은 두고 누를 때 오류를 보인다 */ });

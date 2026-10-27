@@ -36,6 +36,12 @@
 - 재시도가 시작되면 화면은 "잠시만 기다려 주세요"(기존 STARTING 문구)와 안내 문장, "직원 부르기", "그만하기"를 보인다. 안내 문장은 임상 문구가 아닌 임시 UI 문구다. 직원 부르기는 진행 중 요청을 끊고 CALL_STAFF, 그만하기는 끊고 세션 종료를 요청한다. 이미 서버가 확정한 턴이 있을 수 있으나 같은 `turn_id` 재전송은 멱등이라 안전하다(서버 계약).
 - 409 `details.reason = TURN_IN_PROGRESS`(+`Retry-After`)의 형식은 PUBLIC_API.md 409 행으로 확정되었다. 모의 서버는 시나리오 `turn_in_progress`로 이를 낸다. 실제 survey-service가 이 응답을 내는지는 확인하지 못했다. reason이 없거나 다른 409는 기존대로 WAITING_STAFF.
 
+### 직원 콘솔 연결 상태 (FAULT_POLICY 원칙 7·12)
+- 머리줄 `#conn`: "실시간 연결됨" / "연결 중" / "연결 끊김 - 다시 연결 중 (N초 뒤). 새 알림이 바로 보이지 않을 수 있습니다."(끊김은 붉은 배경, `role=alert`).
+- 목록 읽기에 실패하면 `#list-status`가 "알림 목록을 불러오지 못했습니다. 비어 있는 것이 아닙니다"(처음부터 실패) 또는 "새로 읽지 못했습니다. 화면이 최신이 아닐 수 있습니다"를 보인다. 목록 요청 자체는 키오스크와 같은 재시도 정책(`api/retry.ts`, 502·503·504·429 등, 예산 20초)을 따른다.
+- 이 안내 문구는 임상 문구가 아닌 임시 UI 문구다.
+- 한계: EventSource는 서버의 `: ping` 주석 줄을 보여 주지 않아 하트비트 무음으로 끊김을 감지하지 못한다. 대신 15초 주기 목록 재읽기가 놓친 알림을 채운다(스트림이 조용히 죽어도 `#conn`은 "연결됨"으로 남을 수 있다). 하트비트 기반 감지는 fetch 스트리밍으로 바꿔야 해서 하지 않았다.
+
 ## 4. 공개 API 호출 규칙 대응표
 | 규칙(PUBLIC_API.md) | 구현 위치 |
 | --- | --- |
@@ -51,8 +57,8 @@
 | `turn_failure_signal` 처리 | `apps/kiosk/flow.ts` |
 | 빈/불신 STT는 보내지 않음 | `apps/kiosk/flow.ts` `isUsableTranscript` |
 | 개입 결정: 확인 후 전송, 알림당 같은 `turn_id` | `apps/staff/decide.ts` |
-| SSE `Last-Event-ID` 이어 받기 | 브라우저 `EventSource` 자동 재연결, `api/staff.ts` |
-| 푸시 구독 등록(멱등)·해지 | `api/staff.ts`, `apps/staff/push.ts`, `sw.js` |
+| SSE 끊김 복구(FAULT_POLICY 원칙 7·12) | 재연결은 EventSource 자동 재연결에 맡기지 않고 `api/staff.ts` `stream()`이 한다(HTTP 오류를 받으면 브라우저는 재연결 없이 CLOSED로 끝내고, 간격에 지터가 없기 때문). 지수 백오프 1초 x2, 상한 15초, 지터 50~100%, 예산 없음(`api/retry.ts` `STAFF_STREAM_RETRY`). 새 EventSource는 `Last-Event-ID`를 보내지 않으므로 붙을 때마다 `apps/staff/sync.ts`가 알림 목록을 다시 읽어 놓친 알림을 보충한다(커서 따라 최대 20쪽). 목록도 15초마다 다시 읽는다(스트림이 소리 없이 죽은 경우의 안전망 겸 목록 읽기 실패 복구) |
+| 푸시 구독 등록(멱등)·해지. 구독 실패는 알림 배너와 분리된 `#push-status`에 "실시간 알림은 그대로 동작합니다"와 함께 표시 | `api/staff.ts`, `apps/staff/push.ts`, `apps/staff/main.ts`, `sw.js` |
 | 모르는 `kind`·열거값은 그대로 표시, 죽지 않음 | `api/types.ts` 관대한 읽기 |
 | 기기 토큰 헤더는 `/sessions*`에만, 직원 경로에는 붙이지 않음 | `api/client.ts`(`deviceToken` 옵션), `test/d85.test.ts` |
 
@@ -60,7 +66,7 @@
 계약의 모든 호출(세션·턴·종료·healthz/readyz·알림 목록·SSE·푸시 구독 등록/해지·개입)을 구현하고 `FrontendInput`을 스키마로 검증하는 시험을 둔다.
 시나리오는 제어 경로 `POST /__mock/scenario`(계약 밖, 모의 전용)나 환경 변수로 고른다.
 - `normal`: 문진 흐름 몇 턴 후 안내.
-- `risk_resume`(위험 정지 4초 뒤 직원이 재개한 것처럼 처리), `rate_limited`(429+Retry-After), `turn_in_progress`(409 CONFLICT + details.reason + Retry-After)
+- `risk_resume`(위험 정지 4초 뒤 직원이 재개한 것처럼 처리), `rate_limited`(429+Retry-After), `turn_in_progress`(409 CONFLICT + details.reason + Retry-After), 알림 스트림 연결 거절(`streamErrorStatus`·`streamErrorTimes`)과 제어 경로 `POST /__mock/drop-sse`(스트림 연결만 끊기)
 - `risk_stop`: 발화에 "위험"이 있으면 정지, 알림 저장, `DELIVERED`.
 - `delivery_failed`: 정지하되 `DELIVERY_FAILED`(알림은 목록에서 조회됨).
 - `not_committed`: `NOT_COMMITTED` 신호.
@@ -72,7 +78,7 @@
 api/            공개 API 클라이언트(UI 무관)
 mock-server/    모의 서버(Node, 의존 없음)
 apps/kiosk/     키오스크 앱(flow.ts 상태 기계, stt.ts 어댑터, main.ts UI)
-apps/staff/     직원 콘솔(main.ts, decide.ts, push.ts, sw.ts)
+apps/staff/     직원 콘솔(main.ts, sync.ts, decide.ts, push.ts, sw.ts)
 server/         정적 파일 서버(/healthz, /readyz)
 scripts/        빌드, 스키마 대조, 스모크
 test/           자동 시험

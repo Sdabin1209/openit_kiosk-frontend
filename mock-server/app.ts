@@ -10,6 +10,8 @@ export interface Scenario {
   riskKeyword: string;          // 발화에 이 말이 있으면 위험 정지
   alertDelivery: "DELIVERED" | "DELIVERY_FAILED";
   notCommitted: boolean;        // 신호 NOT_COMMITTED
+  streamErrorStatus: number | null; // 알림 스트림 연결에 이 상태로 응답(오류 본문 JSON)
+  streamErrorTimes: number;
   errorReason: string | null;  // 409 오류의 details.reason(예: TURN_IN_PROGRESS)
   retryAfterSec: number | null; // 429·503 오류에 Retry-After(초)를 붙임
   autoResumeMs: number;         // 0보다 크면 위험 정지 후 이 시간 뒤 직원이 RESUME한 것처럼 처리
@@ -17,7 +19,7 @@ export interface Scenario {
   deviceToken: string | null;   // 있으면 /v1/sessions* 에 Authorization: Bearer <이 값>이 없을 때 401(F절). null이면 검증하지 않음
   requireSubjectRef: boolean;   // SURVEY_REQUIRE_SUBJECT_REF 대역: 켜면 subject_ref 없을 때 400(A절)
 }
-const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, requireSubjectRef: false };
+const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, requireSubjectRef: false };
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
@@ -203,6 +205,11 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       return json(res, 200, { items, next_cursor: off + lim < all.length ? String(off + lim) : null });
     }
     if (m === "GET" && path === "/v1/staff/alerts/stream") {
+      if (state.sc.streamErrorTimes > 0 && state.sc.streamErrorStatus) {
+        state.sc.streamErrorTimes--;
+        res.writeHead(state.sc.streamErrorStatus, { "content-type": "application/json", "retry-after": "1" });
+        return res.end(JSON.stringify(berr("UNAVAILABLE", "stream scenario error", true)));
+      }
       res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
       res.write(": open\n\n");
       const last = Number(req.headers["last-event-id"] ?? 0);
@@ -235,6 +242,9 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       const { name, ...rest } = b;
       reset({ ...preset, ...rest });
       return json(res, 200, state.sc);
+    }
+    if (path === "/__mock/drop-sse" && req.method === "POST") { // 스트림 연결만 끊는다(재시작 모의)
+      const n = state.sse.size; for (const r of state.sse) r.destroy(); state.sse.clear(); return json(res, 200, { dropped: n });
     }
     if (path === "/__mock/state") return json(res, 200, { requests: state.requests, alerts: state.alerts, subs: [...state.subs.keys()], sessions: [...state.sessions.values()] });
     json(res, 404, { error: "no route" });
