@@ -4,25 +4,26 @@
 | 명령 | 내용 |
 |---|---|
 | `npm ci` | 의존 설치(리포 안 `node_modules`) |
-| `npm test` | 단위·계약 시험(48개, doctor 판정 시험 5개 포함) |
+| `npm test` | 단위·계약 시험(49개, doctor 판정 시험 6개 포함) |
 | `npm run typecheck`, `npm run check-schema` | 타입, 스키마 열거값 |
 | `npm run smoke` | 이미지 빌드, `/healthz`, 라벨, non-root (Docker 필요) |
-| `npm run doctor` | 브라우저 시험 전제 점검(아래). `test:e2e`가 시작할 때 자동으로 먼저 부른다 |
-| `npm run test:e2e` | 실제 헤드리스 Chromium에서 화면 흐름(9개). 빌드 후 모의 서버+정적 서버를 빈 포트로 띄운다 |
+| `npm run test:e2e` | 실제 헤드리스 Chromium 화면 흐름(9개). Playwright 공식 이미지 안에서 돈다(아래) |
+| `npm run doctor` | 전제 점검: Docker 명령과 데몬. 없으면 `FAIL: 전제 미충족`, 종료 코드 1 |
+| `npm run test:e2e:host` | 선택 사항. 호스트에 설치된 브라우저로 직접 실행(아래) |
 
-## 브라우저 시험(`test-e2e/`) 전제 설치
-`npm run doctor`(`scripts/doctor.mjs`)가 아래 전제를 점검한다: Playwright Chromium 설치 여부, `ldd`로 본 빠진 공유 라이브러리(이름으로 나열), 한글 글꼴(`fc-list :lang=ko`). 부족하면 `FAIL: 전제 미충족`과 해결 명령을 내고 종료 코드 1로 끝난다. `test:e2e`는 doctor가 실패하면 시험을 시작하지 않는다. 판정 로직은 가짜 점검 결과로 단위 시험한다(`test/doctor.test.ts`).
+## 브라우저 시험(`test-e2e/`) 전제
+전제는 Docker 하나다(데몬 접속 가능, `npm run doctor`로 점검. `smoke`와 같은 전제). 호스트에 브라우저, 시스템 라이브러리, 글꼴을 설치하지 않는다.
+`npm run test:e2e`는 `scripts/e2e-docker.sh`가 `test-e2e/Dockerfile`로 이미지를 만들어 실행한다.
+- 베이스: `mcr.microsoft.com/playwright:v1.55.0-noble`(익명 pull). 태그는 `package.json`의 playwright 버전(1.55.0)과 같아야 한다. 올릴 때 둘을 함께 바꾼다.
+- 얇은 층: node 24(리포 엔진 요구, 이미지 기본은 22), `fonts-noto-cjk`(공식 이미지는 한국어 전용 글꼴이 없어 `fc-list :lang=ko`가 중국어·유니폰트뿐이다). 컨테이너는 시작 때 Noto CJK가 있는지 확인한다.
+- non-root(pwuser)로 실행, `--init --ipc=host`(Playwright 문서 권장). 모의 서버와 정적 서버는 컨테이너 안의 빈 포트이고 호스트 포트를 열지 않는다. 이미지와 컨테이너 이름에 리포 이름과 PID를 넣어 동시 실행해도 충돌하지 않는다.
+- 스크린샷은 컨테이너에서 `e2e-artifacts/`(gitignore)로 복사된다. 환자 정보 없는 가짜 문장만 쓴다.
+- 시험은 새 헤드리스 모드(`channel: "chromium"`)를 쓴다. headless shell은 알림 권한 부여가 동작하지 않는다.
 
-1. `npm ci` (Playwright 1.55.0은 devDependency로 잠겨 있다)
-2. `npx playwright install chromium` (브라우저를 `~/.cache/ms-playwright`에 내려받는다)
-3. 시스템 라이브러리: `sudo npx playwright install-deps chromium` (Ubuntu 24.04에서 libnspr4, libnss3, libasound2t64가 없으면 브라우저가 뜨지 않는다. 시험은 이 오류 메시지를 그대로 낸다)
-4. 한국어 글꼴: `sudo apt-get install fonts-noto-cjk`. 없으면 스크린샷의 한글이 네모(두부)로 찍힌다. DOM 문구 확인은 글꼴과 무관하게 통과한다.
+`npm run test:e2e:host`(선택): `npm ci`, `npx playwright install chromium`, 필요하면 `sudo npx playwright install-deps chromium`, `sudo apt-get install -y fonts-noto-cjk`가 필요하다. `doctor --host`가 부족한 라이브러리 이름과 글꼴 없음을 안내만 한다(FAIL 아님, 글꼴은 시험 통과와 무관). 표준 경로는 컨테이너 방식이다.
 
-시험은 새 헤드리스 모드(`channel: "chromium"`)를 쓴다. 기본 headless shell은 알림 권한 부여가 동작하지 않는다.
-스크린샷은 `e2e-artifacts/`(gitignore)에 저장되며 환자 정보 없는 가짜 문장만 쓴다.
-
-### 검증 환경과 한계 (숨기지 않음)
-브라우저 시험 9/9 통과는 이 작업 PC에서 sudo 암호가 없어 표준 설치(`install-deps`, 글꼴)를 못 하고, `apt-get download`한 libnspr4·libnss3·libasound2t64 deb을 스크래치패드에 풀어 `LD_LIBRARY_PATH`로 가리킨 우회 환경에서 얻은 결과다. 표준 전제를 갖춘 환경에서만 재현되는 것으로 보고, 아직 그런 깨끗한 환경에서는 돌려 보지 못했다. 우회 없이 이 PC에서 `npm run test:e2e`를 실행하면 doctor가 위 라이브러리 목록과 함께 FAIL로 끝나는 것을 확인했다. 한글 글꼴도 이 PC에는 없어 스크린샷은 네모로 찍혔다.
+### 검증 환경과 한계
+브라우저 시험 9/9 통과는 이 작업 PC에서 `npm run test:e2e`(Docker 컨테이너, Playwright 1.55.0 공식 이미지, 우회 없음, 호스트 설치 없음)로 확인했다. 컨테이너 안에서 한글 글꼴(Noto CJK)로 스크린샷의 한글이 정상 표시되는 것도 확인했다. 호스트 직접 실행(`test:e2e:host`)은 이 PC에서 돌려 보지 못했다(sudo 암호가 필요해 시스템 라이브러리를 설치할 수 없다). 이 시험은 모의 서버와 헤드리스 Chromium이고 실제 기기·마이크·푸시 서비스가 아니다.
 
 ### 자동으로 확인하는 것
 시작 → 질문 → 텍스트 제출 → 다음 질문 → 종료, 가짜 SpeechRecognition 경계(ko-KR 어댑터가 텍스트를 서버로 전달), 위험 발화 대기 화면, 직원 호출 화면(알림 전달 실패)과 처음으로, 503 지속 시 직원 호출 화면, 저장 실패 시 다시 말하기, 지연 중 대기 화면, 직원 콘솔 실시간 알림과 이어서 진행(키오스크가 폴링으로 재개), 서비스 워커 등록·활성화와 푸시 핸들러의 알림 표시(합성 PushEvent).

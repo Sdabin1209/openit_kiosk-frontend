@@ -14,8 +14,9 @@
     "mock": "node mock-server/main.ts",
     "start": "node server/static.mjs",
     "smoke": "bash scripts/smoke.sh",
-    "test:e2e": "node scripts/doctor.mjs && npm run build && node --test --test-concurrency=1 \"test-e2e/*.test.ts\"",
-    "doctor": "node scripts/doctor.mjs"
+    "test:e2e": "bash scripts/e2e-docker.sh",
+    "doctor": "node scripts/doctor.mjs",
+    "test:e2e:host": "node scripts/doctor.mjs --host && npm run build && node --test --test-concurrency=1 \"test-e2e/*.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

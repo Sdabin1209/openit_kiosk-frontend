@@ -7,7 +7,7 @@
 
 ## 남은 일 / 막힌 것
 - 실제 survey-service와 연동하지 못했다(모의 서버만). 계약 어긋남은 CR-002, 003.
-- 헤드리스 Chromium 시험(`npm run test:e2e`, 9개)으로 화면 흐름·서비스 워커·푸시 핸들러를 확인했다(단, 9/9는 sudo 없이 deb을 풀어 LD_LIBRARY_PATH로 가린 우회 환경의 결과이며 표준 전제를 갖춘 깨끗한 환경에서는 아직 못 돌렸다. 전제는 `npm run doctor`가 점검한다). 마이크·한국어 STT·푸시 구독/실제 푸시 전달·단말 한글 글꼴은 사람 확인 필요(`docs/runbook.md` 체크리스트).
+- 헤드리스 Chromium 시험(`npm run test:e2e`, 9개)으로 화면 흐름·서비스 워커·푸시 핸들러를 확인했다(`npm run test:e2e`: Playwright 공식 Docker 이미지 안에서 실행, 이 PC에서 우회 없이 9/9 통과, 한글 글꼴 표시 확인). 마이크·한국어 STT·푸시 구독/실제 푸시 전달·단말 한글 글꼴은 사람 확인 필요(`docs/runbook.md` 체크리스트).
 - 한국어 STT 정확도, 오프라인 글꼴 파일 포함(라이선스), TTS 품질은 미정.
 - 의존 버전은 `package-lock.json`으로 고정했다. 이미지 CI 게시(D24)는 deploy와 협의.
 

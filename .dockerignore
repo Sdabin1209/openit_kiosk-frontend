@@ -3,3 +3,4 @@ dist
 .git
 docs
 test
+e2e-artifacts
