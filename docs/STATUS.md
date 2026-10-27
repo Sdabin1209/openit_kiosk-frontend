@@ -55,3 +55,8 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 - 변경: 502·503·504·429·네트워크 오류·무응답은 같은 `turn_id`로 지수 백오프(지터) 재시도, 총 예산 20초 뒤 직원 호출. 409 `CONFLICT` + `details.reason = TURN_IN_PROGRESS`는 `Retry-After` 이상 기다린 뒤 같은 `turn_id` 재시도(reason이 없거나 다른 409는 기존대로 위험 정지 폴링). 500·4xx(429 제외)는 재시도 없음. 재시도 중 직원 부르기·그만하기 버튼. 이전의 "3회 시도" 상한은 없어졌다(`retry.maxAttempts`로 시험에서만 둘 수 있다).
 - 시험 변경: 기존 시험 중 "시도 3회"에 의존한 곳은 `retry: { maxAttempts: 3 }`를 명시하게 했고, Retry-After 없을 때 1초라는 단언은 백오프 값(지터 0 기준 250/500ms)으로 바꿨다. 새 시험은 `test/retry.test.ts`.
 - 확인하지 못한 것: 실제 gateway·survey-service에서 재시작 중 동작(모의 서버만), 실제 survey-service의 `409 TURN_IN_PROGRESS` 응답(형식은 계약으로 확정, 모의 서버 시나리오 `turn_in_progress`로만 시험), 20초 예산이 임상 흐름에 맞는지(사용자 결정 대기), 실기기 화면.
+
+## 전수 점검 반영 (감사 kiosk-frontend.md, D88·D89)
+- 고침: P1 환자 참조 일회용(`createStartHolder`), P3 유휴 초기화·입력창 비우기, P4 마이크 거부 대체·직원 부르기·그만하기·다시 말하기 상한 3회(잠정), P5 위험 정지 대기 안내, H-2 정지 상태 확인(신호 null 응답 + `/state` PAUSED_RISK), P9 임상 값 한 곳(`apps/kiosk/clinical.ts`, U10 잠정), P14 낡은 문서, P15 보안 헤더, P16 종료 실패 표시, P17 푸시 해지 UI, P18 입력 길이, P20 응답 null 문구, P22 healthz 로그 제외(회전은 런타임 몫), P23 PORT 검증, P2 로컬 STT 기본(D88 U3), P7 `CONFIG_FILE`→`/config.json`, P11 런북 화면별 대응, ADR 11편.
+- 안 함: P6·P12 게이트웨이/계약 결정, P8 이미지 digest·SBOM(deploy CI), P10 실제 gateway·survey E2E, P13 devDependency 취약점(강제 업그레이드 필요), P19 시간 표기, P21 접근성 잔여, P24 해결자 표시.
+- 확인 못 함: 실제 기기의 온디바이스 한국어 STT, 서버의 기기별 토큰, 실제 survey의 정지 응답과의 연동.
