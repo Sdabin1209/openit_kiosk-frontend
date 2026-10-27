@@ -14,6 +14,8 @@ export interface KioskStart {
   subjectRef: string | null;
   /** 값이 있었지만 형식이 틀렸다. 이때는 세션을 시작하지 않고 직원을 부른다. */
   subjectInvalid: boolean;
+  /** 기기 설정(/config.json allow_remote_stt: true)에서만 켠다. 없으면 필드를 두지 않는다(기본 꺼짐, D88 U3). */
+  allowRemoteStt?: boolean;
 }
 
 /** '#a=b&c=d' 파싱. '+'를 공백으로 바꾸지 않는다(subject_ref에 '+'가 허용된다). 첫 '='에서만 나눈다. */
@@ -39,6 +41,7 @@ export async function loadKioskStart(win: FragmentWindow, fetchFn: typeof fetch 
   if (win.location.hash) win.history.replaceState(null, "", win.location.pathname + win.location.search); // 값을 주소창과 기록에서 지운다
   let device: string | undefined = frag.device;
   let subject: string | undefined = frag.subject_ref;
+  let allowRemote = false;
   if (device === undefined || subject === undefined) {
     try {
       const res = await fetchFn("/config.json", { cache: "no-store", credentials: "same-origin" });
@@ -46,6 +49,7 @@ export async function loadKioskStart(win: FragmentWindow, fetchFn: typeof fetch 
         const c = (await res.json()) as Record<string, unknown>;
         if (device === undefined && typeof c?.device_token === "string") device = c.device_token;
         if (subject === undefined && typeof c?.subject_ref === "string") subject = c.subject_ref;
+        if (c?.allow_remote_stt === true) allowRemote = true;
       }
     } catch { /* 설정이 없거나 JSON이 아니면 없는 것으로 본다 */ }
   }
@@ -53,5 +57,30 @@ export async function loadKioskStart(win: FragmentWindow, fetchFn: typeof fetch 
     deviceToken: isValidDeviceToken(device) ? device : null,
     subjectRef: subject !== undefined && isValidSubjectRef(subject) ? subject : null,
     subjectInvalid: subject !== undefined && !isValidSubjectRef(subject),
+    ...(allowRemote ? { allowRemoteStt: true } : {}),
+  };
+}
+
+/**
+ * 시작 값 보관소. 기기 토큰은 계속 쓰지만 환자 참조(subject_ref)는 한 번 꺼내면 비운다:
+ * 새로고침 없이 다음 환자가 시작할 때 이전 환자의 참조가 다시 쓰이면 건강 정보가 다른 사람 기록에 붙는다(감사 P1).
+ * 다음 시작에 새 참조가 없으면 null로 돌려주고, 키오스크는 참조 없이 시작한다.
+ * 접수 연동이 기기당 고정 참조인지 환자마다 새 URL인지는 사용자 확인 대기이며, 그 전의 안전한 기본이다.
+ */
+export function createStartHolder(load: () => Promise<KioskStart>) {
+  const held: KioskStart = { deviceToken: null, subjectRef: null, subjectInvalid: false };
+  const ready = load().then((s) => { Object.assign(held, s); return held; });
+  return {
+    /** 기기 설정이 읽힌 뒤 풀리는 약속(STT 설정 등에 쓴다). 환자 참조는 담지 않고 take()만 소비한다. */
+    loaded: ready.then((h) => ({ allowRemoteStt: h.allowRemoteStt === true })),
+    /** 기기 토큰(요청 헤더용, 계속 유지). */
+    deviceToken: (): string | null => held.deviceToken,
+    /** 시작할 때마다 부른다. 참조와 형식 오류 표시는 이번 한 번만 돌려주고 비운다. */
+    async take(): Promise<KioskStart> {
+      await ready;
+      const out: KioskStart = { deviceToken: held.deviceToken, subjectRef: held.subjectRef, subjectInvalid: held.subjectInvalid, ...(held.allowRemoteStt ? { allowRemoteStt: true } : {}) };
+      held.subjectRef = null; held.subjectInvalid = false;
+      return out;
+    },
   };
 }

@@ -2,7 +2,7 @@ import { PublicApiClient } from "../../api/client.ts";
 import { StaffApi } from "../../api/staff.ts";
 import type { StaffAlert } from "../../api/types.ts";
 import { InterventionDeciding } from "./decide.ts";
-import { enablePush } from "./push.ts";
+import { disablePush, enablePush, hasPush } from "./push.ts";
 import { createRecordViewer } from "./record.ts";
 import { createAlertSync, type SyncStatus } from "./sync.ts";
 
@@ -93,8 +93,14 @@ void sync;
 // 푸시 구독 실패는 알림 배너와 섞지 않는다(실시간 화면 알림은 푸시와 무관하게 동작한다).
 $("push").onclick = async () => {
   const ps = $("push-status"); ps.hidden = true;
-  try { await enablePush(async () => (await api.pushConfig()).vapid_public_key, (s) => api.registerPush(s)); $("push").textContent = "푸시 알림 켜짐"; }
+  try { await enablePush(async () => (await api.pushConfig()).vapid_public_key, (s) => api.registerPush(s)); $("push").textContent = "푸시 알림 켜짐"; $("push-off").hidden = false; }
   catch (e) { ps.textContent = `푸시 알림을 켜지 못했습니다: ${(e as Error).message}. 이 화면의 실시간 알림은 그대로 동작합니다.`; ps.hidden = false; }
 };
+$("push-off").onclick = async () => {
+  const ps = $("push-status");
+  try { if (await disablePush((e) => api.unregisterPush(e))) { $("push").textContent = "푸시 알림 켜기"; $("push-off").hidden = true; ps.hidden = true; } }
+  catch (e) { ps.textContent = `푸시 알림을 끄지 못했습니다: ${(e as Error).message}`; ps.hidden = false; }
+};
+void hasPush().then((on) => { if (on) { $("push").textContent = "푸시 알림 켜짐"; $("push-off").hidden = false; } });
 // 푸시가 꺼져 있으면(공개키 null) 버튼을 숨기고 SSE만 쓴다.
 api.pushConfig().then((c) => { if (!c.vapid_public_key) $("push").hidden = true; }).catch(() => { /* 설정을 못 읽으면 버튼은 두고 누를 때 오류를 보인다 */ });

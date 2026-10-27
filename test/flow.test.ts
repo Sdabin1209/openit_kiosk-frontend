@@ -1,11 +1,12 @@
-import { test } from "node:test";
+import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { PublicApiClient } from "../api/client.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
 import { hang, json, ok, settle } from "./helpers.ts";
 
+afterEach(() => { stateFn = () => ({ state: "ACTIVE", resume_text: null }); }); // 시험 간 공유 상태 초기화
 const say = (t: string) => ({ text: t, confidence: 0.9 });
-let stateFn: () => any = () => ({ state: "PAUSED_RISK", resume_text: null });
+let stateFn: () => any = () => ({ state: "ACTIVE", resume_text: null }); // 턴마다 상태를 확인하므로 기본은 정지 아님(정지 시험은 각자 설정)
 // 상태 폴링 대기는 가짜 시계: sleep은 step()이 풀어 줄 때만 끝난다(실제 타이머에 의존하지 않는다).
 const sleepers: Array<() => void> = [];
 const step = async (n = 1) => { for (let i = 0; i < n; i++) { await settle(); sleepers.splice(0).forEach((r) => r()); } await settle(); };
@@ -33,14 +34,15 @@ test("정상 흐름: 시작 -> 듣기 -> 응답 -> 종료", async () => {
 });
 
 test("빈 STT와 낮은 신뢰도는 서버로 보내지 않고 다시 말해 달라고 한다", async () => {
-  const { flow, calls } = make(() => ok("질문"));
-  await flow.start();
+  // 연달아 다시 말하기 상한(MAX_REPEAT, 잠정 3회)이 있으므로 입력마다 새 흐름으로 확인한다.
   for (const r of [null, { text: "", confidence: null }, { text: " . ", confidence: 0.9 }, { text: "네", confidence: 0.1 }]) {
+    const { flow, calls } = make(() => ok("질문"));
+    await flow.start();
     await flow.hear(r);
     assert.equal(flow.current.state, "REPEAT_PROMPT");
     assert.equal(flow.current.repeatReason, "EMPTY_STT");
+    assert.equal(calls.filter((c) => c.kind === "UTTERANCE").length, 0);
   }
-  assert.equal(calls.filter((c) => c.kind === "UTTERANCE").length, 0);
 });
 
 test("DELIVERY_FAILED이면 직원 호출 화면", async () => {

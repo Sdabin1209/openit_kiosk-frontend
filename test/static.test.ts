@@ -41,3 +41,64 @@ test("정적 서버: healthz, readyz, config.json, 경로 탈출 차단", async 
     assert.equal((await fetch(base + "/..%2f..%2fpackage.json")).status, 403);
   } finally { srv.closeAllConnections(); srv.close(); }
 });
+
+test("정적 서버: 보안 헤더(Permissions-Policy·COOP·CORP·CSP object-src/form-action)가 모든 응답에 붙는다", async () => {
+  const { createServer } = await import("node:http");
+  const { makeStaticHandler } = await import("../server/static.mjs");
+  const h = makeStaticHandler({ dir: "apps/kiosk" });
+  const srv = createServer((q, r) => void h(q, r));
+  await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${(srv.address() as any).port}`;
+  try {
+    for (const p of ["/", "/healthz", "/nope"]) {
+      const r = await fetch(base + p);
+      assert.match(r.headers.get("permissions-policy")!, /microphone=\(self\)/, p);
+      assert.match(r.headers.get("permissions-policy")!, /camera=\(\)/, p);
+      assert.equal(r.headers.get("cross-origin-opener-policy"), "same-origin", p);
+      assert.equal(r.headers.get("cross-origin-resource-policy"), "same-origin", p);
+      assert.match(r.headers.get("content-security-policy")!, /object-src 'none'/, p);
+      assert.match(r.headers.get("content-security-policy")!, /form-action 'self'/, p);
+      assert.equal(r.headers.get("x-content-type-options"), "nosniff", p);
+    }
+  } finally { srv.closeAllConnections(); srv.close(); }
+});
+
+test("정적 서버: CONFIG_FILE이 있으면 /config.json으로 낸다(새로고침해도 유지), 없는 파일이면 404", async () => {
+  const { createServer } = await import("node:http");
+  const { writeFileSync, mkdtempSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { makeStaticHandler } = await import("../server/static.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "kiosk-cfg-"));
+  try {
+    const file = join(dir, "config.json");
+    writeFileSync(file, JSON.stringify({ device_token: "tok-FAKE", allow_remote_stt: false }));
+    for (const [cfg, want] of [[file, 200], [join(dir, "none.json"), 404]] as const) {
+      const h = makeStaticHandler({ dir: "apps/kiosk", configFile: cfg });
+      const srv = createServer((q, r) => void h(q, r));
+      await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
+      try {
+        const r = await fetch(`http://127.0.0.1:${(srv.address() as any).port}/config.json`);
+        assert.equal(r.status, want);
+        if (want === 200) { assert.equal(r.headers.get("cache-control"), "no-store"); assert.equal(((await r.json()) as any).device_token, "tok-FAKE"); }
+      } finally { srv.closeAllConnections(); srv.close(); }
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("정적 서버: PORT가 정수가 아니면 명확한 메시지로 종료하고, 감시 요청은 로그에 남기지 않는다", async () => {
+  const { spawnSync, spawn } = await import("node:child_process");
+  const bad = spawnSync(process.execPath, ["server/static.mjs"], { env: { ...process.env, PORT: "abc" }, encoding: "utf8" });
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /PORT는 0~65535 정수/);
+  const child = spawn(process.execPath, ["server/static.mjs"], { env: { ...process.env, PORT: "0", STATIC_DIR: "apps/kiosk" } });
+  let out = "";
+  child.stdout.on("data", (d) => (out += d));
+  try {
+    const port = await new Promise<number>((res, rej) => { const t = setTimeout(() => rej(new Error("시작 안 됨")), 10_000); child.stdout.on("data", () => { const m = out.match(/"port":(\d+)/); if (m && Number(m[1]) > 0) { clearTimeout(t); res(Number(m[1])); } }); });
+    await fetch(`http://127.0.0.1:${port}/healthz`); await fetch(`http://127.0.0.1:${port}/`);
+    await new Promise((r) => setTimeout(r, 100));
+    assert.doesNotMatch(out, /"path":"\/healthz"/);
+    assert.match(out, /"path":"\/"/);
+  } finally { child.kill(); }
+});

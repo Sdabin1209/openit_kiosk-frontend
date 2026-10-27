@@ -81,9 +81,9 @@ export class PublicApiClient {
   }
 
   /** 위험 정지 중 키오스크가 2초 간격으로 폴링한다. */
-  getSessionState(sessionId: string): Promise<SessionState> {
+  getSessionState(sessionId: string, co: CallOptions = {}): Promise<SessionState> {
     this.check(sessionId);
-    return this.call("GET", `/sessions/${sessionId}/state`, undefined, true, {}, validateSessionState);
+    return this.call("GET", `/sessions/${sessionId}/state`, undefined, true, co, validateSessionState);
   }
   getPushConfig(): Promise<PushConfig> {
     return this.request("GET", `/staff/push-config`);

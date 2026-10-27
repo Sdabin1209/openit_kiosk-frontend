@@ -8,6 +8,20 @@ function b64ToBytes(s: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+/** 푸시 구독을 해지한다: 서버 등록을 지우고 브라우저 구독을 끊는다. 구독이 없으면 아무것도 하지 않는다. */
+export async function disablePush(unregister: (endpoint: string) => Promise<void>): Promise<boolean> {
+  if (!("serviceWorker" in navigator)) return false;
+  const reg = await navigator.serviceWorker.getRegistration("/staff/");
+  const sub = await reg?.pushManager.getSubscription();
+  if (!sub) return false;
+  await unregister(sub.endpoint); // 서버 먼저: 실패하면 구독을 유지해 다시 시도할 수 있다
+  await sub.unsubscribe();
+  return true;
+}
+export async function hasPush(): Promise<boolean> {
+  try { return !!(await (await navigator.serviceWorker.getRegistration("/staff/"))?.pushManager.getSubscription()); } catch { return false; }
+}
+
 /** VAPID 공개키는 GET /v1/staff/push-config에서 받는다(공개 값). 비밀 키는 브라우저에 없다. */
 export async function enablePush(
   getKey: () => Promise<string | null>,

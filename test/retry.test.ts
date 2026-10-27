@@ -211,7 +211,7 @@ test("흐름: 재시도 소진까지 모든 시도가 같은 turn_id를 쓴다",
 test("흐름: reason 없는 409는 WAITING_STAFF(기존), TURN_IN_PROGRESS는 대기 뒤 성공", async () => {
   const c = clock(); let mode: "plain" | "busy" = "plain"; let n = 0;
   const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (u: string, init: RequestInit) => {
-    if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
+    if (init.method === "GET") return json({ session_id: "s", state: mode === "plain" ? "PAUSED_RISK" : "ACTIVE", resume_text: null });
     const b = JSON.parse(init.body as string);
     if (b.kind === "SESSION_START") return ok("질문");
     if (mode === "plain") return err(409, {}, "CONFLICT");

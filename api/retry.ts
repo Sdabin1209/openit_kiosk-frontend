@@ -8,7 +8,7 @@ export interface RetryPolicy {
   factor: number;
   /** 대기 상한(ms). 환자가 화면 앞에서 기다리므로 한 번 쉬는 시간이 5초를 넘지 않게 한다. */
   maxMs: number;
-  /** 총 재시도 예산(ms). FAULT_POLICY 기본 약 20초. 서버 턴 마감(8초)과 키오스크 대기(10초) 뒤에도 한두 번 더 시도할 수 있는 길이. 넘으면 직원 호출 화면. */
+  /** 총 재시도 예산(ms). FAULT_POLICY 기본 약 20초. 서버 턴 마감(FAULT_POLICY 6초)과 키오스크 대기(10초) 뒤에도 한두 번 더 시도할 수 있는 길이. 넘으면 직원 호출 화면. */
   budgetMs: number;
   /** 시도 횟수 상한. 기본은 없음(예산이 끊는다). 시험·특수 용도에서만 둔다. */
   maxAttempts: number;

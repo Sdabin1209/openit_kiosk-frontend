@@ -1,0 +1,62 @@
+// D88 U3: 음성 인식은 기기 안에서만(processLocally). 지원하지 않으면 음성 입력을 끄고 외부로 보내지 않는다.
+import { test, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { WebSpeechStt } from "../apps/kiosk/stt.ts";
+
+const g = globalThis as any;
+afterEach(() => { delete g.SpeechRecognition; delete g.webkitSpeechRecognition; });
+
+function fakeCtor(o: { avail?: string[]; install?: boolean; noAvailable?: boolean } = {}) {
+  const made: any[] = []; const calls: string[] = []; const avail = [...(o.avail ?? ["available"])];
+  class SR {
+    lang = ""; processLocally: boolean | undefined = undefined; onresult: any; onerror: any; onend: any;
+    constructor() { made.push(this); }
+    start() { setImmediate(() => this.onresult({ results: [[{ transcript: "머리가 아파요", confidence: 0.9 }]] })); }
+    abort() {}
+    static async available(opts: any) { calls.push("available:" + JSON.stringify(opts)); return avail.length > 1 ? avail.shift() : avail[0]; }
+    static async install(opts: any) { calls.push("install:" + JSON.stringify(opts)); if (o.install === false) throw new Error("fail"); }
+  }
+  if (o.noAvailable) { delete (SR as any).available; delete (SR as any).install; }
+  g.SpeechRecognition = SR;
+  return { made, calls };
+}
+
+test("기기 안 인식이 가능하면 processLocally=true로 듣고 외부 표시(remote)는 꺼져 있다", async () => {
+  const f = fakeCtor();
+  const stt = new WebSpeechStt(); assert.equal(stt.available(), false, "init 전에는 쓰지 않는다");
+  await stt.init();
+  assert.equal(stt.available(), true); assert.equal(stt.local, true); assert.equal(stt.remote, false);
+  assert.match(f.calls[0]!, /"processLocally":true/); assert.match(f.calls[0]!, /ko-KR/);
+  const r = await stt.listen();
+  assert.equal(r.text, "머리가 아파요");
+  assert.equal(f.made[0].processLocally, true);
+  assert.equal(f.made[0].lang, "ko-KR");
+});
+
+test("언어 팩이 내려받기 가능이면 설치를 시도하고, 설치되면 쓴다", async () => {
+  const f = fakeCtor({ avail: ["downloadable", "available"] });
+  const stt = new WebSpeechStt(); await stt.init();
+  assert.ok(f.calls.some((c) => c.startsWith("install:")));
+  assert.equal(stt.available(), true);
+});
+
+test("기기 안 인식을 지원하지 않으면(unavailable·설치 실패·API 없음) 음성 입력을 끄고 listen은 거부한다", async () => {
+  for (const o of [{ avail: ["unavailable"] }, { avail: ["downloadable"], install: false }, { noAvailable: true }]) {
+    fakeCtor(o as any);
+    const stt = new WebSpeechStt(); await stt.init();
+    assert.equal(stt.available(), false, JSON.stringify(o));
+    assert.equal(stt.remote, false);
+    await assert.rejects(stt.listen(), /STT 사용 불가/);
+  }
+  const none = new WebSpeechStt(); delete g.SpeechRecognition; await none.init(); assert.equal(none.available(), false);
+});
+
+test("외부 허용 설정(allowRemote)을 켠 기기에서만 외부 인식으로 대체하고 remote 표시가 켜진다, processLocally는 지정하지 않는다", async () => {
+  const f = fakeCtor({ avail: ["unavailable"] });
+  const stt = new WebSpeechStt({ allowRemote: true }); await stt.init();
+  assert.equal(stt.available(), true); assert.equal(stt.remote, true);
+  await stt.listen();
+  assert.equal(f.made[0].processLocally, undefined);
+  const off = new WebSpeechStt(); await off.init(); assert.equal(off.available(), false);
+  off.setAllowRemote(true); assert.equal(off.available(), true);
+});

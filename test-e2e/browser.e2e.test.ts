@@ -39,7 +39,7 @@ test.after(async () => {
 const scenario = (name: string, extra: object = {}) => fetch(`${base}/__mock/scenario`, { method: "POST", body: JSON.stringify({ name, ...extra }) }).then((r) => assert.equal(r.status, 200));
 
 /** stt: "fake" = 가짜 SpeechRecognition(결과를 텍스트로 대체), "none" = STT 없음(텍스트 입력 경계). */
-async function open(stt: "fake" | "none", fakeText = "가짜 증상 문장입니다", ctxOpts: object = {}): Promise<{ page: Page; ctx: BrowserContext; errors: string[] }> {
+async function open(stt: "fake" | "fake-nolocal" | "none", fakeText = "가짜 증상 문장입니다", ctxOpts: object = {}): Promise<{ page: Page; ctx: BrowserContext; errors: string[] }> {
   const ctx = await browser.newContext({ viewport: { width: 1080, height: 1920 }, ...ctxOpts });
   const page = await ctx.newPage();
   const errors: string[] = [];
@@ -47,12 +47,16 @@ async function open(stt: "fake" | "none", fakeText = "가짜 증상 문장입니
   await page.addInitScript(({ stt, fakeText }) => {
     const w = window as any;
     delete w.SpeechRecognition; delete w.webkitSpeechRecognition;
-    if (stt === "fake") {
+    if (stt === "fake" || stt === "fake-nolocal") {
+      // D88 U3: 기기 안 인식(processLocally)이 되는 기기와 안 되는 기기를 모의한다.
+      w.__stt = { processLocally: undefined as unknown };
       w.SpeechRecognition = class {
-        lang = ""; interimResults = false; maxAlternatives = 1;
+        lang = ""; interimResults = false; maxAlternatives = 1; processLocally: boolean | undefined = undefined;
         onresult: any; onend: any; onerror: any;
-        start() { setTimeout(() => { this.onresult?.({ results: [[{ transcript: fakeText, confidence: 0.9 }]] }); this.onend?.(); }, 10); }
+        start() { w.__stt.processLocally = this.processLocally; setTimeout(() => { this.onresult?.({ results: [[{ transcript: fakeText, confidence: 0.9 }]] }); this.onend?.(); }, 10); }
         abort() {}
+        static async available() { return stt === "fake" ? "available" : "unavailable"; }
+        static async install() {}
       };
     }
   }, { stt, fakeText });
@@ -93,8 +97,67 @@ test("키오스크: 가짜 SpeechRecognition 경계로 텍스트가 제출된다
   assert.equal(await page.locator("#manual").isHidden(), true, "STT가 있으면 텍스트 입력은 숨는다");
   await page.getByRole("button", { name: "말하기" }).click();
   await page.getByText("언제부터 그러셨나요?").waitFor();
+  assert.equal(await page.evaluate(() => (window as any).__stt.processLocally), true, "기기 안 인식(processLocally)만 쓴다");
   assert.deepEqual(errors, []);
   await ctx.close();
+});
+
+test("키오스크: 기기 안 인식이 안 되는 기기는 음성 입력을 끄고 글자 입력으로 안내한다 (외부로 보내지 않음)", async () => {
+  await scenario("normal");
+  const { page, ctx } = await open("fake-nolocal");
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.getByText("어디가 불편하신가요?").waitFor();
+  await page.locator("#manual").waitFor({ state: "visible" });
+  await page.getByText("음성 인식을 쓸 수 없어요").waitFor();
+  assert.equal(await page.evaluate(() => (window as any).__stt.processLocally), undefined, "인식을 시작하지 않았다");
+  await page.locator("#manual-input").fill("가짜 두통 문장");
+  await page.getByRole("button", { name: "말하기" }).click();
+  await page.getByText("언제부터 그러셨나요?").waitFor();
+  assert.equal(await page.evaluate(() => (window as any).__stt.processLocally), undefined);
+  await ctx.close();
+});
+
+test("키오스크: 실서버 응답 모양(신호 null + 상태 PAUSED_RISK)에서도 위험 정지 대기 화면으로 간다 (H-2)", async () => {
+  await scenario("risk_stop_null_signal");
+  const { page, ctx } = await open("none");
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.getByText("어디가 불편하신가요?").waitFor();
+  await page.locator("#manual-input").fill("위험해요");
+  await page.getByRole("button", { name: "말하기" }).click();
+  await page.getByText("직원이 곧 도와드립니다").waitFor({ timeout: 10_000 });
+  assert.equal(await page.getByRole("button", { name: "그만하기" }).count(), 0, "정지 중에는 그만하기를 숨긴다");
+  await ctx.close();
+});
+
+test("키오스크: 마이크 거부는 글자 입력으로 대체되고 직원 부르기 버튼이 있으며 반복 상한 뒤 직원 호출 안내", async () => {
+  await scenario("normal");
+  const ctx0 = await browser.newContext({ viewport: { width: 1080, height: 1920 } });
+  const page = await ctx0.newPage();
+  await page.addInitScript(() => {
+    const w = window as any;
+    w.SpeechRecognition = class {
+      onresult: any; onend: any; onerror: any;
+      start() { setTimeout(() => this.onerror?.({ error: "not-allowed" }), 5); }
+      abort() {}
+      static async available() { return "available"; }
+    };
+  });
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.getByText("어디가 불편하신가요?").waitFor();
+  await page.getByRole("button", { name: "직원 부르기" }).waitFor();
+  await page.getByRole("button", { name: "말하기" }).click();
+  await page.getByText("다시 말씀해 주세요").first().waitFor();
+  await page.locator("#manual").waitFor({ state: "visible" }); // 마이크 거부 뒤 글자 입력으로 대체
+  await page.getByRole("button", { name: "그만하기" }).waitFor();
+  for (let i = 0; i < 3; i++) { // 빈 입력도 인식 실패로 센다: 상한(잠정 3회)을 넘기면 직원 호출 안내
+    if (await page.getByText("직원을 불러 주세요").count()) break;
+    await page.getByRole("button", { name: "말하기" }).click();
+  }
+  await page.getByText("여러 번 알아듣지 못했어요").waitFor({ timeout: 5_000 });
+  await ctx0.close();
 });
 
 test("키오스크: 위험 발화 → 직원 대기 화면 (스크린샷)", async () => {
@@ -334,10 +397,16 @@ test("웹 푸시(헤드리스 가능 범위): 서비스 워커 등록·활성화
   assert.equal(scope, base + "/staff/");
   await page.waitForTimeout(3000);
   const btn = (await page.locator("#push").textContent()) ?? "";
-  const banner = (await page.locator("#banner").textContent()) ?? "";
+  const banner = (await page.locator("#push-status").textContent()) ?? ""; // 푸시 실패는 알림 배너와 분리된다
+  assert.equal(await page.locator("#banner").isHidden(), true, "푸시 결과가 알림 배너에 섞이지 않는다");
   const subscribed = btn.includes("켜짐");
   console.log(`# 푸시 구독 결과: ${subscribed ? "구독 성공" : "구독 불가(" + banner.trim() + ")"}`);
   await page.screenshot({ path: `${SHOTS}/staff-3-push.png` });
+  if (subscribed) { // 해지 UI: 끄면 서버 등록이 지워지고 버튼이 원래대로
+    await page.getByRole("button", { name: "푸시 알림 끄기" }).click();
+    await page.getByRole("button", { name: "푸시 알림 켜기" }).waitFor();
+    assert.equal(mock.state.subs.size, 0);
+  }
   // 서비스 워커의 push 핸들러: 합성 PushEvent를 워커 안에서 보내 알림이 만들어지는지 확인한다(외부 푸시 서비스 불필요).
   // 실제 푸시 서비스 → 브라우저 전달 경로는 확인하지 못한다(사람 확인 필요).
   const sw = ctx.serviceWorkers().find((w) => w.url().endsWith("/staff/sw.js")) ?? await ctx.waitForEvent("serviceworker");

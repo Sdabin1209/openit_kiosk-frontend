@@ -8,7 +8,7 @@ export interface Scenario {
   errorStatus: number | null;   // 이 상태 코드로 응답
   errorTimes: number;           // errorStatus를 몇 번 낼지
   riskKeyword: string;          // 발화에 이 말이 있으면 위험 정지
-  alertDelivery: "DELIVERED" | "DELIVERY_FAILED";
+  alertDelivery: "DELIVERED" | "DELIVERY_FAILED" | "NULL_SIGNAL"; // NULL_SIGNAL: 실서버 모양(위험 정지가 성공하면 turn_failure_signal=null, 정지는 /state로만 보임)
   notCommitted: boolean;        // 신호 NOT_COMMITTED
   heartbeat: boolean;          // 알림 스트림에 event: heartbeat를 보낸다(false면 구버전 서버 또는 소리 없이 죽은 스트림 모의)
   resyncOnConnect: boolean;    // 연결할 때 event: resync를 한 번 보낸다(Last-Event-ID로 이어 받을 수 없는 재연결 모의)
@@ -25,6 +25,7 @@ const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTi
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
+  risk_stop_null_signal: { alertDelivery: "NULL_SIGNAL" },
   delivery_failed: { alertDelivery: "DELIVERY_FAILED" },
   not_committed: { notCommitted: true },
   delay: { delayMs: 3000 },
@@ -177,7 +178,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
           s.alertId = alert.alert_id; state.alerts.push(alert); publish("alert", alert);
           if (state.sc.autoResumeMs > 0) { const t = setTimeout(() => { timers.delete(t); if (s.paused) resolve(s, "RESUME"); }, state.sc.autoResumeMs); timers.add(t); }
           logTurn(s, body.turn_id, body.utterance, "확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.", "RISK_STOP");
-          out = input("확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.", { session_id: sid, write_committed: "COMMITTED", staff_alert: state.sc.alertDelivery });
+          out = input("확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.", state.sc.alertDelivery === "NULL_SIGNAL" ? null : { session_id: sid, write_committed: "COMMITTED", staff_alert: state.sc.alertDelivery });
         } else if (state.sc.notCommitted) {
           out = input("저장하지 못했습니다. 다시 말씀해 주세요.", { session_id: sid, write_committed: "NOT_COMMITTED", staff_alert: "NONE" });
         } else {
