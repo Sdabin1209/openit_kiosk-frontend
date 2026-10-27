@@ -34,6 +34,13 @@ export const TURN_IN_PROGRESS = "TURN_IN_PROGRESS";
  * 직원은 화면 앞에서 계속 기다리는 사람이 아니므로 상한을 키오스크(5초)보다 길게 15초로 두고, 상류가 재시작 중일 때 몰려들지 않게 지터를 둔다. */
 export const STAFF_STREAM_RETRY: RetryPolicy = { baseMs: 1_000, factor: 2, maxMs: 15_000, budgetMs: Number.POSITIVE_INFINITY, maxAttempts: Number.POSITIVE_INFINITY, minJitter: 0.5 };
 
+/** 직원 알림 스트림 하트비트 감시(PUBLIC_API.md 43행, D87). 서버는 연결 직후 한 번과 약 15초마다 `event: heartbeat`를 보낸다.
+ * 한 번 놓친 것은 지연일 수 있으므로 주기의 2배(30초) 동안 아무 하트비트도 없으면 죽은 연결로 본다. 여기에 0~5초 지터를 더해
+ * 서버 재시작 직후 모든 콘솔이 같은 초에 재연결하지 않게 한다. 값은 '정한 것'이며 실측하지 않았다.
+ * 감시는 첫 하트비트를 받은 연결에서만 켠다(하트비트를 보내지 않는 구버전 서버에서는 켜지 않고 목록 주기 재읽기만 안전망이 된다). */
+export const STAFF_HEARTBEAT = { intervalMs: 15_000, missFactor: 2, jitterMs: 5_000 } as const;
+export const heartbeatTimeoutMs = (rand: () => number = Math.random) => STAFF_HEARTBEAT.intervalMs * STAFF_HEARTBEAT.missFactor + Math.round(rand() * STAFF_HEARTBEAT.jitterMs);
+
 /** n번째 재시도(1부터) 앞의 지터 포함 대기. rand는 [0,1) (시험에서 주입). */
 export function backoffMs(attempt: number, p: RetryPolicy = DEFAULT_RETRY, rand: () => number = Math.random): number {
   const ceil = Math.min(p.maxMs, p.baseMs * p.factor ** (attempt - 1));

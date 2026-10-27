@@ -220,6 +220,34 @@ test("직원 콘솔: 스트림이 끊긴 사이 생긴 알림이 재연결 뒤 �
   await staff.ctx.close();
 });
 
+test("직원 콘솔: 하트비트가 끊긴 채 조용히 죽은 스트림을 감지해 '연결 끊김'을 보이고, 하트비트가 돌아오면 복구된다", async () => {
+  await scenario("risk_stop");
+  const staff = await open("none"); await staff.page.goto(base + "/staff/");
+  await staff.page.getByText("실시간 연결됨").waitFor();
+  await new Promise((r) => setTimeout(r, 1500)); // 연결 직후 하트비트 도착
+  await fetch(base + "/__mock/heartbeat", { method: "POST", body: JSON.stringify({ on: false }) }); // 연결은 열려 있고 하트비트만 멈춘다
+  await staff.page.locator("#conn.bad").waitFor({ timeout: 50_000 }); // 하트비트 주기 15초의 2배 + 지터 5초 이내
+  await staff.page.getByText("연결 끊김").first().waitFor();
+  await fetch(base + "/__mock/heartbeat", { method: "POST", body: JSON.stringify({ on: true }) });
+  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: 20_000 }); // 새 연결 직후 하트비트 -> 감시 재개
+  await staff.ctx.close();
+});
+
+test("직원 콘솔: resync 이벤트를 받으면 스트림으로 오지 않은 알림도 목록 재읽기로 나타난다", async () => {
+  await scenario("risk_stop");
+  const staff = await open("none"); await staff.page.goto(base + "/staff/");
+  await staff.page.getByText("실시간 연결됨").waitFor();
+  await fetch(base + "/__mock/stream", { method: "POST", body: JSON.stringify({ mute: true }) });
+  const post = (path: string, body: object) => fetch(base + "/v1" + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  await post("/sessions", { session_id: "rs-1", kind: "SESSION_START" });
+  await post("/sessions/rs-1/turns", { session_id: "rs-1", kind: "UTTERANCE", utterance: "위험해요", turn_id: "rs-t1" });
+  await new Promise((r) => setTimeout(r, 1000));
+  assert.equal(await staff.page.locator("#open").getByText("rs-1").count(), 0, "스트림으로는 오지 않았다");
+  await fetch(base + "/__mock/stream", { method: "POST", body: JSON.stringify({ mute: false, resync: true }) });
+  await staff.page.locator("#open").getByText("rs-1").waitFor({ timeout: 5_000 }); // 15초 주기보다 훨씬 빠르게
+  await staff.ctx.close();
+});
+
 test("직원 콘솔: 목록 API가 실패하면 빈 목록이 아니라 '불러오지 못했습니다'를 보이고 복구되면 사라진다", async () => {
   await scenario("risk_stop", { errorStatus: 500, errorTimes: 1000 });
   const staff = await open("none"); await staff.page.goto(base + "/staff/");

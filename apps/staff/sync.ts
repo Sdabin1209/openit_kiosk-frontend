@@ -79,6 +79,7 @@ export function createAlertSync(d: SyncDeps) {
       if (ok) void load(); // 재연결 직후 놓친 알림 보충
     },
     d.streamTimers,
+    { onResync: () => void load() }, // 이어 받을 수 없는 재연결: 목록으로 즉시 다시 맞춘다
   );
   const tick = (d.refreshMs ?? 15_000) > 0 ? T.setInterval(() => void load(), d.refreshMs ?? 15_000) : null;
   void load();

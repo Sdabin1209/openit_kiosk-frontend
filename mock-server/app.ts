@@ -10,6 +10,8 @@ export interface Scenario {
   riskKeyword: string;          // 발화에 이 말이 있으면 위험 정지
   alertDelivery: "DELIVERED" | "DELIVERY_FAILED";
   notCommitted: boolean;        // 신호 NOT_COMMITTED
+  heartbeat: boolean;          // 알림 스트림에 event: heartbeat를 보낸다(false면 구버전 서버 또는 소리 없이 죽은 스트림 모의)
+  resyncOnConnect: boolean;    // 연결할 때 event: resync를 한 번 보낸다(Last-Event-ID로 이어 받을 수 없는 재연결 모의)
   streamErrorStatus: number | null; // 알림 스트림 연결에 이 상태로 응답(오류 본문 JSON)
   streamErrorTimes: number;
   errorReason: string | null;  // 409 오류의 details.reason(예: TURN_IN_PROGRESS)
@@ -19,7 +21,7 @@ export interface Scenario {
   deviceToken: string | null;   // 있으면 /v1/sessions* 에 Authorization: Bearer <이 값>이 없을 때 401(F절). null이면 검증하지 않음
   requireSubjectRef: boolean;   // SURVEY_REQUIRE_SUBJECT_REF 대역: 켜면 subject_ref 없을 때 400(A절)
 }
-const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, requireSubjectRef: false };
+const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, heartbeat: true, resyncOnConnect: false, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, requireSubjectRef: false };
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
@@ -55,20 +57,23 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
   const state: MockState = { sc: { ...DEFAULT, ...initial }, sessions: new Map(), alerts: [], subs: new Map(), cache: new Map(), events: [], sse: new Set(), seq: 0, requests: 0, log: [] };
   const resolvedBy = new Map<string, string | null>(); // StaffSessionView 전용: 알림 목록·SSE 모양은 바꾸지 않는다
   const timers = new Set<ReturnType<typeof setTimeout>>();
-  const pinger = setInterval(() => { for (const r of state.sse) r.write(": ping\n\n"); }, opt.pingMs ?? 15_000);
+  const hb = () => `event: heartbeat\ndata: ${JSON.stringify({ ts: new Date().toISOString() })}\n\n`; // 계약: id 없음
+  const pinger = setInterval(() => { for (const r of state.sse) { r.write(": ping\n\n"); if (state.sc.heartbeat) r.write(hb()); } }, opt.pingMs ?? 15_000);
   pinger.unref();
   const reset = (s: Partial<Scenario> = {}) => {
     for (const t of timers) clearTimeout(t);
-    timers.clear(); resolvedBy.clear();
+    timers.clear(); resolvedBy.clear(); muted = false;
     for (const r of state.sse) r.end();
     Object.assign(state, { sc: { ...DEFAULT, ...s }, sessions: new Map(), alerts: [], subs: new Map(), cache: new Map(), events: [], sse: new Set(), seq: 0, requests: 0, log: [] });
   };
 
   const json = (res: ServerResponse, code: number, body: unknown) => { res.writeHead(code, { "content-type": "application/json; charset=utf-8" }); res.end(JSON.stringify(body)); };
   const readBody = (req: IncomingMessage) => new Promise<any>((ok, ng) => { let d = ""; req.on("data", (c) => (d += c)); req.on("end", () => { try { ok(d ? JSON.parse(d) : {}); } catch { ng(new Error("json")); } }); });
+  let muted = false;
   const publish = (name: "alert" | "resolved", a: any) => {
     const id = ++state.seq; // 이벤트 순번(id)
     state.events.push({ id, name, data: a });
+    if (muted) return; // 모의 전용: 스트림으로는 보내지 않고 목록에만 남긴다(놓친 알림 모의)
     for (const r of state.sse) r.write(`id: ${id}\nevent: ${name}\ndata: ${JSON.stringify(a)}\n\n`);
   };
   const resolve = (s: Session, decision: "RESUME" | "END", staffId: string | null = null) => {
@@ -212,6 +217,8 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       }
       res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
       res.write(": open\n\n");
+      if (state.sc.heartbeat) res.write(hb()); // 연결 직후 한 번
+      if (state.sc.resyncOnConnect) res.write(`event: resync\ndata: ${JSON.stringify({ reason: "EVENTS_NOT_RESUMABLE" })}\n\n`);
       const last = Number(req.headers["last-event-id"] ?? 0);
       for (const e of state.events) if (e.id > last) res.write(`id: ${e.id}\nevent: ${e.name}\ndata: ${JSON.stringify(e.data)}\n\n`);
       state.sse.add(res); req.on("close", () => state.sse.delete(res));
@@ -242,6 +249,15 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       const { name, ...rest } = b;
       reset({ ...preset, ...rest });
       return json(res, 200, state.sc);
+    }
+    if (path === "/__mock/stream" && req.method === "POST") { // {mute?: bool, resync?: true}
+      const b = await readBody(req);
+      if (typeof b.mute === "boolean") muted = b.mute;
+      if (b.resync) for (const r of state.sse) r.write(`event: resync\ndata: ${JSON.stringify({ reason: "EVENTS_NOT_RESUMABLE" })}\n\n`);
+      return json(res, 200, { muted });
+    }
+    if (path === "/__mock/heartbeat" && req.method === "POST") { // 연결은 두고 하트비트만 켜고 끈다
+      const b = await readBody(req); state.sc.heartbeat = b.on !== false; return json(res, 200, { heartbeat: state.sc.heartbeat });
     }
     if (path === "/__mock/drop-sse" && req.method === "POST") { // 스트림 연결만 끊는다(재시작 모의)
       const n = state.sse.size; for (const r of state.sse) r.destroy(); state.sse.clear(); return json(res, 200, { dropped: n });

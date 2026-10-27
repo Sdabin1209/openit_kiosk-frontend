@@ -46,7 +46,9 @@
 - 머리줄 `#conn`: "실시간 연결됨" / "연결 중" / "연결 끊김 - 다시 연결 중 (N초 뒤). 새 알림이 바로 보이지 않을 수 있습니다."(끊김은 붉은 배경, `role=alert`).
 - 목록 읽기에 실패하면 `#list-status`가 "알림 목록을 불러오지 못했습니다. 비어 있는 것이 아닙니다"(처음부터 실패) 또는 "새로 읽지 못했습니다. 화면이 최신이 아닐 수 있습니다"를 보인다. 목록 요청 자체는 키오스크와 같은 재시도 정책(`api/retry.ts`, 502·503·504·429 등, 예산 20초)을 따른다.
 - 이 안내 문구는 임상 문구가 아닌 임시 UI 문구다.
-- 한계: EventSource는 서버의 `: ping` 주석 줄을 보여 주지 않아 하트비트 무음으로 끊김을 감지하지 못한다. 대신 15초 주기 목록 재읽기가 놓친 알림을 채운다(스트림이 조용히 죽어도 `#conn`은 "연결됨"으로 남을 수 있다). 하트비트 기반 감지는 fetch 스트리밍으로 바꿔야 해서 하지 않았다.
+- 하트비트(PUBLIC_API.md 43행, D87): EventSource는 `: ping` 주석 줄을 보여 주지 않으므로 서버가 보내는 이름 있는 이벤트 `heartbeat`(연결 직후 한 번, 약 15초마다, `id` 없음)를 쓴다. 한 연결에서 첫 `heartbeat`를 받으면 무음 감시를 켜고, 주기의 2배(30초) + 지터 0~5초 안에 다음 `heartbeat`가 없으면 조용히 죽은 연결로 보고 직접 닫아 `#conn`을 "연결 끊김"으로 바꾸며 재연결 백오프 경로로 간다(`api/retry.ts` `STAFF_HEARTBEAT`, 값은 정한 것이고 실측하지 않았다). 새 연결은 첫 `heartbeat`를 받을 때까지 감시하지 않는다. 그래서 `heartbeat`를 보내지 않는 구버전 서버에서는 감시가 켜지지 않고 15초 주기 목록 재읽기가 유일한 안전망으로 남는다.
+- `resync`(`{"reason": "EVENTS_NOT_RESUMABLE"}`): 받으면 알림 목록을 즉시 다시 읽는다(OPEN·RESOLVED 둘 다 읽는 기존 `load()`를 그대로 쓴다. OPEN만 읽는 최적화는 하지 않았다). 모르는 이벤트 이름은 무시한다.
+- 서버 쪽 구현(survey-service)은 읽지 않았고, 계약 문구와 모의 서버 기준으로 만들었다. 실제 서버와의 E2E는 없다.
 
 ## 4. 공개 API 호출 규칙 대응표
 | 규칙(PUBLIC_API.md) | 구현 위치 |
@@ -72,7 +74,7 @@
 계약의 모든 호출(세션·턴·종료·healthz/readyz·알림 목록·SSE·푸시 구독 등록/해지·개입)을 구현하고 `FrontendInput`을 스키마로 검증하는 시험을 둔다.
 시나리오는 제어 경로 `POST /__mock/scenario`(계약 밖, 모의 전용)나 환경 변수로 고른다.
 - `normal`: 문진 흐름 몇 턴 후 안내.
-- `risk_resume`(위험 정지 4초 뒤 직원이 재개한 것처럼 처리), `rate_limited`(429+Retry-After), `turn_in_progress`(409 CONFLICT + details.reason + Retry-After), 알림 스트림 연결 거절(`streamErrorStatus`·`streamErrorTimes`)과 제어 경로 `POST /__mock/drop-sse`(스트림 연결만 끊기)
+- `risk_resume`(위험 정지 4초 뒤 직원이 재개한 것처럼 처리), `rate_limited`(429+Retry-After), `turn_in_progress`(409 CONFLICT + details.reason + Retry-After), 알림 스트림 연결 거절(`streamErrorStatus`·`streamErrorTimes`)과 제어 경로 `POST /__mock/drop-sse`(스트림 연결만 끊기), 스트림 하트비트(기본 켬, 연결 직후와 ping 주기마다. `POST /__mock/heartbeat {on}`으로 연결을 둔 채 끄기, 시나리오 값 `heartbeat: false`는 구버전 서버), `resyncOnConnect`, `POST /__mock/stream {mute, resync}`(스트림 발행 막기와 resync 보내기)
 - `risk_stop`: 발화에 "위험"이 있으면 정지, 알림 저장, `DELIVERED`.
 - `delivery_failed`: 정지하되 `DELIVERY_FAILED`(알림은 목록에서 조회됨).
 - `not_committed`: `NOT_COMMITTED` 신호.

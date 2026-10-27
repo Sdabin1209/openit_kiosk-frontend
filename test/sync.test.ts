@@ -111,3 +111,54 @@ test("stop하면 재연결 타이머를 지우고 이후 오류를 무시한다"
   sync.stop(); assert.equal(tm.q.length, 0);
   es.error(); assert.equal(tm.q.length, 0);
 });
+
+// ---- 하트비트 감시와 resync (PUBLIC_API.md 43행, D87) ----
+test("하트비트가 없는 구버전 서버: 무음 감시를 켜지 않는다(타이머 없음)", async () => {
+  const { sync, tm } = setup(() => []);
+  FakeES.all[0]!.open(); await flush();
+  assert.equal(tm.q.length, 0);
+  assert.equal(sync.status().conn, "CONNECTED");
+  sync.stop();
+});
+
+test("첫 하트비트부터 감시가 켜지고, 30~35초 안에 다음 하트비트가 없으면 닫고 재연결 경로로 간다", async () => {
+  const { sync, tm, statuses } = setup(() => [], Math.random);
+  const es = FakeES.all[0]!; es.open(); await flush();
+  es.emit({ ts: "x" } as any, "heartbeat");
+  assert.equal(tm.q.length, 1);
+  const wd = tm.q[0]!.ms; assert.ok(wd >= 30_000 && wd <= 35_000, `${wd}`);
+  es.emit({ ts: "y" } as any, "heartbeat"); // 하트비트가 오면 타이머를 새로 건다
+  assert.equal(tm.q.length, 1);
+  tm.fire(); // 무음
+  assert.equal(es.closed, true);
+  assert.equal(statuses.at(-1)!.conn, "DISCONNECTED");
+  assert.equal(tm.q.length, 1, "재연결 백오프 타이머");
+  const delay = tm.fire();
+  assert.ok(delay >= 500 && delay <= 1000);
+  assert.equal(FakeES.all.length, 2);
+  FakeES.all[1]!.open(); await flush();
+  assert.equal(sync.status().conn, "CONNECTED");
+  assert.equal(tm.q.length, 0, "새 연결은 첫 하트비트 전까지 감시하지 않는다");
+  sync.stop();
+});
+
+test("하트비트는 알림으로 처리되지 않고, 연결이 오류로 끊기면 감시 타이머도 지운다", async () => {
+  const { sync, tm, news } = setup(() => []);
+  const es = FakeES.all[0]!; es.open(); await flush();
+  es.emit({ ts: "x" } as any, "heartbeat");
+  assert.deepEqual([...sync.alerts.keys()], []); assert.deepEqual(news, []);
+  es.error();
+  assert.equal(tm.q.length, 1, "감시 타이머는 지워지고 재연결 타이머만 남는다");
+  sync.stop(); assert.equal(tm.q.length, 0);
+});
+
+test("resync를 받으면 목록을 즉시 다시 읽어 놓친 알림을 채운다", async () => {
+  let server: StaffAlert[] = [];
+  const { sync, news } = setup(() => server);
+  const es = FakeES.all[0]!; es.open(); await flush();
+  server = [al("7")];
+  es.emit({ reason: "EVENTS_NOT_RESUMABLE" } as any, "resync"); await flush();
+  assert.deepEqual([...sync.alerts.keys()], ["7"]);
+  assert.deepEqual(news, ["7"]);
+  sync.stop();
+});

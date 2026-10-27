@@ -1,5 +1,5 @@
 import { PublicApiClient } from "./client.ts";
-import { STAFF_STREAM_RETRY, backoffMs } from "./retry.ts";
+import { STAFF_STREAM_RETRY, backoffMs, heartbeatTimeoutMs } from "./retry.ts";
 import type { Decision, FrontendInput, PushSubscriptionJson, StaffAlert, StaffAlertPage, StaffSessionView } from "./types.ts";
 
 export interface StaffApiOptions {
@@ -45,11 +45,13 @@ export class StaffApi {
     onAlert: (a: StaffAlert) => void,
     onState: (connected: boolean, info?: { attempt: number; nextRetryMs: number | null }) => void,
     t: { setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void; rand?: () => number } = {},
+    hooks: { onResync?: () => void } = {},
   ): () => void {
     const base = (this.o.baseUrl ?? "/v1").replace(/\/$/, "");
     const url = base + "/staff/alerts/stream";
     const setT = t.setTimeout ?? ((fn, ms) => setTimeout(fn, ms)), clearT = t.clearTimeout ?? ((h) => clearTimeout(h as number));
-    let es: EventSource | null = null, timer: unknown = null, attempt = 0, stopped = false;
+    let es: EventSource | null = null, timer: unknown = null, attempt = 0, stopped = false, hbTimer: unknown = null;
+    const clearHb = () => { if (hbTimer !== null) { clearT(hbTimer); hbTimer = null; } };
     const handle = (ev: MessageEvent) => {
       try {
         const a = JSON.parse(ev.data) as StaffAlert;
@@ -62,18 +64,27 @@ export class StaffApi {
       try { cur = es = this.o.eventSource ? this.o.eventSource(url) : new EventSource(url); }
       catch { return fail(); }
       cur.onopen = () => { if (cur !== es || stopped) return; attempt = 0; onState(true); };
-      cur.onerror = () => { if (cur !== es || stopped) return; cur.close(); es = null; fail(); };
+      cur.onerror = () => { if (cur !== es || stopped) return; clearHb(); cur.close(); es = null; fail(); };
+      // heartbeat: 첫 하트비트를 받은 연결부터 무음 감시를 켠다. 시간 안에 다음 하트비트가 없으면 조용히 죽은 연결로 보고 직접 닫아 재연결 경로로 간다.
+      cur.addEventListener("heartbeat", (() => {
+        if (cur !== es || stopped) return;
+        clearHb();
+        hbTimer = setT(() => { hbTimer = null; if (cur !== es || stopped) return; cur.close(); es = null; fail(); }, heartbeatTimeoutMs(t.rand));
+      }) as EventListener);
+      // resync: Last-Event-ID로 이어 받지 못한 재연결. 호출자가 목록으로 다시 맞춘다.
+      cur.addEventListener("resync", (() => { if (cur === es && !stopped) hooks.onResync?.(); }) as EventListener);
       // 계약: 이벤트 이름 alert(새 알림), resolved(해결). 이름 없는 이벤트도 받는다.
       cur.onmessage = handle;
       for (const name of ["alert", "resolved"]) cur.addEventListener(name, handle as EventListener);
     };
     const fail = () => {
+      clearHb();
       attempt++;
       const ms = backoffMs(attempt, STAFF_STREAM_RETRY, t.rand);
       onState(false, { attempt, nextRetryMs: ms });
       timer = setT(open, ms);
     };
     open();
-    return () => { stopped = true; if (timer !== null) clearT(timer); es?.close(); es = null; };
+    return () => { stopped = true; if (timer !== null) clearT(timer); clearHb(); es?.close(); es = null; };
   }
 }

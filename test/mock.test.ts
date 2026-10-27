@@ -218,7 +218,7 @@ test("SSE: 새 알림과 해결 이벤트, Last-Event-ID로 이어 받기", asyn
     const ctl = new AbortController();
     const res = await fetch(m.base + "/v1/staff/alerts/stream", { headers, signal: ctl.signal });
     const dec = new TextDecoder(); let buf = "";
-    for await (const chunk of res.body as any) { buf += dec.decode(chunk); if ((buf.match(/^data:/gm) ?? []).length >= want) break; }
+    for await (const chunk of res.body as any) { buf += dec.decode(chunk); if ((buf.match(/^event: (alert|resolved)\n/gm) ?? []).length >= want) break; } // heartbeat 이벤트는 세지 않는다
     ctl.abort(); return buf;
   };
   const first = await read();
@@ -259,4 +259,19 @@ test("turn_in_progress 시나리오: 409 CONFLICT + details.reason + Retry-After
   const api = new PublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
   await api.startSession("s3");
   assert.deepEqual(waits, [2000]);
+});
+
+test("SSE: 연결 직후와 주기마다 id 없는 heartbeat, 끄면 멈추고, resyncOnConnect면 resync를 한 번 보낸다", async () => {
+  const { m } = await mk({ resyncOnConnect: true }, {}, { pingMs: 20 });
+  const ctl = new AbortController();
+  const res = await fetch(m.base + "/v1/staff/alerts/stream", { signal: ctl.signal });
+  const dec = new TextDecoder(); let buf = "";
+  for await (const chunk of res.body as any) { buf += dec.decode(chunk); if ((buf.match(/^event: heartbeat\n/gm) ?? []).length >= 3) break; }
+  assert.match(buf, /event: heartbeat\ndata: \{"ts":"\d{4}-\d\d-\d\dT[^"]+"\}\n\n/);
+  assert.doesNotMatch(buf, /id: \d+\nevent: heartbeat/);
+  assert.equal((buf.match(/^event: resync\n/gm) ?? []).length, 1);
+  assert.match(buf, /event: resync\ndata: \{"reason":"EVENTS_NOT_RESUMABLE"\}/);
+  const r = await fetch(m.base + "/__mock/heartbeat", { method: "POST", body: JSON.stringify({ on: false }) });
+  assert.equal(((await r.json()) as any).heartbeat, false);
+  ctl.abort();
 });

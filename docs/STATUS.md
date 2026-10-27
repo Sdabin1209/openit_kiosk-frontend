@@ -33,6 +33,14 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 ## 세션 기록 보기와 스키마 대기
 `check-schema`는 `../survey-service/schema/schemas/StaffSessionView.json`이 있으면 모의 서버 응답을 그 스키마로 검증해 PASS로 세고, 없으면 "대상 아님(서버 스키마 대기)"을 출력한다(PASS로 세지 않음). 서버 스키마가 생겼으므로 지금은 대조된다. jsdom 시험은 호스트에 jsdom이 없으면 건너뛰므로(`npm test`의 skipped) `npm run test:dom`으로 컨테이너에서 확인한다.
 
+## 하트비트·resync (D87)
+- 변경: 직원 콘솔이 `event: heartbeat`를 첫 수신 연결부터 감시(2x주기+지터 무음이면 닫고 재연결, `#conn` 끊김)하고 `event: resync`에 목록을 즉시 다시 읽는다. 구버전 서버(하트비트 없음)에서는 감시를 켜지 않고 15초 목록 재읽기만 안전망. 모의 서버에 하트비트·resync·발행 막기 추가.
+- 시험: `test/sync.test.ts`(하트비트 감시·resync 4건), `test/mock.test.ts`(하트비트 형식), 브라우저 시험 2건.
+- 확인하지 못한 것: 실제 survey-service의 하트비트(읽지 않음), 30~35초 값의 적절성(실측 없음).
+
+## 간헐 실패 조사
+`npm test`의 간헐 실패 원인과 수정은 커밋 8688bdf(실제 타이머 의존 제거). 요약: `test/flow.test.ts` 폴링 시험(실제 2ms 타이머 + 30ms 대기), `test/mock.test.ts` hang 시험(실제 HTTP에 30~50ms 클라이언트 타임아웃), `test/retry.test.ts`의 10ms 대기 가정 등.
+
 ## 깨진 응답·정적 서버 장애 (원칙 10, A1·A2 F6, A3)
 - 변경: `api/validate.ts`로 FrontendInput·SessionState 응답 모양을 검사하고 어긋나면 재시도 대상 실패로 처리(빈 본문 200이 재시도 없이 직원 호출이 되던 틈을 닫음). 시험 `test/retry.test.ts` 추가분, 브라우저 시험(정적 서버 503 중에도 세션 진행).
 - 시험 변경: `test/client.test.ts`의 상태 조회 경로 시험은 응답이 `{}`였는데 검사를 통과하도록 올바른 SessionState로 바꿨다(단언은 그대로).
