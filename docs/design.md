@@ -34,7 +34,7 @@
 ### 재시도와 대기 화면 (FAULT_POLICY 원칙 2·3·7)
 - 정책 값은 `api/retry.ts` 한 곳(기준 0.5초, 배율 2, 상한 5초, 예산 20초, 지터 하한 50%)에 근거와 함께 둔다. 예산·값이 임상 현장에 맞는지는 FAULT_POLICY의 사용자 결정 대기 항목이며 실측으로 확인하지 못했다. 예산은 타임아웃과 대기를 합산하며 시작한 시도는 끊지 않으므로 최악 약 예산 + 10초(한 번의 타임아웃)까지 길어질 수 있다.
 - 재시도가 시작되면 화면은 "잠시만 기다려 주세요"(기존 STARTING 문구)와 안내 문장, "직원 부르기", "그만하기"를 보인다. 안내 문장은 임상 문구가 아닌 임시 UI 문구다. 직원 부르기는 진행 중 요청을 끊고 CALL_STAFF, 그만하기는 끊고 세션 종료를 요청한다. 이미 서버가 확정한 턴이 있을 수 있으나 같은 `turn_id` 재전송은 멱등이라 안전하다(서버 계약).
-- 서버가 `409 TURN_IN_PROGRESS`를 주지 않는 동안에는 이 경로가 쓰이지 않는다. 모의 서버는 이 코드를 내지 않는다.
+- 409 `details.reason = TURN_IN_PROGRESS`(+`Retry-After`)의 형식은 PUBLIC_API.md 409 행으로 확정되었다. 모의 서버는 시나리오 `turn_in_progress`로 이를 낸다. 실제 survey-service가 이 응답을 내는지는 확인하지 못했다. reason이 없거나 다른 409는 기존대로 WAITING_STAFF.
 
 ## 4. 공개 API 호출 규칙 대응표
 | 규칙(PUBLIC_API.md) | 구현 위치 |
@@ -44,7 +44,7 @@
 | 같은 `turn_id` 재전송은 안전 | `api/client.ts` 재시도는 같은 `turn_id` |
 | 10초 무응답이면 같은 `turn_id`로 재시도, 총 재시도 예산(기본 20초)을 넘으면 직원 호출(FAULT_POLICY 원칙 7; 이전 "3회 실패"를 대체) | `api/client.ts` `AbortController` 타임아웃, 예산 소진 시 `CallStaffError`. 값과 근거는 `api/retry.ts` |
 | 한 세션의 요청은 순서대로 하나씩 | `api/client.ts` 세션별 직렬 큐 |
-| 상태 코드로 분기(D66 표 + FAULT_POLICY). 429·502·503·504·네트워크 오류·무응답은 지수 백오프(0.5초 x2, 상한 5초, 지터 50~100%)로 재시도하고 `Retry-After`가 있으면 그 이상 기다린다(위로만 지터). 409 중 `code = TURN_IN_PROGRESS`만 같은 `turn_id`로 재시도하고 나머지 409는 기존대로 WAITING_STAFF. 400/401/403/404/500은 재시도 안 함. `Retry-After`가 남은 예산보다 길면 기다리지 않고 직원 호출 | `api/client.ts`, `api/retry.ts` |
+| 상태 코드로 분기(D66 표 + FAULT_POLICY). 429·502·503·504·네트워크 오류·무응답은 지수 백오프(0.5초 x2, 상한 5초, 지터 50~100%)로 재시도하고 `Retry-After`가 있으면 그 이상 기다린다(위로만 지터). 409 중 본문 `code = CONFLICT`이면서 `details.reason = TURN_IN_PROGRESS`인 것만 (PUBLIC_API.md 409 행) 같은 `turn_id`로 재시도하고 나머지 409는 기존대로 WAITING_STAFF. 400/401/403/404/500은 재시도 안 함. `Retry-After`가 남은 예산보다 길면 기다리지 않고 직원 호출 | `api/client.ts`, `api/retry.ts` |
 | `turn_id`는 봉투 필드: 떼어 낸 나머지가 FrontendMessage/InterventionDecision | 시험 `test/mock.test.ts`, 모의 서버 |
 | 위험 정지 중 상태 폴링 2초 | `apps/kiosk/flow.ts` |
 | SSE 이벤트 `alert`/`resolved`, 15초 `: ping` | `api/staff.ts`, 모의 서버 |
@@ -60,7 +60,7 @@
 계약의 모든 호출(세션·턴·종료·healthz/readyz·알림 목록·SSE·푸시 구독 등록/해지·개입)을 구현하고 `FrontendInput`을 스키마로 검증하는 시험을 둔다.
 시나리오는 제어 경로 `POST /__mock/scenario`(계약 밖, 모의 전용)나 환경 변수로 고른다.
 - `normal`: 문진 흐름 몇 턴 후 안내.
-- `risk_resume`(위험 정지 4초 뒤 직원이 재개한 것처럼 처리), `rate_limited`(429+Retry-After)
+- `risk_resume`(위험 정지 4초 뒤 직원이 재개한 것처럼 처리), `rate_limited`(429+Retry-After), `turn_in_progress`(409 CONFLICT + details.reason + Retry-After)
 - `risk_stop`: 발화에 "위험"이 있으면 정지, 알림 저장, `DELIVERED`.
 - `delivery_failed`: 정지하되 `DELIVERY_FAILED`(알림은 목록에서 조회됨).
 - `not_committed`: `NOT_COMMITTED` 신호.

@@ -12,8 +12,9 @@ function clock() {
   let t = 0; const waits: number[] = [];
   return { now: () => t, sleep: async (ms: number) => { waits.push(ms); t += ms; }, waits, advance: (ms: number) => { t += ms; } };
 }
-const err = (status: number, headers: Record<string, string> = {}, code = "UNAVAILABLE") =>
-  new Response(JSON.stringify({ code, message: "x", retryable: true }), { status, headers });
+const err = (status: number, headers: Record<string, string> = {}, code = "UNAVAILABLE", details?: unknown) =>
+  new Response(JSON.stringify({ code, message: "x", retryable: true, details }), { status, headers });
+const inProgress = (headers: Record<string, string> = {}) => err(409, headers, "CONFLICT", { reason: "TURN_IN_PROGRESS" });
 function make(responses: Array<() => Response | Promise<Response>>, extra: Record<string, unknown> = {}) {
   const c = clock(); const turnIds: string[] = []; let n = 0;
   const api = new PublicApiClient({ timeoutMs: 1000, now: c.now, sleep: c.sleep, rand: () => 0.5, ...extra, fetch: (async (_u: string, init: RequestInit) => {
@@ -58,15 +59,23 @@ test("4xx(429 제외)와 500은 재시도하지 않고 바로 실패한다", asy
 });
 
 test("409 TURN_IN_PROGRESS는 Retry-After 뒤 같은 turn_id로 재시도한다", async () => {
-  const { api, c, turnIds } = make([() => err(409, { "retry-after": "2" }, "TURN_IN_PROGRESS"), () => ok("확정된 응답")], { rand: () => 0 });
+  const { api, c, turnIds } = make([() => inProgress({ "retry-after": "2" }), () => ok("확정된 응답")], { rand: () => 0 });
   const r = await api.sendUtterance("s1", "x", "t-9");
   assert.equal(r.response_text, "확정된 응답");
   assert.deepEqual(c.waits, [2000]);
   assert.deepEqual(turnIds, ["t-9", "t-9"]);
 });
 
+test("409 CONFLICT에 reason이 없거나 다르면, 또는 code만 TURN_IN_PROGRESS이면 재시도하지 않는다", async () => {
+  for (const r of [() => err(409, {}, "CONFLICT"), () => err(409, {}, "CONFLICT", { reason: "OUT_OF_ORDER" }), () => err(409, {}, "TURN_IN_PROGRESS"), () => err(409, { "retry-after": "1" }, "CONFLICT", {})]) {
+    const { api, count } = make([r]);
+    await assert.rejects(api.sendUtterance("s1", "x", "t"), (e) => e instanceof ApiError && e.status === 409);
+    assert.equal(count(), 1);
+  }
+});
+
 test("409 TURN_IN_PROGRESS에 Retry-After가 없어도 백오프로 재시도한다", async () => {
-  const { api, c } = make([() => err(409, {}, "TURN_IN_PROGRESS"), () => ok()]);
+  const { api, c } = make([() => inProgress(), () => ok()]);
   await api.sendUtterance("s1", "x", "t");
   assert.equal(c.waits.length, 1);
   assert.ok(c.waits[0]! >= 250 && c.waits[0]! <= 500);
@@ -198,4 +207,22 @@ test("흐름: 재시도 소진까지 모든 시도가 같은 turn_id를 쓴다",
   await flow.start(); await flow.hear(say("네"));
   assert.equal(flow.current.state, "CALL_STAFF");
   assert.ok(new Set(ids).size === 1, "소진까지 모든 재시도가 같은 turn_id");
+});
+
+test("흐름: reason 없는 409는 WAITING_STAFF(기존), TURN_IN_PROGRESS는 대기 뒤 성공", async () => {
+  const c = clock(); let mode: "plain" | "busy" = "plain"; let n = 0;
+  const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (u: string, init: RequestInit) => {
+    if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
+    const b = JSON.parse(init.body as string);
+    if (b.kind === "SESSION_START") return ok("질문");
+    if (mode === "plain") return err(409, {}, "CONFLICT");
+    return ++n < 2 ? inProgress({ "retry-after": "1" }) : ok("다음");
+  }) as any });
+  const flow = new KioskFlow(api, { pollMs: 1000, sleep: () => new Promise(() => {}) });
+  await flow.start(); await flow.hear(say("네"));
+  assert.equal(flow.current.state, "WAITING_STAFF");
+  flow.reset();
+  mode = "busy"; await flow.start(); await flow.hear(say("네"));
+  assert.equal(flow.current.state, "LISTENING"); assert.equal(flow.current.text, "다음");
+  flow.reset();
 });

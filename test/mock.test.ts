@@ -230,3 +230,17 @@ test("SSE는 설정한 간격으로 ': ping' 주석을 보낸다", async () => {
   ctl.abort();
   assert.match(buf, /: ping/);
 });
+
+test("turn_in_progress 시나리오: 409 CONFLICT + details.reason + Retry-After, 클라이언트가 같은 turn_id로 재시도해 성공한다", async () => {
+  const { m } = await mk({ errorStatus: 409, errorTimes: 1, errorReason: "TURN_IN_PROGRESS", retryAfterSec: 2 });
+  const r = await fetch(m.base + "/v1/sessions", { method: "POST", body: "{}" });
+  assert.equal(r.status, 409);
+  assert.equal(r.headers.get("retry-after"), "2");
+  const b = (await r.json()) as any;
+  assert.equal(b.code, "CONFLICT"); assert.equal(b.details.reason, "TURN_IN_PROGRESS");
+  const waits: number[] = [];
+  m.state.sc.errorTimes = 1;
+  const api = new PublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
+  await api.startSession("s3");
+  assert.deepEqual(waits, [2000]);
+});

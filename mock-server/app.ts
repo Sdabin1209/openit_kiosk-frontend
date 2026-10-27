@@ -10,13 +10,14 @@ export interface Scenario {
   riskKeyword: string;          // 발화에 이 말이 있으면 위험 정지
   alertDelivery: "DELIVERED" | "DELIVERY_FAILED";
   notCommitted: boolean;        // 신호 NOT_COMMITTED
+  errorReason: string | null;  // 409 오류의 details.reason(예: TURN_IN_PROGRESS)
   retryAfterSec: number | null; // 429·503 오류에 Retry-After(초)를 붙임
   autoResumeMs: number;         // 0보다 크면 위험 정지 후 이 시간 뒤 직원이 RESUME한 것처럼 처리
   vapidPublicKey: string | null; // GET /v1/staff/push-config
   deviceToken: string | null;   // 있으면 /v1/sessions* 에 Authorization: Bearer <이 값>이 없을 때 401(F절). null이면 검증하지 않음
   requireSubjectRef: boolean;   // SURVEY_REQUIRE_SUBJECT_REF 대역: 켜면 subject_ref 없을 때 400(A절)
 }
-const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, requireSubjectRef: false };
+const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, requireSubjectRef: false };
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
@@ -25,6 +26,7 @@ const PRESETS: Record<string, Partial<Scenario>> = {
   delay: { delayMs: 3000 },
   hang: { hangFirst: 2 },
   error: { errorStatus: 503, errorTimes: 2 },
+  turn_in_progress: { errorStatus: 409, errorTimes: 2, errorReason: "TURN_IN_PROGRESS", retryAfterSec: 1 },
   rate_limited: { errorStatus: 429, errorTimes: 2, retryAfterSec: 1 },
   risk_resume: { alertDelivery: "DELIVERED", autoResumeMs: 4000 },
 };
@@ -113,8 +115,10 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       // PUBLIC_API.md 상태 코드 표: 400 INVALID_RECORD, 401·403 PERMISSION_DENIED, 404 NOT_FOUND, 409 CONFLICT, 429·503 UNAVAILABLE
       const code = ({ 400: "INVALID_RECORD", 401: "PERMISSION_DENIED", 403: "PERMISSION_DENIED", 404: "NOT_FOUND", 409: "CONFLICT", 429: "UNAVAILABLE", 503: "UNAVAILABLE" } as Record<number, string>)[s] ?? "INVALID_RECORD";
       const headers: Record<string, string> = { "content-type": "application/json; charset=utf-8" };
-      if ((s === 429 || s === 503) && state.sc.retryAfterSec !== null) headers["retry-after"] = String(state.sc.retryAfterSec);
-      res.writeHead(s, headers); return res.end(JSON.stringify(berr(code, "scenario error", s === 429 || s === 503)));
+      if ((s === 429 || s === 503 || (s === 409 && state.sc.errorReason === "TURN_IN_PROGRESS")) && state.sc.retryAfterSec !== null) headers["retry-after"] = String(state.sc.retryAfterSec);
+      const eb: Record<string, unknown> = berr(code, "scenario error", s === 429 || s === 503);
+      if (s === 409 && state.sc.errorReason) { eb.details = { reason: state.sc.errorReason }; eb.retryable = state.sc.errorReason === "TURN_IN_PROGRESS"; }
+      res.writeHead(s, headers); return res.end(JSON.stringify(eb));
     }
 
     // F절: 기기 토큰. /v1/sessions* 만 대상이다. 직원 경로와 개입 결정(/intervention)은 게이트웨이의 직원 인증 몫이라 기기 토큰을 보지 않는다.

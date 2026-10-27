@@ -27,7 +27,7 @@ export const DEFAULT_RETRY: RetryPolicy = {
 
 /** 재시도하는 상태 코드. 500은 서버 버그로 보고 재시도하지 않는다. 4xx(429 제외)도 하지 않는다. */
 export const RETRYABLE_STATUS: ReadonlySet<number> = new Set([429, 502, 503, 504]);
-/** 409 중 이 코드만 재시도한다(처리 중인 같은 turn_id). 그 밖의 409는 순서 어긋남·위험 정지로 보고 재시도하지 않는다. */
+/** 409(code CONFLICT) 중 details.reason이 이 값일 때만 재시도한다(처리 중인 같은 turn_id, PUBLIC_API.md 409 행). 그 밖의 409는 순서 어긋남·위험 정지로 보고 재시도하지 않는다. */
 export const TURN_IN_PROGRESS = "TURN_IN_PROGRESS";
 
 /** n번째 재시도(1부터) 앞의 지터 포함 대기. rand는 [0,1) (시험에서 주입). */

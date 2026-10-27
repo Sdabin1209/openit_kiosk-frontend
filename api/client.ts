@@ -121,7 +121,7 @@ export class PublicApiClient {
     return this.call<FrontendInput>("POST", path, body, true, co);
   }
 
-  /** 일시 장애(429·502·503·504·네트워크 오류·무응답, 409 TURN_IN_PROGRESS)는 같은 요청 그대로 지수 백오프로 재시도하고,
+  /** 일시 장애(429·502·503·504·네트워크 오류·무응답, 409 details.reason=TURN_IN_PROGRESS)는 같은 요청 그대로 지수 백오프로 재시도하고,
    * 총 예산을 넘으면 CallStaffError. 그 밖의 오류는 바로 던진다. */
   private async call<T>(method: string, path: string, body: unknown, retry: boolean, co: CallOptions): Promise<T> {
     const p = this.policy, start = this.now();
@@ -133,7 +133,7 @@ export class PublicApiClient {
         return await this.once<T>(method, path, body, co.signal);
       } catch (e) {
         if (e instanceof AbortedError) throw e;
-        if (e instanceof ApiError && !(RETRYABLE_STATUS.has(e.status) || (e.status === 409 && e.body?.code === TURN_IN_PROGRESS))) throw e;
+        if (e instanceof ApiError && !(RETRYABLE_STATUS.has(e.status) || (e.status === 409 && (e.body?.details as { reason?: unknown } | undefined)?.reason === TURN_IN_PROGRESS))) throw e;
         last = e;
         const wait = waitMs(i, e instanceof ApiError ? e.retryAfterMs : null, p, this.rand);
         // 예산을 넘겼거나 다음 대기까지 하면 넘는다면 더 기다리지 않고 직원 호출로 넘긴다.
