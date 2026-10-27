@@ -51,10 +51,17 @@ test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async ()
   await fetch(m.base + "/v1/sessions", { method: "POST", body: JSON.stringify({ session_id: "s1", kind: "SESSION_START" }) });
   const bad = await fetch(m.base + "/v1/sessions/s1/turns", { method: "POST", body: JSON.stringify({ session_id: "s1", kind: "UTTERANCE", utterance: "x", turn_id: "t", extra: 1 }) });
   assert.equal(bad.status, 400);
-  assert.equal(((await bad.json()) as any).code, "INVALID_RECORD");
+  const body: any = await bad.json();
+  assert.equal(body.code, "INVALID_RECORD");
+  // 오류 본문은 계약의 BoundaryError 스키마(pipeline_schema_version 포함)를 지킨다.
+  ajv.addSchema(JSON.parse(readFileSync(new URL("_common.schema.json", BSCHEMAS), "utf8")), "_common.schema.json");
+  const vErr = bs("BoundaryError.schema.json");
+  const okErr: boolean = vErr(body);
+  assert.ok(okErr, JSON.stringify(vErr.errors));
+  assert.match(String(body.pipeline_schema_version), /^2\./);
 });
 
-test("알림·목록·상태·푸시 설정 응답이 v1.3.2 스키마를 지킨다", async () => {
+test("알림·목록·상태·푸시 설정 응답이 v2.0.2 스키마를 지킨다", async () => {
   const { m, api } = await mk({ vapidPublicKey: "PUBKEY" });
   await api.startSession("s1"); await api.sendUtterance("s1", "위험");
   const page = await new StaffApi(api).listAlerts("OPEN");

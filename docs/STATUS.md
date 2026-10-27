@@ -3,7 +3,10 @@
 ## 한 일
 - 설계서 `design.md`, 경계 문서 `boundary.md`, 변경 요청 CR-001~003.
 - `api/`(클라이언트: 재시도, 순서, 타임아웃), `mock-server/`, 키오스크 앱, 직원 콘솔(SSE, 푸시 구독 서비스 워커, 개입 결정), 정적 서버, Dockerfile, 스모크 스크립트.
-- 시험: `npm test`(43개), `npm run typecheck`, `npm run check-schema`, `npm run smoke`.
+- 시험: `npm test`(49개), `npm run typecheck`, `npm run check-schema`, `npm run smoke`.
+
+## 계약 v2.0.2 정렬
+Dockerfile `BOUNDARY_CONTRACT=v2.0.2`, 모의 서버 오류 본문 `pipeline_schema_version` "2.0"(이전 "1.0"은 어떤 계약 버전과도 맞지 않던 값). `check-schema`가 계약 버전 표기를 대조하도록 확장했다. 공개 API 응답 모양 변화는 SSE `id:` 설명(이벤트 순번) 한 줄뿐이며 모의 서버는 이미 그렇게 동작한다. 이 영역은 토큰·비밀을 갖지 않는다(VAPID는 공개키만).
 
 ## 남은 일 / 막힌 것
 - 실제 survey-service와 연동하지 못했다(모의 서버만). 계약 어긋남은 CR-002, 003.

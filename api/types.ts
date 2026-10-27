@@ -20,7 +20,7 @@ export interface FrontendInput {
 export const SESSION_STATES = ["ACTIVE", "PAUSED_RISK", "ENDED"] as const;
 export const ALERT_STATUS = ["OPEN", "RESOLVED"] as const;
 
-// StaffAlert / StaffAlertPage / SessionState / PushConfig: boundary-contracts v1.3.2 schemas.
+// StaffAlert / StaffAlertPage / SessionState / PushConfig: boundary-contracts v2.0.2 schemas.
 // 읽을 때는 관대하게: kind, status, state에 모르는 값이 올 수 있다.
 export interface StaffAlert {
   alert_id: string;

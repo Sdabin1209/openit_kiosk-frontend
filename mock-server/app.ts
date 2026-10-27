@@ -36,7 +36,9 @@ export interface MockState {
 
 const QUESTIONS = ["어디가 불편하신가요?", "언제부터 그러셨나요?", "복용 중인 약이 있으신가요?", "문진이 끝났습니다. 감사합니다."];
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const berr = (code: string, message: string, retryable = false) => ({ pipeline_schema_version: "1.0", code, message, retryable });
+// boundary-contracts v2.0.2의 PIPELINE_SCHEMA_VERSION. scripts/check-schema.mjs가 계약과 대조한다.
+export const PIPELINE_SCHEMA_VERSION = "2.0";
+const berr = (code: string, message: string, retryable = false) => ({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message, retryable });
 
 export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: number } = {}): { server: Server; state: MockState; reset: (s?: Partial<Scenario>) => void } {
   const state: MockState = { sc: { ...DEFAULT, ...initial }, sessions: new Map(), alerts: [], subs: new Map(), cache: new Map(), events: [], sse: new Set(), seq: 0, requests: 0, log: [] };

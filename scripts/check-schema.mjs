@@ -16,5 +16,13 @@ let bad = 0;
 for (const [name, want] of [["WRITE_COMMITTED", consts(fi.write_committed)], ["STAFF_ALERT", consts(fi.staff_alert)], ["DECISIONS", consts(iv)], ["SESSION_STATES", ss.properties.state.enum], ["ALERT_STATUS", st.properties.status.enum]]) {
   if (!eq(arr(name), want)) { console.error(`불일치 ${name}: types.ts=${arr(name)} schema=${want}`); bad++; }
 }
+// 계약 버전 대조: 기준 계약(../boundary-contracts)의 패키지 버전과 pipeline_schema_version이 이 영역의 표기와 같아야 한다.
+const bc = (n) => readFileSync(new URL(`../../boundary-contracts/${n}`, import.meta.url), "utf8");
+const ver = bc("pyproject.toml").match(/^version\s*=\s*"([^"]+)"/m)?.[1];
+const pipe = bc("boundary_contracts/schemas_api.py").match(/PIPELINE_SCHEMA_VERSION\s*=\s*"([^"]+)"/)?.[1];
+const docker = readFileSync(new URL("../Dockerfile", import.meta.url), "utf8").match(/ARG BOUNDARY_CONTRACT=(\S+)/)?.[1];
+const mock = readFileSync(new URL("../mock-server/app.ts", import.meta.url), "utf8").match(/PIPELINE_SCHEMA_VERSION = "([^"]+)"/)?.[1];
+if (docker !== `v${ver}`) { console.error(`불일치 Dockerfile BOUNDARY_CONTRACT=${docker} 계약=v${ver}`); bad++; }
+if (mock !== pipe) { console.error(`불일치 모의 서버 pipeline_schema_version=${mock} 계약=${pipe}`); bad++; }
 if (bad) process.exit(1);
-console.log("스키마 열거값 일치");
+console.log(`스키마 열거값 일치, 계약 v${ver}(pipeline ${pipe}) 표기 일치`);
