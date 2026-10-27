@@ -13,12 +13,14 @@
     "test": "node --test \"test/*.test.ts\"",
     "mock": "node mock-server/main.ts",
     "start": "node server/static.mjs",
-    "smoke": "bash scripts/smoke.sh"
+    "smoke": "bash scripts/smoke.sh",
+    "test:e2e": "npm run build && node --test --test-concurrency=1 \"test-e2e/*.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "ajv": "8.17.1",
     "esbuild": "0.25.9",
+    "playwright": "1.55.0",
     "typescript": "5.9.2"
   }
 }
