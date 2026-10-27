@@ -4,12 +4,15 @@
 | 명령 | 내용 |
 |---|---|
 | `npm ci` | 의존 설치(리포 안 `node_modules`) |
-| `npm test` | 단위·계약 시험(43개) |
+| `npm test` | 단위·계약 시험(48개, doctor 판정 시험 5개 포함) |
 | `npm run typecheck`, `npm run check-schema` | 타입, 스키마 열거값 |
 | `npm run smoke` | 이미지 빌드, `/healthz`, 라벨, non-root (Docker 필요) |
+| `npm run doctor` | 브라우저 시험 전제 점검(아래). `test:e2e`가 시작할 때 자동으로 먼저 부른다 |
 | `npm run test:e2e` | 실제 헤드리스 Chromium에서 화면 흐름(9개). 빌드 후 모의 서버+정적 서버를 빈 포트로 띄운다 |
 
 ## 브라우저 시험(`test-e2e/`) 전제 설치
+`npm run doctor`(`scripts/doctor.mjs`)가 아래 전제를 점검한다: Playwright Chromium 설치 여부, `ldd`로 본 빠진 공유 라이브러리(이름으로 나열), 한글 글꼴(`fc-list :lang=ko`). 부족하면 `FAIL: 전제 미충족`과 해결 명령을 내고 종료 코드 1로 끝난다. `test:e2e`는 doctor가 실패하면 시험을 시작하지 않는다. 판정 로직은 가짜 점검 결과로 단위 시험한다(`test/doctor.test.ts`).
+
 1. `npm ci` (Playwright 1.55.0은 devDependency로 잠겨 있다)
 2. `npx playwright install chromium` (브라우저를 `~/.cache/ms-playwright`에 내려받는다)
 3. 시스템 라이브러리: `sudo npx playwright install-deps chromium` (Ubuntu 24.04에서 libnspr4, libnss3, libasound2t64가 없으면 브라우저가 뜨지 않는다. 시험은 이 오류 메시지를 그대로 낸다)
@@ -17,6 +20,9 @@
 
 시험은 새 헤드리스 모드(`channel: "chromium"`)를 쓴다. 기본 headless shell은 알림 권한 부여가 동작하지 않는다.
 스크린샷은 `e2e-artifacts/`(gitignore)에 저장되며 환자 정보 없는 가짜 문장만 쓴다.
+
+### 검증 환경과 한계 (숨기지 않음)
+브라우저 시험 9/9 통과는 이 작업 PC에서 sudo 암호가 없어 표준 설치(`install-deps`, 글꼴)를 못 하고, `apt-get download`한 libnspr4·libnss3·libasound2t64 deb을 스크래치패드에 풀어 `LD_LIBRARY_PATH`로 가리킨 우회 환경에서 얻은 결과다. 표준 전제를 갖춘 환경에서만 재현되는 것으로 보고, 아직 그런 깨끗한 환경에서는 돌려 보지 못했다. 우회 없이 이 PC에서 `npm run test:e2e`를 실행하면 doctor가 위 라이브러리 목록과 함께 FAIL로 끝나는 것을 확인했다. 한글 글꼴도 이 PC에는 없어 스크린샷은 네모로 찍혔다.
 
 ### 자동으로 확인하는 것
 시작 → 질문 → 텍스트 제출 → 다음 질문 → 종료, 가짜 SpeechRecognition 경계(ko-KR 어댑터가 텍스트를 서버로 전달), 위험 발화 대기 화면, 직원 호출 화면(알림 전달 실패)과 처음으로, 503 지속 시 직원 호출 화면, 저장 실패 시 다시 말하기, 지연 중 대기 화면, 직원 콘솔 실시간 알림과 이어서 진행(키오스크가 폴링으로 재개), 서비스 워커 등록·활성화와 푸시 핸들러의 알림 표시(합성 PushEvent).
