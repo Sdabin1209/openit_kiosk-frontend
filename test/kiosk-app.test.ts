@@ -1,5 +1,5 @@
 // 키오스크 앱 전체(dist/kiosk.js + 실제 index.html)를 jsdom에서 돌리는 시험. Docker 없이 호스트에서 돈다.
-// 연결: jsdom 앱 -> (같은 출처 라우터) -> 정적 서버 server/static.mjs(dist, CONFIG_FILE) 와 모의 공개 API(/v1, 기기 토큰 필요).
+// 연결: jsdom 앱 -> (같은 출처 라우터) -> 정적 파일 대역 mock-server/devstatic.ts(dist, CONFIG_FILE) 와 모의 공개 API(/v1, 기기 토큰 필요).
 // 확인하는 것: (1) 시작 URL 조각 없이 /config.json의 기기 토큰으로 POST /v1/sessions를 부른다. (2) 대화가 시간순 말풍선으로 보이고
 // 종료하면 지워진다. (3) 저장소·쿠키에 아무것도 남지 않는다. 기대값은 PUBLIC_API.md F절(기기 토큰은 Authorization: Bearer)과 데모 요구에서 왔다.
 import { test } from "node:test";
@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import { createMock } from "../mock-server/app.ts";
-import { makeStaticHandler } from "../server/static.mjs";
+import { makeDevStatic } from "../mock-server/devstatic.ts";
 import { waitFor } from "./helpers.ts";
 
 let JSDOM: any = null;
@@ -23,12 +23,12 @@ async function rig(configFile: string | null) {
   assert.ok(existsSync("dist/kiosk.js"), "dist 없음: npm run build 먼저");
   const mock = createMock({ deviceToken: TOKEN });
   const api = mock.server.listeners("request")[0] as (...a: any[]) => void;
-  const st = makeStaticHandler({ dir: "dist", configFile });
+  const st = makeDevStatic({ dir: "dist", configFile });
   const seen: Array<{ method: string; path: string; auth: string | undefined }> = [];
   const front: Server = createServer((req, res) => {
     const path = (req.url ?? "").split("?")[0];
     seen.push({ method: req.method ?? "", path, auth: req.headers.authorization });
-    if (path.startsWith("/v1/")) api(req, res); else void st(req, res);
+    if (path.startsWith("/v1/")) api(req, res); else st(req, res);
   });
   await new Promise<void>((r) => front.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${(front.address() as AddressInfo).port}`;

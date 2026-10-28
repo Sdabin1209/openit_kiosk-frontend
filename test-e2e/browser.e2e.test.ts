@@ -9,12 +9,12 @@ import { createECDH } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { chromium, type Browser, type Page, type BrowserContext } from "playwright";
 import { createMock } from "../mock-server/app.ts";
-import { makeStaticHandler } from "../server/static.mjs";
+import { makeDevStatic } from "../mock-server/devstatic.ts";
 
 const SHOTS = "e2e-artifacts";
 mkdirSync(SHOTS, { recursive: true });
 const mock = createMock({});
-const st = makeStaticHandler({ dir: "dist" });
+const st = makeDevStatic({ dir: "dist" });
 const api = mock.server.listeners("request")[0] as (...a: any[]) => void;
 // 게이트웨이 CSRF 방어(Sec-Fetch-Site same-origin|none, Origin == 요청 출처)와 Referrer-Policy: no-referrer를 모의한다.
 // 브라우저가 보낸 상태 변경 요청(Sec-Fetch-Site가 있는 것만 = 브라우저. Node의 시험용 fetch는 보내지 않아 제외)의 헤더를 기록해 마지막 시험에서 확인한다.
@@ -27,7 +27,7 @@ const web: Server = createServer((req, res) => {
   }
   if (p.startsWith("/v1/") || p.startsWith("/__mock/")) api(req, res);
   else if (staticDown) { res.writeHead(503, { "retry-after": "1" }); res.end("static down"); } // 정적 화면 서버 장애 모의(A3)
-  else void st(req, res);
+  else st(req, res);
 });
 let base = "", browser: Browser, staticDown = false;
 const vapid = (() => { const e = createECDH("prime256v1"); e.generateKeys(); return e.getPublicKey().toString("base64url"); })();

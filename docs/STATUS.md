@@ -1,5 +1,10 @@
 # STATUS
 
+## 단위 4a (2026-10-29, 브랜치 wo-u4)
+- 정적 서버 `server/static.mjs`를 Caddy file_server 이미지로 대체했다(ADR 0022, 0010 대체). 계약 핀 v2.2.2. 동작 차이 5가지는 ADR 0022 결과 절.
+- 성질 시험 `npm run test:image`(14개)를 교체 전 Node 이미지에 먼저 돌려 13개 통과를 확인했고(그때 시험 13개) Caddy 이미지에서 같은 시험이 통과한다(400 보안 헤더 한 항목만 알려진 차이로 바꿨다).
+- `npm run test:e2e`는 이번에 돌려 보니 32개 중 22개가 실패한다: 대화 말풍선(chat) 추가 뒤 `getByText('어디가 불편하신가요?')`가 두 요소에 걸려 strict mode 위반이 난다. 정적 서빙과 무관한 시험 로케이터 문제이고 이번에 고치지 않았다. 또한 `test-e2e/Dockerfile`이 `assets/`를 복사하지 않아 빌드가 깨져 있던 것을 고쳤다(그 전에는 아예 실행되지 않았다).
+
 ## 단위 3 (2026-10-29, 브랜치 wo-u3)
 - 계약 핀 v2.2.1(Dockerfile ARG). 이 영역은 turn-engine·model-runtime을 쓰지 않는다. 문진 스키마 패키지를 설치하지 않는다(라벨 `survey-schema`는 주 버전 `1`).
 - 손으로 쓴 형식 검사를 계약 스키마의 검증기로 바꿨다(ADR 0021): `/config.json`(DeviceConfig), 시작 URL 조각(KioskStartFragment), 서비스 워커 푸시 본문(StaffPushPayload). 모르는 키가 있으면 그 출처를 쓰지 않는다(예전에는 무시). `docs/image-interface.json`(StaticImageInterface 선언)과 이미지 라벨(ImageLabels)은 `test/image-contract.test.ts`가 검사한다. `ARG REVISION` 기본값은 `n/a`.

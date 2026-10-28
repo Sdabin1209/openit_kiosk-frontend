@@ -43,5 +43,5 @@ for k in io.openit.service io.openit.revision io.openit.contracts.boundary io.op
   [ -n "$V" ] || fail "라벨 $k 없음"
   echo "label $k=$V"
 done
-"$DOCKER" logs "$CTR" 2>&1 | grep -q '"path"' || fail "표준 출력 로그 없음"
+"$DOCKER" logs "$CTR" 2>&1 | grep -q '"uri"' || fail "표준 출력 로그 없음"
 echo "SMOKE OK (uid=$USER_ID)"

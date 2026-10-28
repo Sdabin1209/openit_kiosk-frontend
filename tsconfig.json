@@ -6,5 +6,5 @@
     "allowImportingTsExtensions": true, "verbatimModuleSyntax": true,
     "types": ["node"]
   },
-  "include": ["api", "apps", "mock-server", "test", "test-e2e"]
+  "include": ["api", "apps", "mock-server", "test", "test-e2e", "test-image"]
 }

@@ -13,8 +13,9 @@ COPY --chown=pwuser:pwuser package.json package-lock.json tsconfig.json ./
 RUN npm ci --ignore-scripts
 COPY --chown=pwuser:pwuser api ./api
 COPY --chown=pwuser:pwuser apps ./apps
+COPY --chown=pwuser:pwuser assets ./assets
 COPY --chown=pwuser:pwuser mock-server ./mock-server
-COPY --chown=pwuser:pwuser server ./server
+COPY --chown=pwuser:pwuser Caddyfile ./Caddyfile
 COPY --chown=pwuser:pwuser scripts ./scripts
 COPY --chown=pwuser:pwuser test-e2e ./test-e2e
 ENV CI=1

@@ -2,12 +2,8 @@
 // 두 스키마는 ../boundary-contracts/schemas를 읽어 쓴다(복사본 없음). 선언서 docs/image-interface.json은 이미지에 싣지 않는다(deploy가 읽는 방법은 정해지지 않음).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
-import { readFileSync, readdirSync, writeFileSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020.js";
-import { makeStaticHandler } from "../server/static.mjs";
 
 const BC = new URL("../../boundary-contracts/", import.meta.url);
 const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -27,30 +23,13 @@ test("StaticImageInterface: 계약 예시는 통과하고 거부 예시는 거�
   for (const n of ["no-readyz", "port-string", "root-user", "secret-env", "serves-v1"]) assert.equal(v(ex("conformance/examples_invalid", `StaticImageInterface.${n}`)), false, n);
 });
 
-test("선언서 docs/image-interface.json이 계약을 지키고 Dockerfile과 같다(포트, 사용자, 환경 변수 기본값)", () => {
+test("선언서 docs/image-interface.json이 계약을 지키고 Dockerfile과 같다(포트, 사용자, 환경 변수 기본값). 경로는 test-image/가 실제 이미지로 확인한다", () => {
   const v = validator("StaticImageInterface");
   assert.equal(v(decl), true, JSON.stringify(v.errors));
   assert.equal(decl.port, Number(dockerfile.match(/^EXPOSE (\d+)/m)![1]));
   assert.equal(decl.user, dockerfile.match(/^USER (\S+)/m)![1]);
   const env = dockerfile.match(/^ENV (.+)$/m)![1].split(/\s+/).map((kv) => kv.split("=") as [string, string]);
-  assert.deepEqual(Object.fromEntries(env.filter(([k]) => k !== "NODE_ENV")), decl.env);
-});
-
-test("선언서의 경로가 실제 정적 서버 동작과 같다(/healthz, /readyz, /config.json은 CONFIG_FILE이 있을 때만, /v1/은 처리하지 않음)", async () => {
-  const cfgDir = mkdtempSync(join(tmpdir(), "kf-ifc-"));
-  const cfgFile = join(cfgDir, "config.json");
-  writeFileSync(cfgFile, "{}");
-  const run = async (configFile: string | null, fn: (base: string) => Promise<void>) => {
-    const h = makeStaticHandler({ dir: "dist", configFile });
-    const srv = createServer((q, r) => void h(q, r));
-    await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
-    try { await fn(`http://127.0.0.1:${(srv.address() as any).port}`); } finally { srv.closeAllConnections(); srv.close(); }
-  };
-  await run(cfgFile, async (base) => {
-    for (const r of decl.routes) assert.equal((await fetch(base + r.path)).status, 200, r.path);
-    for (const p of decl.not_served_prefixes) assert.equal((await fetch(base + p + "sessions")).status, 404, p);
-  });
-  await run(null, async (base) => assert.equal((await fetch(base + "/config.json")).status, 404));
+  assert.deepEqual(Object.fromEntries(env.filter(([k]) => k === "PORT" || k === "STATIC_DIR")), decl.env);
 });
 
 test("Dockerfile ARG 기본값에 none/unknown/unset이 없다(값 없음은 n/a 하나)", () => {

@@ -110,7 +110,7 @@ api/            공개 API 클라이언트(UI 무관)
 mock-server/    모의 서버(Node, 의존 없음)
 apps/kiosk/     키오스크 앱(flow.ts 상태 기계, stt.ts 어댑터, main.ts UI)
 apps/staff/     직원 콘솔(main.ts, sync.ts, decide.ts, push.ts, sw.ts)
-server/         정적 파일 서버(/healthz, /readyz)
+Caddyfile      정적 서빙 설정(Caddy, /healthz, /readyz)
 scripts/        빌드, 스키마 대조, 스모크
 test/           자동 시험
 Dockerfile, package-lock.json
@@ -120,7 +120,7 @@ Dockerfile, package-lock.json
 - TypeScript 순수(프레임워크 없음). 번들은 작게, 의존은 최소. 화면이 단순하다.
 - 빌드는 esbuild 하나. 시험은 `node:test`(Node 24가 타입 제거를 지원). 개발 의존은 esbuild, typescript, ajv(스키마 대조)뿐이고 런타임 의존은 없다. 잠금 파일은 `package-lock.json`.
 - 글꼴·스크립트는 모두 이미지에 포함, 외부 CDN 없음. 글꼴은 시스템 한국어 글꼴 우선 [미정: 오프라인 글꼴 파일 포함은 라이선스 결정 후].
-- 정적 서버는 Node 작은 스크립트(non-root). `/healthz`, `/readyz`. VAPID 공개키는 서버의 `GET /v1/staff/push-config`에서 받고, null이면 푸시 UI를 끄고 SSE만 쓴다.
+- 정적 서빙은 Caddy file_server(non-root, ADR 0022). `/healthz`, `/readyz`. VAPID 공개키는 서버의 `GET /v1/staff/push-config`에서 받고, null이면 푸시 UI를 끄고 SSE만 쓴다.
 - STT: `SttAdapter` 인터페이스, 기본은 Web Speech API(`ko-KR`) [미정: 한국어 정확도 확인 못 함].
 - 스키마 대조: `scripts/check-schema.mjs`가 `../survey-service/schema/schemas`를 읽어 열거값을 `api/types.ts`와 비교한다(스키마 복사본을 두지 않음). 이웃 폴더가 없으면 이유를 내고 비0으로 끝난다.
 
