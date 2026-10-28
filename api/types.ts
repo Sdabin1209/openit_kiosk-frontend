@@ -93,7 +93,7 @@ export interface StaffSessionValue {
 }
 export interface StaffSessionAlert {
   alert_id: string;
-  kind: "RISK" | "CALL_STAFF" | "USER_CALLED_STAFF" | (string & {});
+  kind: "RISK_STOP" | "CALL_STAFF" | "USER_CALLED_STAFF" | (string & {});
   status: "OPEN" | "RESOLVED" | (string & {});
   created_at: string;
   rule_id: string | null;

@@ -104,7 +104,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     s.turnLog.push({ turn_index: s.turnLog.length, turn_id: turnId, at: ts(), utterance, response_text: response, action });
   const input = (text: string | null, sig: any = null) => ({ response_text: text, turn_failure_signal: sig });
 
-  /** StaffSessionView(서버 스키마 StaffSessionView.json). alert kind는 RISK_STOP → RISK로 옮긴다. */
+  /** StaffSessionView(서버 스키마 StaffSessionView.json). 알림 kind는 공개 이름(RISK_STOP, CALL_STAFF, USER_CALLED_STAFF)을 그대로 쓴다(PUBLIC_API.md 2.2.0, 목록 StaffAlert와 같다). */
   const sessionView = (s: Session) => ({
     session_id: s.id,
     status: s.ended ? (s.endedBy ?? "ENDED_USER_STOP") : s.paused ? "PAUSED_RISK" : "IN_PROGRESS",
@@ -113,7 +113,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     created_at: s.createdAt,
     turns: s.turnLog,
     values: s.values,
-    alerts: state.alerts.filter((a) => a.session_id === s.id).map((a) => ({ alert_id: a.alert_id, kind: a.kind === "RISK_STOP" ? "RISK" : a.kind, status: a.status, created_at: a.created_at, rule_id: a.kind === "RISK_STOP" ? "mock-risk-keyword" : null, resolved_by: resolvedBy.get(a.alert_id) ?? null, ...(a.delivery_attempts !== undefined ? { delivery_attempts: a.delivery_attempts, last_delivery_status: a.last_delivery_status } : {}), ...(a.manual_notice_outcome ? { manual_notice_outcome: a.manual_notice_outcome, manual_notice_reported_at: a.manual_notice_reported_at } : {}), ...(a.pause_reason ? { pause_reason: a.pause_reason } : {}) })),
+    alerts: state.alerts.filter((a) => a.session_id === s.id).map((a) => ({ alert_id: a.alert_id, kind: a.kind, status: a.status, created_at: a.created_at, rule_id: a.kind === "RISK_STOP" ? "mock-risk-keyword" : null, resolved_by: resolvedBy.get(a.alert_id) ?? null, ...(a.delivery_attempts !== undefined ? { delivery_attempts: a.delivery_attempts, last_delivery_status: a.last_delivery_status } : {}), ...(a.manual_notice_outcome ? { manual_notice_outcome: a.manual_notice_outcome, manual_notice_reported_at: a.manual_notice_reported_at } : {}), ...(a.pause_reason ? { pause_reason: a.pause_reason } : {}) })),
   });
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {

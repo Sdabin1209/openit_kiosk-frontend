@@ -24,8 +24,7 @@ test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진
   const { m, api } = await mk();
   const st = await api.startSession(), sid = st.session_id;
   const outs = [st, await api.sendUtterance(sid, "머리가 아파요"), await api.sendUtterance(sid, "어제부터요"), await api.endSession(sid)];
-  // 시작 응답의 session_id는 계약 2.2.0(PUBLIC_API.md)이 정했고, 문진 스키마 FrontendInput(additionalProperties:false)에는 아직 없다: 스키마 검사는 그 필드를 뺀 나머지에 한다.
-  for (const { session_id: _s, ...o } of outs as any[]) assert.ok(validate(o), JSON.stringify(validate.errors));
+  for (const o of outs) assert.ok(validate(o), JSON.stringify(validate.errors)); // 시작 응답의 session_id도 survey-service FrontendInput 스키마 그대로 검사한다
   assert.equal(outs[3].response_text, null);
   assert.equal(m.state.log.some((l) => l.path.includes("secret")), false);
 });
@@ -43,9 +42,7 @@ test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDe
   assert.equal(bodies.length, 4);
   for (const b of bodies) {
     const { turn_id, ...rest } = b as Record<string, any>;
-    // 계약 2.2.0(PUBLIC_API.md)은 SESSION_START에서 session_id를 뺀다. 문진 스키마 FrontendMessage(SESSION_START)는 아직 session_id를 required로 둔다(survey-service 소유, 불일치).
-    // 그래서 시작 본문은 스키마가 아니라 계약 문장으로 확인한다: 키가 kind뿐이다.
-    if (rest.kind === "SESSION_START") { assert.deepEqual(Object.keys(rest), ["kind"]); continue; }
+    if (rest.kind === "SESSION_START") assert.deepEqual(Object.keys(rest), ["kind"]); // 계약 2.2.0: 시작 본문에 session_id가 없다. 아래 스키마 검사(FrontendMessage, session_id 선택)도 그대로 받는다
     const v = rest.decision ? validateDecision : validateMsg;
     assert.ok(v(rest), JSON.stringify(v.errors));
     if (rest.kind === "UTTERANCE" || rest.decision) assert.ok(turn_id);
@@ -165,8 +162,7 @@ test("hang이 3회 이상이면 CallStaffError", async () => {
 test("error 시나리오: 503 두 번 뒤 성공, 지연 시나리오", async () => {
   const { m, api } = await mk({ errorStatus: 503, errorTimes: 2 });
   const first = await api.startSession(), SID_s1 = first.session_id;
-  const { session_id: _sid, ...firstBody } = first as any;
-  assert.ok(validate(firstBody));
+  assert.ok(validate(first), JSON.stringify(validate.errors));
   m.state.sc.delayMs = 40;
   const t0 = Date.now(); await api.sendUtterance(SID_s1, "x", "t1");
   assert.ok(Date.now() - t0 >= 35);
@@ -282,4 +278,13 @@ test("SSE: 연결 직후와 주기마다 id 없는 heartbeat, 끄면 멈추고, 
   const r = await fetch(m.base + "/__mock/heartbeat", { method: "POST", body: JSON.stringify({ on: false }) });
   assert.equal(((await r.json()) as any).heartbeat, false);
   ctl.abort();
+});
+
+test("StaffSessionView: 모의 서버의 세션 보기가 survey-service 스키마를 그대로 지킨다(알림 kind는 RISK_STOP 등 공개 이름)", async () => {
+  const { api } = await mk({ alertDelivery: "DELIVERED" });
+  const sid = (await api.startSession()).session_id; await api.sendUtterance(sid, "위험해요");
+  const v = await new StaffApi(api).getSession(sid);
+  const vView = ajv.compile(JSON.parse(readFileSync(new URL("StaffSessionView.json", SCHEMA_DIR), "utf8")));
+  assert.ok(vView(v), JSON.stringify(vView.errors));
+  assert.equal(v.alerts[0].kind, "RISK_STOP");
 });
