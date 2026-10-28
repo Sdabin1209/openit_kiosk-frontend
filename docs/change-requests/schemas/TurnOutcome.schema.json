@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openit.example/boundary-contracts/TurnOutcome.schema.json",
+  "title": "TurnOutcome (FrontendInput 의미 제안)",
+  "description": "FrontendInput(survey-service 스키마, 구조는 바꾸지 않는다)의 turn_failure_signal 의미 제안. 쓰는 쪽: 문진 서버. 읽는 쪽: kiosk-frontend(apps/kiosk/flow.ts handle/needsStateCheck). 근거: PUBLIC_API.md 34행 '이 값이 null이 아니면 이번 턴 처리에 문제가 있었다'. 즉 신호가 있다면 NOT_COMMITTED이거나 staff_alert가 NONE이 아니어야 한다(COMMITTED + NONE인 신호는 '문제 없음'과 모순이라 금지). 아직 계약에 없는 부분은 STAFF_CALL 가지: 위험·되묻기 한도로 세션이 정지된 턴이 신호를 null로 내는지(현재 키오스크는 그럴 수 있다고 보고 매 응답 뒤 GET /state를 한 번 더 부른다) 아니면 staff_alert DELIVERED/DELIVERY_FAILED 신호를 항상 싣는지를 헤드가 정해 달라는 요청이다. 이 스키마는 후자(신호를 항상 싣는다)를 제안한다. pause_reason(RISK|REASK_LIMIT|OTHER)은 신호에도 실린다(PUBLIC_API.md H절).",
+  "type": "object",
+  "required": ["response_text", "turn_failure_signal"],
+  "properties": {
+    "response_text": { "type": ["string", "null"] },
+    "turn_failure_signal": {
+      "oneOf": [
+        { "type": "null", "description": "NORMAL: 문제 없음. 세션은 정지되지 않았다." },
+        {
+          "description": "NOT_COMMITTED: 기록이 저장되지 않았다. 키오스크는 다시 말하기 화면을 보인다.",
+          "type": "object",
+          "properties": { "write_committed": { "const": "NOT_COMMITTED" }, "staff_alert": { "const": "NONE" } },
+          "required": ["write_committed", "staff_alert"]
+        },
+        {
+          "description": "STAFF_CALL: 세션이 정지되어 직원 호출이 나갔다. DELIVERED = 직원 콘솔에 전달됨(대기 화면), DELIVERY_FAILED = 전달 실패(직원을 직접 부르는 화면).",
+          "type": "object",
+          "properties": { "staff_alert": { "enum": ["DELIVERED", "DELIVERY_FAILED"] } },
+          "required": ["staff_alert"]
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "signal": {
+      "type": "object",
+      "required": ["session_id", "write_committed", "staff_alert"],
+      "properties": {
+        "session_id": { "type": "string", "minLength": 1 },
+        "write_committed": { "enum": ["COMMITTED", "NOT_COMMITTED"] },
+        "staff_alert": { "enum": ["NONE", "DELIVERED", "DELIVERY_FAILED"] },
+        "pause_reason": { "enum": ["RISK", "REASK_LIMIT", "OTHER"], "description": "optional. 없으면 미상. 읽는 쪽은 모르는 값을 OTHER로 본다." }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "turn_failure_signal": { "type": "object" } }, "required": ["turn_failure_signal"] }, "then": { "properties": { "turn_failure_signal": { "$ref": "#/$defs/signal" } } } }
+  ],
+  "additionalProperties": false
+}
