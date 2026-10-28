@@ -1,6 +1,7 @@
 // KF-09 재현: 재시도·"처리 여부 불명" 분류가 api/retry.ts 한 곳에 있고, 상태 기계는 오류 본문 모양(details.reason)을 직접 읽지 않는다.
 // 기대값의 출처(고치는 쪽 시험이 아님): boundary-contracts/PUBLIC_API.md 125행 "5xx와 시간 초과는 처리 여부를 모르는 경우이므로 같은 turn_id를 유지한다",
 // 17행 409 details.reason, 124행 "클라이언트는 details.reason을 먼저 본다".
+import { PIPELINE_SCHEMA_VERSION } from "../mock-server/app.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -12,7 +13,7 @@ import { json, ok, settle, started } from "./helpers.ts";
 
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
 const err = (status: number, code = "UNAVAILABLE", details?: object) =>
-  new Response(JSON.stringify({ pipeline_schema_version: "2.1", code, message: "x", retryable: false, ...(details ? { details } : {}) }), { status, headers: { "content-type": "application/json" } });
+  new Response(JSON.stringify({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message: "x", retryable: false, ...(details ? { details } : {}) }), { status, headers: { "content-type": "application/json" } });
 function make(route: (path: string, body: any) => Response) {
   const calls: Array<{ path: string; body: any }> = [];
   const api = new PublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
@@ -49,7 +50,7 @@ test("KF-09: report도 5xx면 같은 turn_id로 2번까지 보낸다(501·507 �
 });
 
 test("KF-09: ApiError가 해석된 reason을 내보낸다(본문 details.reason), 없거나 문자열이 아니면 null", () => {
-  const b = (details: unknown) => ({ pipeline_schema_version: "2.1", code: "CONFLICT", message: "x", retryable: false, details }) as any;
+  const b = (details: unknown) => ({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code: "CONFLICT", message: "x", retryable: false, details }) as any;
   assert.equal(new ApiError(409, b({ reason: "NO_OPEN_ALERT" })).reason, "NO_OPEN_ALERT");
   assert.equal(new ApiError(409, b({ reason: 3 })).reason, null);
   assert.equal(new ApiError(409, b(undefined)).reason, null);

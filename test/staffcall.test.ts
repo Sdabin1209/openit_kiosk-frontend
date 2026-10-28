@@ -1,4 +1,5 @@
 // CR-H001(직원 호출 재알림·실패 기록)과 CR-H002(pause_reason)의 키오스크 쪽 시험. 가짜 fetch + 가짜 시계, 모의 서버 계약 시험.
+import { PIPELINE_SCHEMA_VERSION } from "../mock-server/app.ts";
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -13,7 +14,7 @@ import { hang, json, ok, settle, startMock, started } from "./helpers.ts";
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
 const err = (status: number, code: string, details?: object, headers: Record<string, string> = {}) =>
-  new Response(JSON.stringify({ pipeline_schema_version: "2.1", code, message: "x", retryable: status === 429, ...(details ? { details } : {}) }), { status, headers: { "content-type": "application/json", ...headers } });
+  new Response(JSON.stringify({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message: "x", retryable: status === 429, ...(details ? { details } : {}) }), { status, headers: { "content-type": "application/json", ...headers } });
 
 /** 가짜 시계: tick()이 1초씩 흘린다. */
 function clock() {

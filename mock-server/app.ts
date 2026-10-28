@@ -61,8 +61,8 @@ const QUESTIONS = ["어디가 불편하신가요?", "언제부터 그러셨나�
 const SUBJECT_REF_RE = /^[A-Za-z0-9._:/#=+-]{1,128}$/; // PUBLIC_API.md A절
 const ts = (d = new Date()) => d.toISOString().replace(/\.\d+Z$/, "Z"); // 스키마 Timestamp: 초 단위, 끝에 Z
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-// boundary-contracts v2.0.2의 PIPELINE_SCHEMA_VERSION. scripts/check-schema.mjs가 계약과 대조한다.
-export const PIPELINE_SCHEMA_VERSION = "2.1";
+// 기준 계약(Dockerfile ARG BOUNDARY_CONTRACT)의 PIPELINE_SCHEMA_VERSION. 이 영역(Node)은 계약 패키지(Python)를 import할 수 없어 값을 여기 한 곳에 두고, scripts/check-schema.mjs가 계약 상수와 대조한다. 시험은 이 상수를 import한다.
+export const PIPELINE_SCHEMA_VERSION = "2.2";
 const berr = (code: string, message: string, retryable = false) => ({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message, retryable });
 
 export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: number } = {}): { server: Server; state: MockState; reset: (s?: Partial<Scenario>) => void } {
