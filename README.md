@@ -51,10 +51,10 @@ npm run smoke           # 이미지 빌드, /healthz, 라벨, non-root (Docker)
 npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식 이미지 안에서 실행 (Docker)
 ```
 
-`test/audit.test.ts`와 `test/mock.test.ts`는 `../boundary-contracts`와 `../survey-service/schema`를 읽으므로 워크스페이스 폴더 구조 안에서만 돌 수 있다(워크스페이스 규칙상 의도된 읽기 전용 의존, 단독 clone이면 ENOENT로 실패).
+`npm run check-schema`와 `test/audit.test.ts`, `test/mock.test.ts`, `test/staffcall.test.ts`는 `../boundary-contracts`와 `../survey-service/schema`를 읽으므로 워크스페이스 폴더 구조(두 폴더가 이 리포와 같은 상위 폴더에 있음) 안에서만 통과한다. 워크스페이스 규칙상 의도된 읽기 전용 의존이다. `setup-env.sh`는 이 폴더들을 가져오지 않는다. 새 머신에서는 워크스페이스를 같은 구조로 준비한 뒤 실행한다. 이 리포만 clone하면 `typecheck`는 통과하지만 `check-schema`는 이유를 내고 비0으로 끝나고 `npm test`는 위 3개 파일이 ENOENT로 실패한다(2026-10-28, 새 clone에서 확인: 시험 118개 중 파일 3개 실패).
 
 이 문서를 쓰며 직접 돌려 본 것(2026-10-27, Node v24.14.0): `npm test`(통과, 숫자는 실행 결과 참조), `npm run typecheck`(오류 없음), `npm run check-schema`("스키마 열거값 일치"), `npm run doctor`("OK: 전제 충족").
-돌리지 않은 것: `npm ci`, `npm run build`, 모의 서버 시연, `npm run smoke`, `npm run test:e2e`, `npm run test:e2e:host`.
+`bash scripts/setup-env.sh`는 2026-10-28 새 clone에서 두 번 돌려 둘 다 성공했다(위 설명). 돌리지 않은 것: `npm run build`, 모의 서버 시연, `npm run smoke`, `npm run test:e2e`, `npm run test:e2e:host`.
 
 ## 현재 상태
 

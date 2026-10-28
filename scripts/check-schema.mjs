@@ -1,5 +1,12 @@
 // ../survey-service/schema/schemas(읽기 전용)의 열거값이 api/types.ts와 같은지 대조한다. 스키마 복사본은 두지 않는다.
 import { existsSync, readFileSync } from "node:fs";
+// 왜: 이 대조는 이웃 폴더(문진 스키마, 계약)를 읽기 전용으로 읽는다. 없을 때 ENOENT 스택 대신 이유와 해결을 내고 비0으로 끝낸다.
+for (const rel of ["../../survey-service/schema/schemas/", "../../boundary-contracts/schemas/"]) {
+  if (!existsSync(new URL(rel, import.meta.url))) {
+    console.error(`check-schema: 필요한 이웃 폴더가 없습니다 (이 리포 기준 ${rel.slice(3)}). 워크스페이스 구조(survey-service, boundary-contracts가 이 리포와 같은 상위 폴더에 있음)에서 실행하세요.`);
+    process.exit(1);
+  }
+}
 const dir = new URL("../../survey-service/schema/schemas/", import.meta.url);
 const bdir = new URL("../../boundary-contracts/schemas/", import.meta.url);
 const read = (n) => JSON.parse(readFileSync(new URL(n, dir), "utf8"));
