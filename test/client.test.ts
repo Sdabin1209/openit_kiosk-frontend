@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PublicApiClient } from "../api/client.ts";
 import { ApiError, CallStaffError } from "../api/errors.ts";
-import { hang, json, ok } from "./helpers.ts";
+import { hang, json, ok, started } from "./helpers.ts";
 
 const fast = { timeoutMs: 250, retry: { maxAttempts: 3 }, sleep: async () => {} };
 
@@ -46,17 +46,18 @@ test("한 세션의 요청은 하나씩 순서대로 보낸다", async () => {
     const b = JSON.parse(init.body as string);
     order.push(b.utterance ?? b.kind);
     await new Promise((r) => setTimeout(r, b.utterance === "첫째" ? 30 : 1));
-    active--; return ok();
+    active--; return b.kind === "SESSION_START" ? started() : ok();
   }) as any });
-  await Promise.all([c.startSession("s1"), c.sendUtterance("s1", "첫째", "t1"), c.sendUtterance("s1", "둘째", "t2"), c.endSession("s1")]);
+  const sid = (await c.startSession()).session_id; // 서버가 발급한 ID(2.2.0). 시작은 ID를 얻기 전이라 큐 밖이고, 이후 요청부터 세션별로 직렬화된다
+  await Promise.all([c.sendUtterance(sid, "첫째", "t1"), c.sendUtterance(sid, "둘째", "t2"), c.endSession(sid)]);
   assert.deepEqual(order, ["SESSION_START", "첫째", "둘째", "SESSION_END"]);
   assert.equal(maxActive, 1);
 });
 
 test("요청에 Authorization이 없고 같은 출처 /v1로 간다", async () => {
   let h: any, url = "";
-  const c = new PublicApiClient({ ...fast, fetch: (async (u: string, init: RequestInit) => { h = init.headers; url = u; return ok(); }) as any });
-  await c.startSession("s1");
+  const c = new PublicApiClient({ ...fast, fetch: (async (u: string, init: RequestInit) => { h = init.headers; url = u; return started(); }) as any });
+  await c.startSession();
   assert.equal(url, "/v1/sessions");
   assert.equal(Object.keys(h).some((k) => k.toLowerCase() === "authorization"), false);
 });
@@ -64,8 +65,8 @@ test("요청에 Authorization이 없고 같은 출처 /v1로 간다", async () =
 test("빈 발화와 잘못된 session_id는 보내지 않는다", () => {
   const c = new PublicApiClient({ fetch: (async () => { throw new Error("called"); }) as any });
   assert.throws(() => c.sendUtterance("s1", "   "));
-  assert.throws(() => c.startSession("bad id!"));
-  assert.throws(() => c.startSession("a".repeat(65)));
+  assert.throws(() => c.endSession("bad id!"));
+  assert.throws(() => c.endSession("a".repeat(65)));
 });
 
 test("429·503은 Retry-After(초) 이상 기다리고, 없으면 지수 백오프(0.5초 기준)를 따른다", async () => {

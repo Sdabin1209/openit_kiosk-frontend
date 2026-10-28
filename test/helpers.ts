@@ -24,3 +24,14 @@ export async function waitFor(cond: () => boolean, what = "조건", timeoutMs = 
     await new Promise<void>((r) => setImmediate(r));
   }
 }
+
+/** 세션 시작 응답(계약 2.2.0 D106): 서버가 발급한 session_id가 응답에 실린다. */
+export const SERVER_SESSION_ID = "srv-Abc_123-xyz";
+export const started = (text: string | null = "첫 질문", sig: unknown = null, sessionId: string = SERVER_SESSION_ID) => json({ response_text: text, turn_failure_signal: sig, session_id: sessionId });
+/** 시작 응답에 서버 발급 session_id가 없으면 채워 준다(시작 종류와 상관없이 같은 응답을 주는 가짜 서버용). */
+export async function asStarted(res: Response | Promise<Response>): Promise<Response> {
+  const r = await res;
+  if (!r.ok) return r;
+  const b = await r.clone().json().catch(() => null);
+  return b && typeof b === "object" && !("session_id" in b) ? json({ ...b, session_id: SERVER_SESSION_ID }) : r;
+}

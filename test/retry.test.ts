@@ -5,7 +5,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { ApiError, CallStaffError, AbortedError } from "../api/errors.ts";
 import { DEFAULT_RETRY, backoffMs, waitMs } from "../api/retry.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { json, ok, settle, waitFor } from "./helpers.ts";
+import { json, ok, settle, waitFor, started } from "./helpers.ts";
 
 /** 가상 시계: sleep이 시계를 앞으로 보낸다. 예산 계산을 실제 대기 없이 시험한다. */
 function clock() {
@@ -139,7 +139,7 @@ test("흐름: 503 재시도 중에는 SENDING 상태에 retrying 표시, 성공�
   const c = clock();
   const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string);
-    if (b.kind === "SESSION_START") return ok("질문");
+    if (b.kind === "SESSION_START") return started("질문");
     return ++n < 3 ? err(503) : ok("다음");
   }) as any });
   const flow = new KioskFlow(api);
@@ -153,7 +153,7 @@ test("흐름: 503 재시도 중에는 SENDING 상태에 retrying 표시, 성공�
 test("흐름: 504 계속 -> 예산 소진 뒤 직원 호출(RETRY_EXHAUSTED)", async () => {
   const c = clock();
   const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) =>
-    JSON.parse(init.body as string).kind === "SESSION_START" ? ok("질문") : err(504)) as any });
+    JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : err(504)) as any });
   const flow = new KioskFlow(api);
   await flow.start(); await flow.hear(say("네"));
   assert.equal(flow.current.state, "CALL_STAFF");
@@ -163,7 +163,7 @@ test("흐름: 504 계속 -> 예산 소진 뒤 직원 호출(RETRY_EXHAUSTED)", a
 test("흐름: 재시도 중 환자가 직원 호출을 누르면 즉시 직원 호출 화면, 더 보내지 않는다", async () => {
   let n = 0;
   const api = new PublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: (async (_u: string, init: RequestInit) => {
-    if (JSON.parse(init.body as string).kind === "SESSION_START") return ok("질문");
+    if (JSON.parse(init.body as string).kind === "SESSION_START") return started("질문");
     n++; return err(503);
   }) as any });
   const flow = new KioskFlow(api);
@@ -184,7 +184,7 @@ test("흐름: 재시도 중 그만하기(end)는 재시도를 끊고 종료한�
   const api = new PublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: (async (_u: string, init: RequestInit) => {
     const k = JSON.parse(init.body as string).kind; kinds.push(k);
     if (k === "UTTERANCE") return err(503);
-    return ok(k === "SESSION_END" ? null : "질문");
+    return k === "SESSION_START" ? started() : ok(k === "SESSION_END" ? null : "질문");
   }) as any });
   const flow = new KioskFlow(api);
   await flow.start();
@@ -199,7 +199,7 @@ test("흐름: 재시도 소진까지 모든 시도가 같은 turn_id를 쓴다",
   const c = clock(); const ids: string[] = [];
   const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string);
-    if (b.kind === "SESSION_START") return ok("질문");
+    if (b.kind === "SESSION_START") return started("질문");
     ids.push(b.turn_id); return err(503);
   }) as any });
   const flow = new KioskFlow(api);
@@ -213,7 +213,7 @@ test("흐름: reason 없는 409는 WAITING_STAFF(기존), TURN_IN_PROGRESS는 �
   const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", state: mode === "plain" ? "PAUSED_RISK" : "ACTIVE", resume_text: null });
     const b = JSON.parse(init.body as string);
-    if (b.kind === "SESSION_START") return ok("질문");
+    if (b.kind === "SESSION_START") return started("질문");
     if (mode === "plain") return err(409, {}, "CONFLICT");
     return ++n < 2 ? inProgress({ "retry-after": "1" }) : ok("다음");
   }) as any });
@@ -252,7 +252,7 @@ for (const [name, mk] of bad) {
 test("깨진 응답이 계속되면 예산 소진 뒤 직원 호출이고, 값을 지어내 LISTENING으로 가지 않는다", async () => {
   const c = clock();
   const api = new PublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) =>
-    JSON.parse(init.body as string).kind === "SESSION_START" ? ok("질문") : raw("<html>")()) as any });
+    JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : raw("<html>")()) as any });
   const flow = new KioskFlow(api);
   await flow.start(); await flow.hear(say("네"));
   assert.equal(flow.current.state, "CALL_STAFF");

@@ -7,7 +7,7 @@ import { StaffApi } from "../api/staff.ts";
 import { ApiError } from "../api/errors.ts";
 import { loadKioskStart, parseFragment, type KioskStart } from "../api/device.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { startMock, json, ok } from "./helpers.ts";
+import { startMock, json, ok, started } from "./helpers.ts";
 
 const TOKEN = "dev-tok-FAKE-123";
 const REF = "visit:2026/10#27=a+b.c_d-e";
@@ -51,7 +51,7 @@ function capture() {
   const calls: { url: string; headers: Record<string, string>; body: any }[] = [];
   const f = (async (u: string, init: RequestInit) => {
     calls.push({ url: u, headers: init.headers as Record<string, string>, body: init.body ? JSON.parse(init.body as string) : undefined });
-    return ok("질문");
+    return init.body && JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : ok("질문");
   }) as any;
   return { calls, f };
 }
@@ -59,13 +59,13 @@ function capture() {
 test("세션 시작 본문에 subject_ref를 넣고, 없으면 필드를 생략하고, 틀리면 보내지 않는다", async () => {
   const { calls, f } = capture();
   const c = new PublicApiClient({ ...fast, fetch: f });
-  await c.startSession("s1", REF);
-  await c.startSession("s2");
-  await c.startSession("s3", null);
+  const SID_s1 = (await c.startSession(REF)).session_id;
+  const SID_s2 = (await c.startSession()).session_id;
+  const SID_s3 = (await c.startSession(null)).session_id;
   assert.equal(calls[0].body.subject_ref, REF);
   assert.equal("subject_ref" in calls[1].body, false);
   assert.equal("subject_ref" in calls[2].body, false);
-  assert.throws(() => c.startSession("s4", "공백 있음"), /subject_ref/);
+  assert.throws(() => c.startSession("공백 있음"), /subject_ref/);
   assert.equal(calls.length, 3);
 });
 
@@ -73,14 +73,14 @@ test("기기 토큰은 /sessions* 요청에만 Authorization: Bearer로 간다(�
   const { calls, f } = capture();
   let tok: string | null = TOKEN;
   const c = new PublicApiClient({ ...fast, fetch: f, deviceToken: () => tok });
-  await c.startSession("s1"); await c.sendUtterance("s1", "가짜"); await c.getSessionState("s1").catch(() => {}); await c.endSession("s1");
+  const SID_s1 = (await c.startSession()).session_id; await c.sendUtterance(SID_s1, "가짜"); await c.getSessionState(SID_s1).catch(() => {}); await c.endSession(SID_s1);
   await new StaffApi(c).listAlerts("OPEN").catch(() => {});
-  await c.intervene("s1", "RESUME", "t1");
+  await c.intervene(SID_s1, "RESUME", "t1");
   const bySession = calls.filter((x) => x.url.includes("/sessions"));
   assert.ok(bySession.length >= 4 && bySession.every((x) => x.headers.authorization === `Bearer ${TOKEN}`));
   assert.equal(calls.find((x) => x.url.includes("/staff/"))!.headers.authorization, undefined);
   tok = null; calls.length = 0;
-  await c.startSession("s9");
+  const SID_s9 = (await c.startSession()).session_id;
   assert.equal(calls[0].headers.authorization, undefined);
 });
 
@@ -91,7 +91,7 @@ test("개입 결정 본문에 직원 ID가 없다(E절: 게이트웨이 헤더)"
   assert.equal(calls[0].headers["x-openit-user"], undefined);
 });
 
-function flowWith(start: KioskStart, handler: (b: any) => Response = () => ok("질문")) {
+function flowWith(start: KioskStart, handler: (b: any) => Response = (b) => b.kind === "SESSION_START" ? started("질문") : ok("질문")) {
   const calls: any[] = [];
   const api = new PublicApiClient({ ...fast, deviceToken: () => start.deviceToken, fetch: (async (_u: string, init: RequestInit) => { calls.push({ body: JSON.parse(init.body as string), auth: (init.headers as any).authorization }); return handler(calls.at(-1).body); }) as any });
   return { flow: new KioskFlow(api, { startValues: async () => start }), calls };
@@ -187,7 +187,7 @@ test("토큰과 환자 참조가 콘솔·모의 서버 로그에 남지 않는�
     const flow = new KioskFlow(api, { startValues: async () => ({ deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false }) });
     await flow.start(); await flow.hear({ text: "가짜 문장", confidence: 0.9 });
     const bad = new PublicApiClient({ baseUrl: m.base + "/v1", ...fast, deviceToken: () => "wrong" });
-    await bad.startSession("zz", REF).catch(() => {});
+    await bad.startSession(REF).catch(() => {});
     await start({ session_id: "q" }).catch(() => {});
   } finally { Object.assign(console, orig); }
   const all = JSON.stringify([out, m.state.log]);

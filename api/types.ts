@@ -15,10 +15,14 @@ export interface TurnFailureSignal {
 }
 /** POST /v1/sessions 본문. subject_ref는 병원이 정한 불투명 환자 참조(없으면 필드 생략). */
 export interface SessionStart {
-  session_id: string;
+  // session_id는 보내지 않는다: 세션 ID는 서버가 발급한다(계약 2.2.0, D106). 프론트가 보내는 방식은 폐기 예정(3.0.0 제거).
   kind: "SESSION_START";
   subject_ref?: string;
   turn_id?: string;
+}
+/** 세션 시작 응답: FrontendInput + 서버가 발급한 session_id(PUBLIC_API.md 원칙 절, 2.2.0). */
+export interface StartedSession extends FrontendInput {
+  session_id: string;
 }
 export interface FrontendInput {
   response_text: string | null;

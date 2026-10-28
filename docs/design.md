@@ -76,7 +76,7 @@
 ## 4. 공개 API 호출 규칙 대응표
 | 규칙(PUBLIC_API.md) | 구현 위치 |
 | --- | --- |
-| 세션 ID는 프론트가 발급(1~64자, 영문·숫자·`-_`) | `api/ids.ts` `newSessionId` |
+| 세션 ID는 **서버가 발급**한다(계약 2.2.0, D106): 시작 본문에 `session_id`를 보내지 않고 응답의 `session_id`(1~64자, 영문·숫자·`-_`)를 이후 호출에 쓴다. 응답에 없거나 형식이 틀리면 시작 실패(재시도 대상) | `api/client.ts` `startSession`, `api/validate.ts` `validateSessionStarted`, `apps/kiosk/flow.ts` `start`. ADR 0020 |
 | 턴마다 고유 `turn_id` | `api/ids.ts` `newTurnId`, 발화 호출 한 번에 하나 |
 | 같은 `turn_id` 재전송은 안전 | `api/client.ts` 재시도는 같은 `turn_id` |
 | 10초 무응답이면 같은 `turn_id`로 재시도, 총 재시도 예산(기본 20초)을 넘으면 직원 호출(FAULT_POLICY 원칙 7; 이전 "3회 실패"를 대체) | `api/client.ts` `AbortController` 타임아웃, 예산 소진 시 `CallStaffError`. 값과 근거는 `api/retry.ts` |

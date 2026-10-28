@@ -22,8 +22,10 @@ async function mk(sc = {}, opt = {}, mopt = {}) {
 
 test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진이 돈다", async () => {
   const { m, api } = await mk();
-  const outs = [await api.startSession("s1"), await api.sendUtterance("s1", "머리가 아파요"), await api.sendUtterance("s1", "어제부터요"), await api.endSession("s1")];
-  for (const o of outs) assert.ok(validate(o), JSON.stringify(validate.errors));
+  const st = await api.startSession(), sid = st.session_id;
+  const outs = [st, await api.sendUtterance(sid, "머리가 아파요"), await api.sendUtterance(sid, "어제부터요"), await api.endSession(sid)];
+  // 시작 응답의 session_id는 계약 2.2.0(PUBLIC_API.md)이 정했고, 문진 스키마 FrontendInput(additionalProperties:false)에는 아직 없다: 스키마 검사는 그 필드를 뺀 나머지에 한다.
+  for (const { session_id: _s, ...o } of outs as any[]) assert.ok(validate(o), JSON.stringify(validate.errors));
   assert.equal(outs[3].response_text, null);
   assert.equal(m.state.log.some((l) => l.path.includes("secret")), false);
 });
@@ -36,11 +38,14 @@ const vAlert = ajv.getSchema("StaffAlert.schema.json")!, vPage = bs("StaffAlertP
 
 test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDecision을 지킨다(D66)", async () => {
   const bodies: Record<string, any>[] = [];
-  const c = new PublicApiClient({ ...fast, fetch: (async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(init.body as string)); return new Response(JSON.stringify({ response_text: null, turn_failure_signal: null })); }) as any });
-  await c.startSession("s1"); await c.sendUtterance("s1", "x", "t1"); await c.intervene("s1", "RESUME", "t2"); await c.endSession("s1");
+  const c = new PublicApiClient({ ...fast, fetch: (async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(init.body as string)); return new Response(JSON.stringify({ response_text: null, turn_failure_signal: null, session_id: "srv-1" })); }) as any });
+  const SID_s1 = (await c.startSession()).session_id; await c.sendUtterance(SID_s1, "x", "t1"); await c.intervene(SID_s1, "RESUME", "t2"); await c.endSession(SID_s1);
   assert.equal(bodies.length, 4);
   for (const b of bodies) {
     const { turn_id, ...rest } = b as Record<string, any>;
+    // 계약 2.2.0(PUBLIC_API.md)은 SESSION_START에서 session_id를 뺀다. 문진 스키마 FrontendMessage(SESSION_START)는 아직 session_id를 required로 둔다(survey-service 소유, 불일치).
+    // 그래서 시작 본문은 스키마가 아니라 계약 문장으로 확인한다: 키가 kind뿐이다.
+    if (rest.kind === "SESSION_START") { assert.deepEqual(Object.keys(rest), ["kind"]); continue; }
     const v = rest.decision ? validateDecision : validateMsg;
     assert.ok(v(rest), JSON.stringify(v.errors));
     if (rest.kind === "UTTERANCE" || rest.decision) assert.ok(turn_id);
@@ -64,11 +69,11 @@ test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async ()
 
 test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨다", async () => {
   const { m, api } = await mk({ vapidPublicKey: "PUBKEY" });
-  await api.startSession("s1"); await api.sendUtterance("s1", "위험");
+  const SID_s1 = (await api.startSession()).session_id; await api.sendUtterance(SID_s1, "위험");
   const page = await new StaffApi(api).listAlerts("OPEN");
   assert.ok(vPage(page), JSON.stringify(vPage.errors)); // 새 optional 필드 포함 목록 전체(계약 2ec2849에서 StaffAlertPage가 StaffAlert를 $ref)
   assert.ok(vAlert(page.items[0]), JSON.stringify(vAlert.errors));
-  const st = await api.getSessionState("s1");
+  const st = await api.getSessionState(SID_s1);
   assert.ok(vState(st), JSON.stringify(vState.errors));
   assert.equal(st.state, "PAUSED_RISK");
   const pc = await new StaffApi(api).pushConfig();
@@ -80,15 +85,15 @@ test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨
 test("위험 정지 -> 직원 재개: state는 ACTIVE+resume_text, 다음 턴 뒤 null, 종료는 ENDED", async () => {
   const { api } = await mk();
   const staff = new StaffApi(api);
-  await api.startSession("s1"); await api.sendUtterance("s1", "위험");
-  await staff.intervene("s1", "RESUME", "i1");
-  const a = await api.getSessionState("s1");
+  const SID_s1 = (await api.startSession()).session_id; await api.sendUtterance(SID_s1, "위험");
+  await staff.intervene(SID_s1, "RESUME", "i1");
+  const a = await api.getSessionState(SID_s1);
   assert.equal(a.state, "ACTIVE"); assert.ok(a.resume_text);
-  await api.sendUtterance("s1", "계속", "t9");
-  assert.equal((await api.getSessionState("s1")).resume_text, null);
-  await api.sendUtterance("s1", "위험 또");
-  await staff.intervene("s1", "END", "i2");
-  assert.equal((await api.getSessionState("s1")).state, "ENDED");
+  await api.sendUtterance(SID_s1, "계속", "t9");
+  assert.equal((await api.getSessionState(SID_s1)).resume_text, null);
+  await api.sendUtterance(SID_s1, "위험 또");
+  await staff.intervene(SID_s1, "END", "i2");
+  assert.equal((await api.getSessionState(SID_s1)).state, "ENDED");
   await assert.rejects(api.getSessionState("nope"), (e) => e instanceof ApiError && e.status === 404);
 });
 
@@ -112,17 +117,17 @@ test("rate_limited 시나리오: 429에 Retry-After를 붙이고 클라이언트
   const waits: number[] = [];
   m.state.sc.errorTimes = 1;
   const api = new PublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
-  await api.startSession("s2");
+  const SID_s2 = (await api.startSession()).session_id;
   assert.deepEqual(waits, [2000]);
 });
 
 test("같은 turn_id는 같은 응답이고 한 번만 처리된다", async () => {
   const { m, api } = await mk();
-  await api.startSession("s1");
-  const a = await api.sendUtterance("s1", "하나", "t-same");
-  const b = await api.sendUtterance("s1", "하나", "t-same");
+  const SID_s1 = (await api.startSession()).session_id;
+  const a = await api.sendUtterance(SID_s1, "하나", "t-same");
+  const b = await api.sendUtterance(SID_s1, "하나", "t-same");
   assert.deepEqual(a, b);
-  assert.equal(m.state.sessions.get("s1")!.turns, 1);
+  assert.equal(m.state.sessions.get(SID_s1)!.turns, 1);
 });
 
 /** 모의 서버가 응답하지 않기로 한 요청(hangFirst)은 서버가 그 요청을 받은 것을 확인한 뒤 클라이언트 쪽에서 끊는다.
@@ -142,43 +147,45 @@ function hangThenAbort(m: Awaited<ReturnType<typeof startMock>>): typeof fetch {
 test("hang 시나리오: 앞 두 번 무응답이어도 같은 turn_id 재시도로 한 번만 처리", async () => {
   const { m, api } = await mk({ hangFirst: 0 }, {});
   (api as any).f = hangThenAbort(m);
-  await api.startSession("s1");
+  const SID_s1 = (await api.startSession()).session_id;
   m.state.sc.hangFirst = 2;
-  const r = await api.sendUtterance("s1", "하나", "t1");
+  const r = await api.sendUtterance(SID_s1, "하나", "t1");
   assert.ok(validate(r));
-  assert.equal(m.state.sessions.get("s1")!.turns, 1);
+  assert.equal(m.state.sessions.get(SID_s1)!.turns, 1);
 });
 
 test("hang이 3회 이상이면 CallStaffError", async () => {
   const { m, api } = await mk({}, {});
   (api as any).f = hangThenAbort(m);
-  await api.startSession("s1");
+  const SID_s1 = (await api.startSession()).session_id;
   m.state.sc.hangFirst = 3;
-  await assert.rejects(api.sendUtterance("s1", "하나", "t1"), CallStaffError);
+  await assert.rejects(api.sendUtterance(SID_s1, "하나", "t1"), CallStaffError);
 });
 
 test("error 시나리오: 503 두 번 뒤 성공, 지연 시나리오", async () => {
   const { m, api } = await mk({ errorStatus: 503, errorTimes: 2 });
-  assert.ok(validate(await api.startSession("s1")));
+  const first = await api.startSession(), SID_s1 = first.session_id;
+  const { session_id: _sid, ...firstBody } = first as any;
+  assert.ok(validate(firstBody));
   m.state.sc.delayMs = 40;
-  const t0 = Date.now(); await api.sendUtterance("s1", "x", "t1");
+  const t0 = Date.now(); await api.sendUtterance(SID_s1, "x", "t1");
   assert.ok(Date.now() - t0 >= 35);
 });
 
 test("위험 정지 -> 알림 -> 개입 RESUME/END, 중복 turn_id는 같은 응답, 정지 아니면 409", async () => {
   const { m, api } = await mk();
   const staff = new StaffApi(new PublicApiClient({ baseUrl: m.base + "/v1", ...fast }));
-  await api.startSession("s1");
-  await assert.rejects(staff.intervene("s1", "RESUME", "i0"), (e) => e instanceof ApiError && e.status === 409);
-  const stop = await api.sendUtterance("s1", "위험해요");
+  const SID_s1 = (await api.startSession()).session_id;
+  await assert.rejects(staff.intervene(SID_s1, "RESUME", "i0"), (e) => e instanceof ApiError && e.status === 409);
+  const stop = await api.sendUtterance(SID_s1, "위험해요");
   assert.ok(validate(stop));
   assert.equal(stop.turn_failure_signal?.staff_alert, "DELIVERED");
-  await assert.rejects(api.sendUtterance("s1", "또"), (e) => e instanceof ApiError && e.status === 409);
+  await assert.rejects(api.sendUtterance(SID_s1, "또"), (e) => e instanceof ApiError && e.status === 409);
   const open = await staff.listAlerts("OPEN");
   assert.equal(open.items.length, 1);
   assert.equal(open.items[0].kind, "RISK_STOP");
-  const r1 = await staff.intervene("s1", "RESUME", "i1");
-  const r2 = await staff.intervene("s1", "RESUME", "i1");
+  const r1 = await staff.intervene(SID_s1, "RESUME", "i1");
+  const r2 = await staff.intervene(SID_s1, "RESUME", "i1");
   assert.deepEqual(r1, r2);
   assert.ok(validate(r1));
   assert.equal((await staff.listAlerts("OPEN")).items.length, 0);
@@ -213,8 +220,8 @@ test("푸시 구독 등록은 멱등, 해지 가능", async () => {
 
 test("SSE: 새 알림과 해결 이벤트, Last-Event-ID로 이어 받기", async () => {
   const { m, api } = await mk();
-  await api.startSession("s1");
-  await api.sendUtterance("s1", "위험");
+  const SID_s1 = (await api.startSession()).session_id;
+  await api.sendUtterance(SID_s1, "위험");
   const read = async (headers: Record<string, string> = {}, want = 1) => {
     const ctl = new AbortController();
     const res = await fetch(m.base + "/v1/staff/alerts/stream", { headers, signal: ctl.signal });
@@ -224,7 +231,7 @@ test("SSE: 새 알림과 해결 이벤트, Last-Event-ID로 이어 받기", asyn
   };
   const first = await read();
   assert.match(first, /id: 1\nevent: alert\ndata: .*"status":"OPEN"/);
-  await new StaffApi(api).intervene("s1", "END", "i1");
+  await new StaffApi(api).intervene(SID_s1, "END", "i1");
   const resumed = await read({ "last-event-id": "1" });
   assert.doesNotMatch(resumed, /id: 1\n/);
   assert.match(resumed, /id: 2\nevent: resolved\ndata: .*"status":"RESOLVED"/);
@@ -258,7 +265,7 @@ test("turn_in_progress 시나리오: 409 CONFLICT + details.reason + Retry-After
   const waits: number[] = [];
   m.state.sc.errorTimes = 1;
   const api = new PublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
-  await api.startSession("s3");
+  const SID_s3 = (await api.startSession()).session_id;
   assert.deepEqual(waits, [2000]);
 });
 

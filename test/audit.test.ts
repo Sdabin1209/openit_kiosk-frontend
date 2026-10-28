@@ -8,7 +8,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { createStartHolder } from "../api/device.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
 import * as clinical from "../apps/kiosk/clinical.ts";
-import { json, ok, settle } from "./helpers.ts";
+import { json, ok, settle, started } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 const RISK = "확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.";
@@ -20,7 +20,7 @@ function server(o: { turn?: () => Response; state?: () => Response; end?: () => 
   const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
     if (init.method === "GET") { gets++; return (o.state ?? (() => json({ session_id: "s", state: "ACTIVE", resume_text: null })))(); }
     const b = JSON.parse(init.body as string); bodies.push(b);
-    if (b.kind === "SESSION_START") return ok("첫 질문");
+    if (b.kind === "SESSION_START") return started("첫 질문");
     if (b.kind === "SESSION_END") return (o.end ?? (() => ok(null)))();
     return (o.turn ?? (() => ok("다음 질문")))();
   }) as any });
@@ -198,7 +198,7 @@ function rig(o: { hold?: "SESSION_START" | "UTTERANCE"; turn?: () => Response; e
     if (init.method === "GET") return Promise.resolve(json({ session_id: "s", state: "PAUSED_RISK", resume_text: null }));
     const b = JSON.parse(init.body as string); kinds.push(b.kind);
     if (o.hold === b.kind) return new Promise<Response>(() => {});
-    if (b.kind === "SESSION_START") return Promise.resolve(ok("첫 질문"));
+    if (b.kind === "SESSION_START") return Promise.resolve(started("첫 질문"));
     if (b.kind === "SESSION_END") return Promise.resolve(o.endFail ? json({ code: "UNAVAILABLE" }, 503) : ok(null));
     return Promise.resolve((o.turn ?? (() => ok("다음 질문")))());
   }) as any });
@@ -266,7 +266,7 @@ test("K-2: 시작이 실패하면 환자 참조가 남아 같은 참조로 다�
   const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string); bodies.push(b);
     if (b.kind === "SESSION_START" && fail) return json({ code: "UNAVAILABLE" }, 503);
-    return ok("질문");
+    return b.kind === "SESSION_START" ? started("질문") : ok("질문");
   }) as any });
   const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:9", subjectInvalid: false }));
   const flow = new KioskFlow(api, { startValues: () => h.take(), idleMs: 0 });

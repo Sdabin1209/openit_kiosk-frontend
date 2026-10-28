@@ -1,6 +1,7 @@
 // 공개 API(PUBLIC_API.md)의 모의 서버. 다른 영역 코드를 가져오지 않는다.
 // 시나리오 제어(/__mock/*)는 계약 밖의 모의 전용 경로다.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { randomBytes } from "node:crypto";
 
 export interface Scenario {
   delayMs: number;              // 모든 /v1 응답 지연
@@ -150,7 +151,9 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
 
     // ---- 문진 ----
     if (m === "POST" && path === "/v1/sessions") {
-      if (body.kind !== "SESSION_START" || !ID_RE.test(body.session_id ?? "")) return json(res, 400, berr("INVALID_RECORD", "bad start"));
+      // 계약 2.2.0(D106): session_id를 생략하면 서버가 발급한다. 보내는 방식은 폐기 예정이지만 2.x에서는 받는다.
+      if (body.kind !== "SESSION_START" || (body.session_id !== undefined && !ID_RE.test(body.session_id))) return json(res, 400, berr("INVALID_RECORD", "bad start"));
+      if (body.session_id === undefined) body.session_id = randomBytes(16).toString("base64url"); // CSPRNG 128비트, 문자 집합 [A-Za-z0-9_-]
       const { turn_id: _t, ...startRest } = body;
       if (Object.keys(startRest).some((k) => !["kind", "session_id", "subject_ref"].includes(k))) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
       if (body.subject_ref !== undefined && (typeof body.subject_ref !== "string" || !SUBJECT_REF_RE.test(body.subject_ref))) return json(res, 400, berr("INVALID_RECORD", "bad subject_ref")); // 값은 응답·로그에 되풀이하지 않는다
@@ -158,7 +161,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, pauseReason: "RISK", retries: 0, lastRetryAt: 0, alertId: null, ended: false, resumeText: null, createdAt: ts(), subjectRef: body.subject_ref ?? null, endedBy: null, turnLog: [], values: [] });
       const first = "안녕하세요. 문진을 시작합니다. " + QUESTIONS[0];
       logTurn(state.sessions.get(body.session_id)!, typeof body.turn_id === "string" ? body.turn_id : "start", null, first, "SESSION_START");
-      return json(res, 200, input(first));
+      return json(res, 200, { ...input(first), session_id: body.session_id });
     }
     const sm = path.match(/^\/v1\/sessions\/([^/]+)\/state$/);
     if (m === "GET" && sm) {

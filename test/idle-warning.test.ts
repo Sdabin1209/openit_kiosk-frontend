@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PublicApiClient } from "../api/client.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { json, ok, settle } from "./helpers.ts";
+import { json, ok, settle, started } from "./helpers.ts";
 
 const WCAG_MIN_WARNING_MS = 20_000, WCAG_MIN_EXTENSIONS = 10, TOTAL_MS = 60_000;
 
@@ -17,7 +17,7 @@ function rig() {
   const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", state: "ACTIVE", resume_text: null });
     const b = JSON.parse(init.body as string); kinds.push(b.kind);
-    return b.kind === "SESSION_END" ? ok(null) : ok("질문");
+    return b.kind === "SESSION_START" ? started() : b.kind === "SESSION_END" ? ok(null) : ok("질문");
   }) as any });
   const flow = new KioskFlow(api, { idleMs: TOTAL_MS, timers });
   return { flow, q, kinds, ends: () => kinds.filter((k) => k === "SESSION_END").length };

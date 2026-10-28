@@ -8,7 +8,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { ApiError } from "../api/errors.ts";
 import * as retry from "../api/retry.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { json, ok, settle } from "./helpers.ts";
+import { json, ok, settle, started } from "./helpers.ts";
 
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
 const err = (status: number, code = "UNAVAILABLE", details?: object) =>
@@ -20,7 +20,7 @@ function make(route: (path: string, body: any) => Response) {
     if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
     const body = JSON.parse(init.body as string); calls.push({ path, body });
     if (path.includes("/staff-call/")) return route(path, body);
-    return body.kind === "SESSION_START" ? ok("시작") : ok("대기", DF);
+    return body.kind === "SESSION_START" ? started("시작") : ok("대기", DF);
   }) as any });
   const flow = new KioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}) });
   return { flow, sc: () => calls.filter((c) => c.path.includes("/staff-call/")) };

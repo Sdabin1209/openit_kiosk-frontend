@@ -1,9 +1,9 @@
 import { AbortedError, ApiError, CallStaffError } from "./errors.ts";
 import { isValidSessionId, newTurnId } from "./ids.ts";
 import { isValidSubjectRef } from "./device.ts";
-import { validateFrontendInput, validateSessionState, validateStaffAlertBody, validateStaffCallRetryResult } from "./validate.ts";
+import { validateSessionStarted, validateFrontendInput, validateSessionState, validateStaffAlertBody, validateStaffCallRetryResult } from "./validate.ts";
 import { DEFAULT_RETRY, isRetryable, waitMs, type RetryPolicy } from "./retry.ts";
-import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionStart, SessionState, StaffAlert, StaffCallOutcome, StaffCallRetryResult } from "./types.ts";
+import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionStart, SessionState, StartedSession, StaffAlert, StaffCallOutcome, StaffCallRetryResult } from "./types.ts";
 
 export interface ClientOptions {
   /** 같은 출처의 /v1. 직원 콘솔은 게이트웨이가 직원 인증을 붙인다. */
@@ -51,14 +51,14 @@ export class PublicApiClient {
   }
 
   /** subjectRef가 있으면 본문에 넣는다(없으면 필드 생략). 형식이 틀리면 보내지 않는다. */
-  startSession(sessionId: string, subjectRef?: string | null, co: CallOptions = {}): Promise<FrontendInput> {
-    this.check(sessionId);
-    const body: SessionStart = { session_id: sessionId, kind: "SESSION_START" };
+  startSession(subjectRef?: string | null, co: CallOptions = {}): Promise<StartedSession> {
+    const body: SessionStart = { kind: "SESSION_START" }; // 세션 ID는 서버가 발급해 응답에 싣는다(2.2.0, D106)
     if (subjectRef !== undefined && subjectRef !== null) {
       if (!isValidSubjectRef(subjectRef)) throw new Error("subject_ref 형식 오류(1~128자 [A-Za-z0-9._:/#=+-])");
       body.subject_ref = subjectRef;
     }
-    return this.serial(sessionId, () => this.post(`/sessions`, body, co));
+    // 아직 ID가 없으므로 세션별 직렬 큐에 넣지 않는다(이후 요청부터 응답의 ID로 큐가 생긴다).
+    return this.call<StartedSession>("POST", `/sessions`, body, true, co, validateSessionStarted);
   }
 
   /** turnId를 주면 그 ID로 보낸다(재시도 모두 같은 ID). 빈 발화는 보내지 않는다. */

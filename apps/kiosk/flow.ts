@@ -1,6 +1,6 @@
 // 키오스크 상태 기계. UI를 모른다. 화면은 subscribe로 상태를 받아 그린다.
 import { AbortedError, ApiError, CallStaffError } from "../../api/errors.ts";
-import { newSessionId, newTurnId } from "../../api/ids.ts";
+import { newTurnId } from "../../api/ids.ts";
 import type { PublicApiClient } from "../../api/client.ts";
 import { normalizePauseReason, type FrontendInput, type PauseReason, type StaffCallOutcome } from "../../api/types.ts";
 import { isOutcomeUnknown } from "../../api/retry.ts";
@@ -140,7 +140,7 @@ export class KioskFlow {
 
   async start(): Promise<void> {
     if (this.view.state !== "IDLE") return;
-    this.sessionId = newSessionId();
+    this.sessionId = null; // 서버가 발급한 ID를 시작 응답에서 받는다(계약 2.2.0, D106)
     this.pendingTurnId = this.pendingUtterance = null;
     this.repeatStreak = 0; this.micBlocked = false; this.notice = undefined;
     this.set({ state: "STARTING", text: null });
@@ -155,9 +155,10 @@ export class KioskFlow {
         if (subjectRef === null) this.notice = "NO_SUBJECT_REF"; // 참조 없이 시작한다(이전 환자 값을 쓰지 않는다)
       }
       const ctl = this.begin();
-      const r = await this.api.startSession(this.sessionId, subjectRef, this.opts(ctl));
+      const r = await this.api.startSession(subjectRef, this.opts(ctl));
       this.inflight = null;
-      this.say(r.response_text, `${this.sessionId}:start`);
+      this.sessionId = r.session_id;
+      this.say(r.response_text, `${r.session_id}:start`);
       confirm?.(); // 시작이 서버에 접수된 뒤에만 한 번 쓴 환자 참조를 비운다(실패한 시작은 같은 참조로 다시 시작할 수 있다)
       this.handle(r);
     } catch (e) {
@@ -225,7 +226,14 @@ export class KioskFlow {
   }
 
   async end(): Promise<void> {
-    if (!this.sessionId || this.view.state === "IDLE" || this.view.state === "ENDED") return;
+    if (this.view.state === "IDLE" || this.view.state === "ENDED") return;
+    if (!this.sessionId) {
+      // 시작 요청이 아직 응답을 못 받았다(재시도 중): 서버가 준 ID를 모르므로 종료 요청을 보낼 수 없다. 요청을 끊고 종료 화면으로 간다.
+      // 서버에 이미 만들어졌을 수 있는 세션은 유휴 만료가 정리한다(런북).
+      if (this.view.state !== "STARTING") return;
+      this.inflight?.abort(); this.inflight = null;
+      return this.set({ state: "ENDED", text: null });
+    }
     this.inflight?.abort(); this.inflight = null; // 재시도 중인 요청이 있으면 끊는다(보낸 발화는 서버가 같은 turn_id로 멱등 처리)
     this.set({ state: "ENDING", text: null });
     let endFailed = false;

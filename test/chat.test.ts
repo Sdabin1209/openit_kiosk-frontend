@@ -6,7 +6,7 @@ import { PublicApiClient } from "../api/client.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
 import { ChatLog, MAX_BUBBLES, type ConversationEvent } from "../apps/kiosk/chat.ts";
 import { renderChat } from "../apps/kiosk/chatview.ts";
-import { json, ok, settle } from "./helpers.ts";
+import { json, ok, settle, started, asStarted } from "./helpers.ts";
 
 let JSDOM: any = null;
 const mod = "jsdom";
@@ -37,7 +37,7 @@ test("ChatLog: 상한을 넘으면 가장 오래된 것부터 버린다", () => 
 function make(handler: (b: any) => Response, stateFn: () => any = () => ({ state: "ACTIVE", resume_text: null })) {
   const api = new PublicApiClient({ retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (_u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", ...stateFn() });
-    return handler(JSON.parse(init.body as string));
+    const b = JSON.parse(init.body as string); const res = handler(b); return b.kind === "SESSION_START" ? asStarted(res) : res;
   }) as any });
   const sleepers: Array<() => void> = [];
   const flow = new KioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) });
@@ -81,7 +81,7 @@ test("흐름: 재시도 소진 뒤에도 환자 말풍선은 하나이고 새 �
 
 test("흐름: 위험 정지 대기 뒤 재개 문장도 대화에 보인다", async () => {
   let st: any = { state: "PAUSED_RISK", resume_text: null };
-  const { flow, chat, step } = make((b) => b.kind === "SESSION_START" ? ok("시작") : ok("대기 안내", { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERED" }), () => st);
+  const { flow, chat, step } = make((b) => b.kind === "SESSION_START" ? started("시작") : ok("대기 안내", { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERED" }), () => st);
   await flow.start(); await flow.hear(say("위험해요"));
   assert.equal(flow.current.state, "WAITING_STAFF");
   assert.deepEqual(lines(chat), ["system:시작", "patient:위험해요", "system:대기 안내"]);

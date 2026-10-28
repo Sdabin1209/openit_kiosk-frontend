@@ -2,7 +2,7 @@ import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { PublicApiClient } from "../api/client.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { hang, json, ok, settle } from "./helpers.ts";
+import { asStarted, hang, json, ok, settle } from "./helpers.ts";
 
 afterEach(() => { stateFn = () => ({ state: "ACTIVE", resume_text: null }); }); // 시험 간 공유 상태 초기화
 const say = (t: string) => ({ text: t, confidence: 0.9 });
@@ -15,7 +15,7 @@ function make(handler: (body: any, init: RequestInit) => Promise<Response> | Res
   const polls: string[] = [];
   const api = new PublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     if (init.method === "GET") { polls.push(u); return json({ session_id: "s", ...stateFn() }); }
-    const body = JSON.parse(init.body as string); calls.push(body); return handler(body, init);
+    const body = JSON.parse(init.body as string); calls.push(body); const res = handler(body, init); return body.kind === "SESSION_START" ? asStarted(res) : res;
   }) as any });
   return { flow: new KioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) }), calls, polls };
 }

@@ -8,7 +8,7 @@ import { ApiError } from "../api/errors.ts";
 import { normalizePauseReason } from "../api/types.ts";
 import { KioskFlow } from "../apps/kiosk/flow.ts";
 import { deliveryLines, pauseLabel } from "../apps/staff/alertinfo.ts";
-import { hang, json, ok, settle, startMock } from "./helpers.ts";
+import { hang, json, ok, settle, startMock, started } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
@@ -30,7 +30,7 @@ function make(route: Route, state: () => any = () => ({ state: "PAUSED_RISK", re
     if (init.method === "GET") return json({ session_id: "s", ...state() });
     const body = JSON.parse(init.body as string); calls.push({ path, body });
     if (path.includes("/staff-call/")) return route(path, body);
-    if (body.kind === "SESSION_START") return ok("시작");
+    if (body.kind === "SESSION_START") return started("시작");
     return ok("대기", DF);
   }) as any });
   const flow = new KioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}), timers: clk });
@@ -72,7 +72,7 @@ test("응답을 못 받은 재전송(시간 초과·네트워크)은 같은 turn
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, ""); if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
     const body = JSON.parse(init.body as string); m.calls.push({ path, body });
     if (path.includes("/staff-call/")) return ++n === 1 ? hang(init) : retryOk("DELIVERED");
-    return body.kind === "SESSION_START" ? ok("시작") : ok("대기", DF);
+    return body.kind === "SESSION_START" ? started("시작") : ok("대기", DF);
   }) as any });
   await toFailed(m);
   await m.flow.retryStaffCall();
@@ -142,7 +142,7 @@ test("pause_reason: 상태 폴링 값을 정규화한다(모르는 값=OTHER, �
     const api = new PublicApiClient({ sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
       if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null, ...(reason ? { pause_reason: reason } : {}) });
       const b = JSON.parse(init.body as string); calls.push(b);
-      return b.kind === "SESSION_START" ? ok("시작") : ok("서버 고정 문장", null);
+      return b.kind === "SESSION_START" ? started("시작") : ok("서버 고정 문장", null);
     }) as any });
     const flow = new KioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}) });
     await flow.start(); await flow.hear(say("아무말"));
@@ -174,29 +174,29 @@ async function mk(sc = {}) { const m = await startMock(sc); open.push(m.close); 
 
 test("모의 서버: retry/report/state 응답이 계약 스키마를 지키고 멱등·간격·상한이 동작한다", async () => {
   const { m, api } = await mk({ alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERY_FAILED", retryAfterS: 60, enforceInterval: true, retryLimit: 2 });
-  await api.startSession("s1"); await api.sendUtterance("s1", "위험");
+  const SID_s1 = (await api.startSession()).session_id; await api.sendUtterance(SID_s1, "위험");
   assert.ok(vRetryReq({ turn_id: "r1" }));
-  const r1 = await api.staffCallRetry("s1", "r1");
+  const r1 = await api.staffCallRetry(SID_s1, "r1");
   assert.ok(vRetry(r1), JSON.stringify(vRetry.errors)); assert.equal(r1.delivery_attempts, 2);
-  assert.deepEqual(await api.staffCallRetry("s1", "r1"), r1, "같은 turn_id는 같은 응답");
-  await assert.rejects(api.staffCallRetry("s1", "r2"), (e) => e instanceof ApiError && e.status === 429 && e.retryAfterMs !== null);
-  const rep = await api.staffCallReport("s1", "NOT_NOTIFIED", "p1");
+  assert.deepEqual(await api.staffCallRetry(SID_s1, "r1"), r1, "같은 turn_id는 같은 응답");
+  await assert.rejects(api.staffCallRetry(SID_s1, "r2"), (e) => e instanceof ApiError && e.status === 429 && e.retryAfterMs !== null);
+  const rep = await api.staffCallReport(SID_s1, "NOT_NOTIFIED", "p1");
   assert.ok(vAlert(rep), JSON.stringify(vAlert.errors)); assert.equal(rep.manual_notice_outcome, "NOT_NOTIFIED");
   assert.ok(vReport({ outcome: "NOT_NOTIFIED", turn_id: "p1" }));
-  await assert.rejects(api.staffCallReport("s1", "STAFF_NOTIFIED_MANUALLY", "p1"), (e) => e instanceof ApiError && e.status === 409);
-  const st = await api.getSessionState("s1"); assert.ok(vState(st), JSON.stringify(vState.errors)); assert.equal(st.pause_reason, "RISK");
+  await assert.rejects(api.staffCallReport(SID_s1, "STAFF_NOTIFIED_MANUALLY", "p1"), (e) => e instanceof ApiError && e.status === 409);
+  const st = await api.getSessionState(SID_s1); assert.ok(vState(st), JSON.stringify(vState.errors)); assert.equal(st.pause_reason, "RISK");
   m.state.sc.retryLimit = 1;
-  await assert.rejects(api.staffCallRetry("s1", "r3"), (e) => e instanceof ApiError && e.status === 429 && (e.body?.details as any)?.reason === "RETRY_LIMIT");
+  await assert.rejects(api.staffCallRetry(SID_s1, "r3"), (e) => e instanceof ApiError && e.status === 429 && (e.body?.details as any)?.reason === "RETRY_LIMIT");
 });
 
 test("모의 서버: 되묻기 한도 정지는 REASK_LIMIT, 옛 서버 모의는 필드 없음, staffCallApi=false면 404", async () => {
   const a = await mk({ alertDelivery: "DELIVERED" });
-  await a.api.startSession("s1"); await a.api.sendUtterance("s1", "알수없음");
-  const st = await a.api.getSessionState("s1"); assert.ok(vState(st)); assert.equal(st.pause_reason, "REASK_LIMIT");
+  const SID_s1 = (await a.api.startSession()).session_id; await a.api.sendUtterance(SID_s1, "알수없음");
+  const st = await a.api.getSessionState(SID_s1); assert.ok(vState(st)); assert.equal(st.pause_reason, "REASK_LIMIT");
   const b = await mk({ pauseReasonField: false, staffCallApi: false, alertDelivery: "DELIVERY_FAILED" });
-  await b.api.startSession("s1"); await b.api.sendUtterance("s1", "위험");
-  assert.equal("pause_reason" in (await b.api.getSessionState("s1")), false);
-  await assert.rejects(b.api.staffCallRetry("s1", "x"), (e) => e instanceof ApiError && e.status === 404);
+  const SID_b = (await b.api.startSession()).session_id; await b.api.sendUtterance(SID_b, "위험");
+  assert.equal("pause_reason" in (await b.api.getSessionState(SID_b)), false);
+  await assert.rejects(b.api.staffCallRetry(SID_b, "x"), (e) => e instanceof ApiError && e.status === 404);
 });
 
 // ---- 독립 검토(4426b7b)에서 재현된 결함의 고정 시험 ----
