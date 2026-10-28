@@ -6,12 +6,16 @@ export class ApiError extends Error {
   body: BoundaryError | null;
   /** Retry-After(초)를 밀리초로. 없으면 null. */
   retryAfterMs: number | null;
+  /** 오류 본문 `details.reason`(PUBLIC_API.md 409·429 행)을 해석한 값. 없거나 문자열이 아니면 null. 호출자는 본문 모양을 직접 읽지 않고 이 값을 쓴다(KF-09). */
+  reason: string | null;
   constructor(status: number, body: BoundaryError | null, retryAfterMs: number | null = null) {
     super(`API ${status}${body ? " " + body.code : ""}`);
     this.name = "ApiError";
     this.status = status;
     this.body = body;
     this.retryAfterMs = retryAfterMs;
+    const r = (body?.details as { reason?: unknown } | null | undefined)?.reason;
+    this.reason = typeof r === "string" ? r : null;
   }
 }
 

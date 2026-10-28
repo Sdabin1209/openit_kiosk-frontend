@@ -2,7 +2,7 @@ import { AbortedError, ApiError, CallStaffError } from "./errors.ts";
 import { isValidSessionId, newTurnId } from "./ids.ts";
 import { isValidSubjectRef } from "./device.ts";
 import { validateFrontendInput, validateSessionState, validateStaffAlertBody, validateStaffCallRetryResult } from "./validate.ts";
-import { DEFAULT_RETRY, RETRYABLE_STATUS, TURN_IN_PROGRESS, waitMs, type RetryPolicy } from "./retry.ts";
+import { DEFAULT_RETRY, isRetryable, waitMs, type RetryPolicy } from "./retry.ts";
 import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionStart, SessionState, StaffAlert, StaffCallOutcome, StaffCallRetryResult } from "./types.ts";
 
 export interface ClientOptions {
@@ -152,7 +152,7 @@ export class PublicApiClient {
       } catch (e) {
         if (e instanceof AbortedError) throw e;
         if (co.single) throw e;
-        if (e instanceof ApiError && !(RETRYABLE_STATUS.has(e.status) || (e.status === 409 && (e.body?.details as { reason?: unknown } | undefined)?.reason === TURN_IN_PROGRESS))) throw e;
+        if (e instanceof ApiError && !isRetryable(e.status, e.reason)) throw e;
         last = e;
         const wait = waitMs(i, e instanceof ApiError ? e.retryAfterMs : null, p, this.rand);
         // 예산을 넘겼거나 다음 대기까지 하면 넘는다면 더 기다리지 않고 직원 호출로 넘긴다.
