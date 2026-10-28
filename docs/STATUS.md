@@ -66,3 +66,9 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 - 고침: P1 환자 참조 일회용(`createStartHolder`), P3 유휴 초기화·입력창 비우기, P4 마이크 거부 대체·직원 부르기·그만하기·다시 말하기 상한 3회(잠정), P5 위험 정지 대기 안내, H-2 정지 상태 확인(신호 null 응답 + `/state` PAUSED_RISK), P9 임상 값 한 곳(`apps/kiosk/clinical.ts`, U10 잠정), P14 낡은 문서, P15 보안 헤더, P16 종료 실패 표시, P17 푸시 해지 UI, P18 입력 길이, P20 응답 null 문구, P22 healthz 로그 제외(회전은 런타임 몫), P23 PORT 검증, P2 로컬 STT 기본(D88 U3), P7 `CONFIG_FILE`→`/config.json`, P11 런북 화면별 대응, ADR 11편.
 - 안 함: P6·P12 게이트웨이/계약 결정, P8 이미지 digest·SBOM(deploy CI), P10 실제 gateway·survey E2E, P13 devDependency 취약점(강제 업그레이드 필요), P19 시간 표기, P21 접근성 잔여, P24 해결자 표시.
 - 확인 못 함: 실제 기기의 온디바이스 한국어 STT, 서버의 기기별 토큰, 실제 survey의 정지 응답과의 연동.
+
+## 지시서 1·2 (2026-10-28, 브랜치 wo2)
+- 데모: 키오스크 화면에 현재 세션 대화(환자 발화, 시스템 응답)를 시간순 말풍선으로 보인다. `apps/kiosk/chat.ts`(이벤트 -> 뷰 모델), `chatview.ts`, 상태 기계의 `subscribeConversation`. 메모리에만 두고 IDLE·ENDED가 되면 지운다. ADR 0015. `/config.json` 경로(조각 없이 기기 토큰으로 `/v1/sessions` 호출)는 `test/kiosk-app.test.ts`로 처음 확인했다(그 전에는 로더 단위 시험과 정적 서버 단위 시험만 있고 앱 전체 흐름 시험은 없었다).
+- KF-09: 재시도·처리 여부 불명 분류를 `api/retry.ts`로 모으고 `ApiError.reason`을 추가했다. 재현 시험 `test/kf09.test.ts`. KF-10: STT 오류를 `SttError.kind` 열거로. `test/kf10.test.ts`.
+- 경계 형식 스키마 초안: CR-005. 코드는 바꾸지 않았다.
+- 하지 않은 것: KF-11(사용자 결정 대기), 직원 콘솔 '기록 보기', 컴포넌트 분리. `npm run test:e2e`, `npm run smoke`는 다시 돌리지 않았다.
