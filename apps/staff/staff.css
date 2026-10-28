@@ -1,4 +1,4 @@
-body { margin:0; font:18px/1.5 system-ui,"Noto Sans KR","Malgun Gothic",sans-serif; color:#111; background:#f6f7f9; }
+body { margin:0; font:18px/1.5 "Noto Sans KR Variable","Noto Sans KR","Malgun Gothic",system-ui,sans-serif; color:#111; background:#f6f7f9; }
 header { display:flex; gap:16px; align-items:center; padding:12px 24px; background:#0b3d91; color:#fff; }
 header h1 { font-size:22px; margin:0; flex:1; }
 main { padding:24px; max-width:900px; margin:0 auto; }

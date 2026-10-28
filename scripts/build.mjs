@@ -11,3 +11,5 @@ cpSync("apps/kiosk/index.html", "dist/index.html");
 cpSync("apps/kiosk/kiosk.css", "dist/kiosk.css");
 cpSync("apps/staff/index.html", "dist/staff/index.html");
 cpSync("apps/staff/staff.css", "dist/staff/staff.css");
+// 오프라인 글꼴(OFL 1.1, assets/fonts/README.md). 외부 CDN을 쓰지 않으므로 이미지에 같이 넣는다(브리프 5절, #60).
+cpSync("assets/fonts", "dist/fonts", { recursive: true });
