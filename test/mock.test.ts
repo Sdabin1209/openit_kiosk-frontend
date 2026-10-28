@@ -31,7 +31,8 @@ test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진
 const validateDecision = ajv.compile(JSON.parse(readFileSync(new URL("InterventionDecision.json", SCHEMA_DIR), "utf8")));
 const BSCHEMAS = new URL("../../boundary-contracts/schemas/", import.meta.url);
 const bs = (n: string) => ajv.compile(JSON.parse(readFileSync(new URL(n, BSCHEMAS), "utf8")));
-const vAlert = bs("StaffAlert.schema.json"), vPage = bs("StaffAlertPage.schema.json"), vState = bs("SessionState.schema.json"), vPush = bs("PushConfig.schema.json");
+ajv.addSchema(JSON.parse(readFileSync(new URL("StaffAlert.schema.json", BSCHEMAS), "utf8")), "StaffAlert.schema.json"); // StaffAlertPage가 $ref로 참조(계약 2ec2849)
+const vAlert = ajv.getSchema("StaffAlert.schema.json")!, vPage = bs("StaffAlertPage.schema.json"), vState = bs("SessionState.schema.json"), vPush = bs("PushConfig.schema.json");
 
 test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDecision을 지킨다(D66)", async () => {
   const bodies: Record<string, any>[] = [];
@@ -65,11 +66,7 @@ test("알림·목록·상태·푸시 설정 응답이 v2.0.2 스키마를 지킨
   const { m, api } = await mk({ vapidPublicKey: "PUBKEY" });
   await api.startSession("s1"); await api.sendUtterance("s1", "위험");
   const page = await new StaffApi(api).listAlerts("OPEN");
-  // 계약 확인 필요(헤드에 보고): v2.1.0 StaffAlertPage 스키마는 items를 인라인으로 정의하고 additionalProperties=false라서 StaffAlert의 새 optional 필드를 거부한다.
-  // 그래서 목록은 새 필드를 뺀 모양으로 검사하고, 새 필드는 StaffAlert 스키마로 따로 검사한다.
-  const NEW = ["delivery_attempts", "last_delivery_status", "manual_notice_outcome", "manual_notice_reported_at", "pause_reason"];
-  const strip = (a: any) => Object.fromEntries(Object.entries(a).filter(([k]) => !NEW.includes(k)));
-  assert.ok(vPage({ ...page, items: page.items.map(strip) }), JSON.stringify(vPage.errors));
+  assert.ok(vPage(page), JSON.stringify(vPage.errors)); // 2.1.0 새 optional 필드 포함 목록 전체(계약 2ec2849에서 StaffAlertPage가 StaffAlert를 $ref)
   assert.ok(vAlert(page.items[0]), JSON.stringify(vAlert.errors));
   const st = await api.getSessionState("s1");
   assert.ok(vState(st), JSON.stringify(vState.errors));

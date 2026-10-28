@@ -9,7 +9,7 @@
 ## 계약 v2.1.0 (CR-H001·CR-H002, ADR 0014)
 - 작업 트리 스펙(boundary-contracts 86da3bf) 기준으로 구현했다. 태그 v2.1.0은 아직 받지 못했다: 받으면 `npm run check-schema`·`npm test`·`npm run test:e2e`를 다시 돌린다(Dockerfile `BOUNDARY_CONTRACT`는 이미 v2.1.0, 모의 서버 pipeline_schema_version "2.1").
 - 키오스크: DELIVERY_FAILED에서 '직원 다시 부르기'(retry_after_s 카운트다운), report 연결, 기능 감지, 정지 사유(pause_reason) 구분. 직원 콘솔: 전달 시도·직접 통지 보고·정지 사유 글자 표시.
-- 열린 문제(헤드 확인 요청): v2.1.0 작업 트리의 `StaffAlertPage.schema.json`이 items를 인라인으로 정의하고 additionalProperties=false라 `StaffAlert`의 새 optional 필드를 거부한다. 임시로 `test/mock.test.ts`가 새 필드를 뺀 모양으로 목록을 검사한다.
+- StaffAlertPage 스키마 결함은 계약 2ec2849에서 고쳐졌고, `test/mock.test.ts`는 새 필드 포함 목록 전체를 StaffAlertPage로 검증한다.
 - 문구는 모두 provisional(임상 검토 전). 실제 survey-service 연동은 하지 못했다.
 
 ## 계약 v2.0.2 정렬
