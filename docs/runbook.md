@@ -3,7 +3,7 @@
 ## 시험 한 명령씩
 | 명령 | 내용 |
 |---|---|
-| `npm ci` | 의존 설치(리포 안 `node_modules`) |
+| `bash scripts/setup-env.sh` | 환경 준비(Node/npm 점검 + `npm ci`, 리포 안 `node_modules`) |
 | `npm test` | 단위·계약 시험(doctor 판정 시험 포함. jsdom 시험은 호스트에 jsdom이 없으면 건너뜀) |
 | `npm run typecheck`, `npm run check-schema` | 타입, 스키마 열거값 |
 | `npm run smoke` | 이미지 빌드, `/healthz`, 라벨, non-root (Docker 필요) |

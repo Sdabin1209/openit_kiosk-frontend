@@ -42,7 +42,7 @@
 
 ```bash
 cd kiosk-frontend
-npm ci                  # 의존 설치(리포 안 node_modules)
+bash scripts/setup-env.sh   # 환경 준비의 정본: Node/npm 버전 점검 후 npm ci (멱등, 어느 폴더에서나)
 npm run doctor          # Docker 전제 점검
 npm run typecheck && npm run check-schema
 npm test                # 단위·계약 시험(pretest가 먼저 build를 돌린다, ADR 0013)
