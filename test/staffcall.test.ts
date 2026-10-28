@@ -198,3 +198,80 @@ test("모의 서버: 되묻기 한도 정지는 REASK_LIMIT, 옛 서버 모의�
   assert.equal("pause_reason" in (await b.api.getSessionState("s1")), false);
   await assert.rejects(b.api.staffCallRetry("s1", "x"), (e) => e instanceof ApiError && e.status === 404);
 });
+
+// ---- 독립 검토(4426b7b)에서 재현된 결함의 고정 시험 ----
+test("M-3: 502/504/500 뒤 다시 누르면 같은 turn_id(서버가 처리했는지 모른다). 200/409/429 뒤에는 새 turn_id", async () => {
+  for (const status of [502, 504, 500, 503]) {
+    const m = make(() => err(status, "UNAVAILABLE"));
+    await toFailed(m); await m.flow.retryStaffCall(); await m.flow.retryStaffCall();
+    assert.equal(m.sc()[0].body.turn_id, m.sc()[1].body.turn_id, `${status}: 같은 turn_id`);
+    assert.equal(m.flow.current.staffCall!.notice, "NETWORK"); assert.equal(m.flow.current.staffCall!.canRetry, true);
+  }
+  for (const [status, d] of [[409, { reason: "TURN_IN_PROGRESS" }], [429, undefined]] as const) {
+    const m = make(() => err(status, "X", d, { "retry-after": "1" }));
+    await toFailed(m); await m.flow.retryStaffCall();
+    await m.clk.tick(); await m.flow.retryStaffCall();
+    assert.equal(m.sc().length, 2); assert.notEqual(m.sc()[0].body.turn_id, m.sc()[1].body.turn_id, `${status}: 새 turn_id`);
+  }
+});
+
+test("M-4: 409는 details.reason을 본다 - TURN_IN_PROGRESS는 일시 충돌이라 잠시 뒤 다시 누를 수 있고, NO_OPEN_ALERT만 버튼을 끈다. 404/405는 직접 안내를 남긴다", async () => {
+  const m = make(() => err(409, "CONFLICT", { reason: "TURN_IN_PROGRESS" }, { "retry-after": "2" }));
+  await toFailed(m); await m.flow.retryStaffCall();
+  assert.equal(m.flow.current.staffCall!.canRetry, true); assert.equal(m.flow.current.staffCall!.notice, "BUSY"); assert.equal(m.flow.current.staffCall!.waitS, 2);
+  const n = make(() => err(409, "CONFLICT")); // reason 없는 409도 끄지 않는다
+  await toFailed(n); await n.flow.retryStaffCall(); assert.equal(n.flow.current.staffCall!.canRetry, true);
+  const o = make(() => err(409, "CONFLICT", { reason: "NO_OPEN_ALERT" }));
+  await toFailed(o); await o.flow.retryStaffCall(); assert.equal(o.flow.current.staffCall!.canRetry, false);
+  const p = make(() => err(404, "NOT_FOUND"));
+  await toFailed(p); await p.flow.retryStaffCall();
+  assert.equal(p.flow.current.state, "CALL_STAFF"); assert.equal(p.flow.current.callStaffReason, "DELIVERY_FAILED"); assert.equal(p.flow.current.staffCall!.canRetry, false);
+});
+
+test("M-2: 재알림 401/403은 AUTH 화면으로 바꾸지 않는다 - 직접 안내와 '직접 알리셨나요?' 확인 단계가 남는다", async () => {
+  for (const status of [401, 403]) {
+    const m = make((p) => err(status, "PERMISSION_DENIED"));
+    await toFailed(m); await m.flow.retryStaffCall();
+    assert.equal(m.flow.current.callStaffReason, "DELIVERY_FAILED"); assert.equal(m.flow.current.staffCall!.notice, "AUTH"); assert.equal(m.flow.current.staffCall!.canRetry, false);
+    await m.flow.leaveCallStaff();
+    assert.equal(m.flow.current.state, "CALL_STAFF"); assert.equal(m.flow.current.confirmLeave, true, "한 번 눌러서는 떠나지 않는다");
+    assert.equal(m.calls.filter((c) => c.body.kind === "SESSION_END").length, 0);
+  }
+});
+
+test("L-1: report 진행 중 '직접 알렸어요' 더블 클릭은 report를 한 번만 보낸다", async () => {
+  const m = make(async () => { await new Promise((r) => setTimeout(r, 30)); return json({ alert_id: "a", session_id: "s" }); });
+  await toFailed(m); await m.flow.leaveCallStaff();
+  await Promise.all([m.flow.leaveCallStaff(), m.flow.leaveCallStaff()]);
+  assert.equal(m.sc().length, 1); assert.equal(m.flow.current.state, "IDLE");
+});
+
+test("L-2: report는 응답을 못 받으면 같은 turn_id로 2번까지 보낸다. 서버가 답하면 되풀이하지 않는다", async () => {
+  let n = 0;
+  const a = make(() => (++n === 1 ? err(503, "UNAVAILABLE") : json({ alert_id: "a", session_id: "s" })));
+  await toFailed(a); await a.flow.leaveCallStaff(); await a.flow.leaveCallStaff();
+  assert.equal(a.sc().length, 2); assert.equal(a.sc()[0].body.turn_id, a.sc()[1].body.turn_id); assert.equal(a.flow.current.state, "IDLE");
+  const b = make(() => err(503, "UNAVAILABLE"));
+  await toFailed(b); await b.flow.leaveCallStaff(); await b.flow.leaveCallStaff();
+  assert.equal(b.sc().length, 2, "상한 2회"); assert.equal(b.flow.current.state, "IDLE", "실패해도 가두지 않는다");
+  const c = make(() => err(409, "CONFLICT"));
+  await toFailed(c); await c.flow.leaveCallStaff(); await c.flow.leaveCallStaff();
+  assert.equal(c.sc().length, 1, "서버가 답한 오류는 되풀이하지 않는다");
+});
+
+test("L-3: 재알림 응답을 기다리는 중 확인 단계를 열었다가 늦은 DELIVERED가 오면 대기 화면으로 간다(현재 동작을 고정)", async () => {
+  let rel!: () => void;
+  const m = make(() => new Promise<Response>((r) => { rel = () => r(retryOk("DELIVERED")); }));
+  await toFailed(m); const p = m.flow.retryStaffCall(); await settle();
+  await m.flow.leaveCallStaff(); assert.equal(m.flow.current.confirmLeave, true);
+  rel(); await p; await settle();
+  assert.equal(m.flow.current.state, "WAITING_STAFF");
+});
+
+test("L-4: 카운트다운이 끝나면 READY 안내가 실리고 그때만 버튼이 켜진다", async () => {
+  const m = make(() => retryOk("DELIVERY_FAILED", 2));
+  await toFailed(m); await m.flow.retryStaffCall();
+  assert.equal(m.flow.current.staffCall!.notice, "STILL_FAILED");
+  await m.clk.tick(); assert.equal(m.flow.current.staffCall!.waitS, 1);
+  await m.clk.tick(); assert.equal(m.flow.current.staffCall!.waitS, 0); assert.equal(m.flow.current.staffCall!.notice, "READY");
+});

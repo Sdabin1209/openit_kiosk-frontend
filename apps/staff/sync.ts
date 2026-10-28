@@ -19,12 +19,23 @@ export interface SyncDeps {
   api: Pick<StaffApi, "listAlerts" | "stream">;
   onChange: (alerts: ReadonlyMap<string, StaffAlert>) => void;
   onNew: (a: StaffAlert) => void;
+  /** 같은 alert_id가 다시 전달되었다(키오스크 재알림, CR-H001): 배너·소리용. 목록은 계속 한 건으로 합친다. */
+  onRedelivery?: (a: StaffAlert) => void;
   onStatus: (s: SyncStatus) => void;
   /** 목록을 주기적으로 다시 읽는다. 스트림이 소리 없이 죽은 경우(EventSource는 `: ping` 주석을 보여 주지 않아 무음을 감지할 수 없다)의 안전망이고,
    * 읽기에 실패한 목록을 스스로 복구하는 경로이기도 하다. 기본 15초(임의 값: 직원이 놓친 알림을 늦어도 이 정도 안에 보게 한다). */
   refreshMs?: number;
   timers?: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (h: unknown) => void };
   streamTimers?: Parameters<StaffApi["stream"]>[2];
+}
+
+/**
+ * 재전달 판정(M-1). 서버는 재알림을 새 이벤트 이름 없이 같은 alert_id의 `alert` 이벤트로 다시 보낸다(PUBLIC_API.md G절). 그래서 목록에 이미 있는 열린 알림이
+ * `delivery_attempts`가 저장된 값보다 **커졌을 때만** 재전달로 본다. Last-Event-ID 이어받기로 다시 온 같은 시도 번호(오래된 이벤트)는 같거나 작아서 제외된다.
+ * (전달 시각 필드는 계약에 없다. 시도 횟수가 단조 증가하는 유일한 신호다.) 필드가 없는 옛 서버는 재전달을 알 수 없고 기존 동작(조용한 합침)이다.
+ */
+export function isRedelivery(prev: StaffAlert | undefined, next: StaffAlert): boolean {
+  return !!prev && prev.status === "OPEN" && next.status === "OPEN" && typeof next.delivery_attempts === "number" && next.delivery_attempts > (prev.delivery_attempts ?? 0);
 }
 
 export function createAlertSync(d: SyncDeps) {
@@ -70,8 +81,12 @@ export function createAlertSync(d: SyncDeps) {
 
   const stop1 = d.api.stream(
     (a) => {
-      const isNew = !alerts.has(a.alert_id) && a.status === "OPEN";
-      alerts.set(a.alert_id, a); d.onChange(alerts); if (isNew) d.onNew(a);
+      const prev = alerts.get(a.alert_id);
+      const isNew = !prev && a.status === "OPEN", again = isRedelivery(prev, a);
+      // 오래된 이벤트가 최신 시도 횟수를 되돌리지 않게, 같은 알림의 더 낮은 시도 번호는 저장값을 덮지 않는다.
+      const stale = !!prev && typeof a.delivery_attempts === "number" && typeof prev.delivery_attempts === "number" && a.delivery_attempts < prev.delivery_attempts && a.status === prev.status;
+      if (!stale) alerts.set(a.alert_id, a);
+      d.onChange(alerts); if (isNew) d.onNew(a); else if (again) d.onRedelivery?.(a);
     },
     (ok, info) => {
       st.conn = ok ? "CONNECTED" : "DISCONNECTED"; st.nextRetryMs = ok ? null : info?.nextRetryMs ?? null;

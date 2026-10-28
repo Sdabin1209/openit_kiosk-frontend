@@ -60,9 +60,9 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 
 확인된 것(근거 문서):
 - 시험 상태(이 영역 시험 개수는 이 절에만 적는다; 2026-10-28, 이 PC 한 환경, 계약 2.1.0 작업 트리 스펙 반영 후):
-  - `npm test` 단위·계약 시험 172개 통과(건너뜀 0, 실패 0).
+  - `npm test` 단위·계약 시험 181개 통과(건너뜀 0, 실패 0).
   - `test:dom` 화면 구조 시험 10개 통과.
-  - 브라우저 시험 30개 통과(Playwright 1.55.1 이미지, `npm run test:e2e`).
+  - 브라우저 시험 32개 통과(Playwright 1.55.1 이미지, `npm run test:e2e`).
   - `npm run smoke` 통과. `npm audit`·`--omit=dev` 모두 0건(ADR 0012).
   - 서비스끼리 도는 시험의 결과는 이 문서에 옮기지 않고 `deploy/docs/E2E_RESULTS.md`를 본다.
 - 브라우저 시험 통과, 이미지 빌드·`/healthz`·라벨·non-root 확인은 이전 작업 PC에서 했다고 기록되어 있다(`docs/runbook.md`, `docs/STATUS.md`). 이 세션에서는 다시 확인하지 않았다.

@@ -176,7 +176,7 @@ test("3차 점검 K-b: DELIVERY_FAILED의 처음으로는 한 번 더 확인하�
   assert.equal(flow.current.callStaffReason, "DELIVERY_FAILED");
   await flow.leaveCallStaff();
   assert.equal(flow.current.state, "CALL_STAFF"); assert.equal(flow.current.confirmLeave, true);
-  flow.cancelLeave(); assert.equal(flow.current.confirmLeave, false);
+  flow.cancelLeave(); assert.equal(flow.current.confirmLeave, false); await settle(); // NOT_NOTIFIED 보고가 끝나야 버튼이 다시 풀린다
   await flow.leaveCallStaff(); await flow.leaveCallStaff();
   assert.equal(flow.current.state, "IDLE");
   assert.equal(calls.filter((c) => c.kind === "SESSION_END").length, 0, "세션 종료 요청을 보내지 않는다");

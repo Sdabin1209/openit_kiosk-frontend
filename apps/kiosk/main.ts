@@ -103,6 +103,9 @@ function render(v: KioskView) {
             staffBtn.textContent = sc.sending ? "보내는 중…" : RETRY_BUTTON_LABEL; // 카운트다운은 별도 요소(live 영역 밖 취급)에 둔다
           }
           if (sc.notice) noticeText = STAFF_CALL_NOTICES[sc.notice];
+          // 카운트다운이 끝나 버튼이 켜지는 순간: 안내(role=status)를 알리고 키보드 초점을 버튼으로 돌려준다(L-4).
+          if (sc.canRetry && sc.waitS === 0 && lastWaitS > 0 && !v.confirmLeave) setTimeout(() => staffBtn.focus(), 0);
+          lastWaitS = sc.waitS;
           countdown.hidden = !(sc.canRetry && sc.waitS > 0); countdown.textContent = `${sc.waitS}초 뒤에 다시 부를 수 있어요`;
         }
         if (v.confirmLeave) {
@@ -124,13 +127,15 @@ function render(v: KioskView) {
   if (v.state === "IDLE") action.hidden = false;
   if (v.state === "REPEAT_PROMPT" && v.repeatReason === "NOT_COMMITTED") text.textContent = v.text ?? "저장하지 못했어요. 다시 말씀해 주세요.";
   if (v.state === "LISTENING" || v.state === "REPEAT_PROMPT") speak(text.textContent);
+  if (v.state !== "CALL_STAFF" || !v.staffCall) lastWaitS = 0;
+  if (v.state === "CALL_STAFF" && v.busy) { action.disabled = true; secondary.disabled = true; } else secondary.disabled = false; // report 진행 중 잠금(L-1)
   if (notice.textContent !== noticeText) notice.textContent = noticeText; // 같은 글자를 다시 쓰면 낭독기가 되풀이해 읽을 수 있다
   if (countdown.hidden === false && !(v.state === "CALL_STAFF" && v.staffCall && v.staffCall.waitS > 0)) countdown.hidden = true;
   // 초점은 CALL_STAFF에 처음 들어올 때만 옮긴다(재알림 뒤 다시 그려질 때 환자가 누르던 버튼에서 초점을 빼앗지 않는다).
   if (v.state === "CALL_STAFF" && lastState !== "CALL_STAFF") (action as HTMLElement).focus();
   lastState = v.state;
 }
-let lastState: string | null = null;
+let lastState: string | null = null, lastWaitS = 0;
 let prev: KioskView | null = null;
 /** 카운트다운 1초 변화만이면 숫자 한 곳만 바꾼다: 화면 전체를 다시 그리면 aria-live 영역이 1초마다 낭독되고 글자가 깜빡인다. */
 function onView(v: KioskView) {

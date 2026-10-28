@@ -92,6 +92,7 @@ const sync = createAlertSync({
   api,
   onChange: (m) => { alerts.clear(); for (const [k, v] of m) alerts.set(k, v); draw(); },
   onNew: (a) => banner(`새 알림: ${a.kind} 세션 ${a.session_id}`),
+  onRedelivery: (a) => banner(`재전달 알림(환자가 다시 불렀습니다, ${a.delivery_attempts}회째): ${a.kind} 세션 ${a.session_id}`), // role=alert 배너가 낭독된다
   onStatus: drawStatus,
 });
 void sync;

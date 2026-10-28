@@ -35,6 +35,8 @@ export interface KioskView {
   pauseReason?: PauseReason;
   /** CALL_STAFF(DELIVERY_FAILED)의 '다시 부르기' 상태(CR-H001). staffCall이 undefined면 기능 없음(옛 서버): 기존 화면. */
   staffCall?: StaffCallView;
+  /** '직접 알렸어요/취소'를 서버에 남기는 중: 화면은 버튼을 잠근다(더블 클릭이 report를 두 번 보내지 않게, L-1). */
+  busy?: boolean;
 }
 export interface StaffCallView {
   /** 다시 부르기를 보낼 수 있는지(false면 버튼을 숨긴다): 옛 서버(404/405)이거나 서버가 상한(RETRY_LIMIT)을 알렸다. */
@@ -45,9 +47,13 @@ export interface StaffCallView {
   waitS: number;
   attempts: number;
   /** 마지막 시도 결과: 안내 문구 선택용. */
-  notice?: "NO_ALERT" | "STILL_FAILED" | "NETWORK" | "LIMIT" | "UNSUPPORTED" | "REPORT_FAILED";
+  notice?: "NO_ALERT" | "STILL_FAILED" | "NETWORK" | "LIMIT" | "UNSUPPORTED" | "REPORT_FAILED" | "AUTH" | "BUSY" | "READY";
 }
 
+/** 응답을 받지 못했다고 보는 HTTP 상태(게이트웨이가 낸 502/503/504, 서버 내부 오류). 서버가 처리했는지 알 수 없으므로 같은 turn_id를 유지한다. */
+const NO_RESPONSE_STATUS: ReadonlySet<number> = new Set([500, 502, 503, 504]);
+/** report 한 건을 응답 없이 실패했을 때 같은 turn_id로 보내는 최대 횟수. 임의 값(측정 안 함): 환자를 오래 붙잡지 않으면서 한 번의 순간 장애는 넘긴다. */
+const REPORT_ATTEMPTS = 2;
 export class KioskFlow {
   private view: KioskView = { state: "IDLE", text: null };
   private listeners = new Set<(v: KioskView) => void>();
@@ -220,7 +226,9 @@ export class KioskFlow {
   async leaveCallStaff(): Promise<void> {
     if (this.view.state !== "CALL_STAFF") return;
     if (this.view.callStaffReason === "DELIVERY_FAILED") {
+      if (this.view.busy) return; // report 진행 중의 두 번째 누름은 무시한다(같은 보고를 한 번만 보낸다)
       if (!this.view.confirmLeave) return this.patch({ confirmLeave: true });
+      this.patch({ busy: true });
       await this.report("STAFF_NOTIFIED_MANUALLY"); // 서버에 남기는 것은 최선 노력: 실패해도 환자를 화면에 가두지 않는다
       return this.reset();
     }
@@ -236,18 +244,28 @@ export class KioskFlow {
   }
   /** 확인 단계에서 취소한다. */
   cancelLeave(): void {
-    if (this.view.state === "CALL_STAFF" && this.view.confirmLeave) { this.patch({ confirmLeave: false }); void this.report("NOT_NOTIFIED"); }
+    if (this.view.state !== "CALL_STAFF" || !this.view.confirmLeave || this.view.busy) return;
+    this.patch({ confirmLeave: false, busy: true });
+    void this.report("NOT_NOTIFIED").then(() => { if (this.view.state === "CALL_STAFF") this.patch({ busy: false }); });
   }
 
-  /** 환자의 '직접 알렸다/못 알렸다'를 서버에 남긴다(CR-H001). 매번 새 turn_id: 같은 turn_id에 다른 outcome은 409이기 때문이다. */
+  /**
+   * 환자의 '직접 알렸다/못 알렸다'를 서버에 남긴다(CR-H001). 보고 한 건은 turn_id 하나: 응답을 못 받았으면(네트워크·시간 초과·502/503/504)
+   * 같은 turn_id로 REPORT_ATTEMPTS번까지 다시 보낸다(서버 멱등이라 중복 기록이 없다, L-2). 다음 보고는 새 turn_id
+   * (같은 turn_id에 다른 outcome은 409이기 때문이다).
+   */
   private async report(outcome: StaffCallOutcome): Promise<void> {
     const id = this.sessionId;
     if (!id || !this.staffCallSupported) return;
-    try { await this.api.staffCallReport(id, outcome, newTurnId()); }
-    catch (e) {
-      if (e instanceof ApiError && (e.status === 404 || e.status === 405)) { this.staffCallSupported = false; return; } // 옛 서버: 기존 동작
-      if (this.view.state === "CALL_STAFF" && this.view.staffCall) this.patch({ staffCall: { ...this.view.staffCall, notice: "REPORT_FAILED" } });
+    const turnId = newTurnId();
+    for (let i = 0; i < REPORT_ATTEMPTS; i++) {
+      try { await this.api.staffCallReport(id, outcome, turnId); return; }
+      catch (e) {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 405)) { this.staffCallSupported = false; return; } // 옛 서버: 기존 동작
+        if (e instanceof ApiError && !NO_RESPONSE_STATUS.has(e.status)) break; // 서버가 답했다: 같은 요청을 되풀이하지 않는다
+      }
     }
+    if (this.view.state === "CALL_STAFF" && this.view.staffCall) this.patch({ staffCall: { ...this.view.staffCall, notice: "REPORT_FAILED" } });
   }
 
   /**
@@ -269,20 +287,24 @@ export class KioskFlow {
     } catch (e) {
       if (this.view.state !== "CALL_STAFF") return;
       const cur = this.view.staffCall ?? sc;
-      if (e instanceof ApiError) {
-        this.retryTurnId = null; // 서버가 답했다: 다음 눌림은 새 요청
-        if (e.status === 404 || e.status === 405) { this.staffCallSupported = false; return this.patch({ staffCall: { ...cur, sending: false, canRetry: false, notice: "UNSUPPORTED" } }); }
-        // 열린 알림이 없다(409): 직원이 처리했을 수도, 서버 기록이 어긋났을 수도 있다. 어느 쪽인지 키오스크는 모르므로 화면을 끝내지 않고
-        // 직접 안내를 남긴 채 버튼만 거둔다(헤드 결정, ADR 0014: 환자 안전 쪽으로 기운다).
-        if (e.status === 409) return this.patch({ staffCall: { ...cur, sending: false, canRetry: false, notice: "NO_ALERT" } });
+      if (e instanceof ApiError && !NO_RESPONSE_STATUS.has(e.status)) {
+        this.retryTurnId = null; // 서버가 답했다(200/409/429/404/405/401/403 등): 다음 눌림은 새 요청
+        const off = (notice: NonNullable<StaffCallView["notice"]>) => this.patch({ staffCall: { ...cur, sending: false, canRetry: false, notice } });
+        // 404/405: 옛 서버이거나 세션이 없거나 다른 기기의 세션이다. 키오스크는 구분할 수 없으므로 '쓸 수 없음'까지만 말하고 직접 안내를 남긴다.
+        if (e.status === 404 || e.status === 405) { this.staffCallSupported = false; return off("UNSUPPORTED"); }
+        const reason = (e.body?.details as { reason?: unknown } | undefined)?.reason;
+        // 열린 알림이 없다(409 NO_OPEN_ALERT): 직원이 처리했을 수도, 서버 기록이 어긋났을 수도 있다. 화면을 끝내지 않고 직접 안내를 남긴 채 버튼만 거둔다.
+        if (e.status === 409 && reason === "NO_OPEN_ALERT") return off("NO_ALERT");
+        // 그 밖의 409(TURN_IN_PROGRESS 등)는 일시 충돌이다: 잠시 뒤 다시 누를 수 있게 둔다.
+        if (e.status === 409) return this.startCountdown({ ...cur, sending: false, waitS: Math.max(1, Math.ceil((e.retryAfterMs ?? 2000) / 1000)), notice: "BUSY" });
         if (e.status === 429) {
-          const reason = (e.body?.details as { reason?: unknown } | undefined)?.reason;
-          if (reason === "RETRY_LIMIT") return this.patch({ staffCall: { ...cur, sending: false, canRetry: false, notice: "LIMIT" } });
+          if (reason === "RETRY_LIMIT") return off("LIMIT");
           return this.startCountdown({ ...cur, sending: false, waitS: Math.max(1, Math.ceil((e.retryAfterMs ?? 1000) / 1000)), notice: "STILL_FAILED" });
         }
-        if (e.status === 401 || e.status === 403) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "AUTH" });
+        // 401/403: 이 화면(직원 호출·직접 안내·확인 단계)을 AUTH 화면으로 바꾸지 않는다. 안내만 바꾼다(M-2).
+        if (e.status === 401 || e.status === 403) return off("AUTH");
       }
-      // 네트워크·시간 초과·5xx: 같은 turn_id로 다시 누를 수 있게 둔다(서버가 못 받았는지 받았는지 모른다).
+      // 네트워크·시간 초과·5xx(502/504 포함): 서버가 처리했는지 모른다. 같은 turn_id를 그대로 두어 다시 누르면 같은 요청이 된다(서버 멱등, M-3).
       this.patch({ staffCall: { ...cur, sending: false, notice: "NETWORK" } });
     }
   }
@@ -293,7 +315,7 @@ export class KioskFlow {
       const cur = this.view.staffCall;
       if (this.view.state !== "CALL_STAFF" || !cur) return;
       const n = Math.max(0, cur.waitS - 1);
-      this.patch({ staffCall: { ...cur, waitS: n } });
+      this.patch({ staffCall: n > 0 ? { ...cur, waitS: n } : { ...cur, waitS: 0, notice: "READY" } }); // 0이 되면 안내(role=status)와 초점 이동이 이어진다(L-4)
       this.callTimer = n > 0 ? this.timers.set(tick, 1000) : null;
     };
     this.callTimer = this.timers.set(tick, 1000);

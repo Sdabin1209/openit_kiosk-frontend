@@ -162,3 +162,29 @@ test("resync를 받으면 목록을 즉시 다시 읽어 놓친 알림을 채운
   assert.deepEqual(news, ["7"]);
   sync.stop();
 });
+
+// 2.1.0 M-1: 같은 alert_id의 재전달은 delivery_attempts가 커졌을 때만 배너(onRedelivery). 목록은 한 건으로 합친다.
+test("재알림 이벤트: 같은 alert_id에서 delivery_attempts가 커지면 재전달 알림, 같은/오래된 번호는 조용히", async () => {
+  FakeES.all = [];
+  const client = new PublicApiClient({ fetch: (async () => new Response(JSON.stringify({ items: [], next_cursor: null }))) as any, retry: { maxAttempts: 1 }, sleep: async () => {} });
+  const api = new StaffApi(client, { eventSource: (u) => new FakeES(u) as any });
+  const news: string[] = [], again: number[] = []; let last: ReadonlyMap<string, StaffAlert> = new Map();
+  const sync = createAlertSync({ api, onChange: (m) => { last = m; }, onNew: (a) => news.push(a.alert_id), onRedelivery: (a) => again.push(a.delivery_attempts!), onStatus: () => {}, refreshMs: 0 });
+  await flush(); const es = FakeES.all[0]; es.open(); await flush();
+  const base = al("1");
+  es.emit({ ...base, delivery_attempts: 1 }); assert.deepEqual(news, ["1"]); assert.deepEqual(again, []);
+  es.emit({ ...base, delivery_attempts: 2 }); assert.deepEqual(again, [2], "시도 횟수가 커졌다 = 재전달");
+  es.emit({ ...base, delivery_attempts: 2 }); assert.deepEqual(again, [2], "같은 번호(이어받기로 다시 온 이벤트)는 조용히");
+  es.emit({ ...base, delivery_attempts: 1 }); assert.deepEqual(again, [2], "오래된 번호도 조용히");
+  assert.equal(last.get("1")!.delivery_attempts, 2, "오래된 이벤트가 저장값을 되돌리지 않는다");
+  assert.equal(last.size, 1, "목록은 한 건으로 합친다");
+  es.emit({ ...al("2") }); es.emit({ ...al("2") }); assert.deepEqual(again, [2], "필드 없는 옛 서버는 기존 동작(재전달 판정 없음)");
+  es.emit({ ...base, status: "RESOLVED", delivery_attempts: 5 }); assert.deepEqual(again, [2], "해결된 알림은 재전달이 아니다");
+  sync.stop();
+});
+
+test("서비스 워커: 같은 tag의 재알림도 소리·진동을 내도록 renotify를 켠다", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../apps/staff/sw.ts", import.meta.url), "utf8");
+  assert.match(src, /tag: d\.alert_id[^}]*renotify: true/);
+});

@@ -234,6 +234,9 @@ test("키오스크 2.1.0: 다시 부르기 - 실패하면 카운트다운 동안
   await page.screenshot({ path: `${SHOTS}/kiosk-7-retry-countdown.png` });
   await page.waitForFunction(() => !(document.getElementById("staffcall") as HTMLButtonElement).disabled, null, { timeout: 8_000 }); // 상한은 실패 시에만 쓰인다
   assert.equal(await page.locator("#countdown").isHidden(), true);
+  assert.match(await page.locator("#notice").innerText(), /다시 부르기를 누를 수 있습니다/, "버튼이 켜지는 순간 role=status로 알린다(L-4)");
+  assert.equal(await page.evaluate(() => document.activeElement?.id), "staffcall", "초점이 버튼으로 돌아온다(L-4)");
+  assert.equal(await page.locator("#notice").getAttribute("role"), "status");
   await config({ retryDelivery: "DELIVERED", enforceInterval: false });
   await btn.click();
   await page.getByText("직원이 곧 도와드립니다").waitFor();
@@ -290,12 +293,40 @@ test("키오스크 2.1.0: '못 알렸어요'(취소)는 NOT_NOTIFIED를, '직접
   await ctx.close();
 });
 
+test("키오스크 2.1.0: '직접 알렸어요' 더블 클릭은 report를 한 번만 보낸다(L-1)", async () => {
+  await scenario("delivery_failed", { delayMs: 200 });
+  const { page, ctx } = await open("none");
+  const reports: string[] = [];
+  page.on("request", (r) => { if (r.url().includes("/staff-call/report")) reports.push(r.postData() ?? ""); });
+  await toDeliveryFailed(page);
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByText("직원에게 직접 알리셨나요?").waitFor();
+  await page.getByRole("button", { name: "직접 알렸어요, 처음으로" }).dblclick();
+  await page.getByRole("button", { name: "시작하기" }).waitFor();
+  assert.equal(reports.length, 1);
+  assert.match(reports[0], /STAFF_NOTIFIED_MANUALLY/);
+  await ctx.close();
+});
+
+test("직원 콘솔 2.1.0: 열린 알림이 키오스크의 재알림으로 다시 오면 재전달 배너가 뜨고 목록은 한 건이다(M-1)", async () => {
+  await scenario("delivery_failed");
+  const staff = await open("none"); await staff.page.goto(base + "/staff/");
+  const k = await open("none");
+  await toDeliveryFailed(k.page);
+  await staff.page.locator("#open li").first().waitFor();
+  assert.equal(await staff.page.locator("#banner").innerText().then((t) => /새 알림/.test(t)), true);
+  await k.page.getByRole("button", { name: "직원 다시 부르기" }).click();
+  await staff.page.getByText("재전달 알림").waitFor();
+  assert.equal(await staff.page.locator("#open li").count(), 1, "같은 alert_id는 한 건으로 합친다");
+  await k.ctx.close(); await staff.ctx.close();
+});
+
 test("키오스크 2.1.0: 옛 서버(경로 404)면 기능 감지로 다시 부르기를 끄고 기존 '직접 알리셨나요?' 동작을 유지한다", async () => {
   await scenario("delivery_failed_old_server");
   const { page, ctx } = await open("none");
   await toDeliveryFailed(page);
   await page.getByRole("button", { name: "직원 다시 부르기" }).click();
-  await page.getByText("이 기기에서는 다시 부르기를 쓸 수 없어요").waitFor();
+  await page.getByText("지금은 다시 부르기를 쓸 수 없어요").waitFor();
   await page.getByRole("button", { name: "직원 다시 부르기" }).waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "처음으로" }).click();
   await page.getByText("직원에게 직접 알리셨나요?").waitFor();
