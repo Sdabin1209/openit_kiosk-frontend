@@ -65,10 +65,10 @@ test("P3: 말하기 대기에서 입력이 없으면 세션을 끝내고 처음 
   const { api, bodies } = server(); const t = fakeTimers();
   const flow = new KioskFlow(api, { idleMs: 60_000, timers: t.timers });
   await flow.start();
-  assert.equal(t.q.length, 1); assert.equal(t.q[0]!.ms, 60_000);
+  assert.equal(t.q.length, 1); assert.equal(t.q[0]!.ms + clinical.IDLE_WARNING_MS, 60_000, "첫 타이머는 경고 시점(총 60초 중 마지막 경고 구간 앞)");
   const first = t.q[0]; flow.touch();
   assert.equal(t.q.length, 1); assert.notEqual(t.q[0], first, "조작하면 타이머를 새로 건다");
-  t.q[0]!.fn(); await settle();
+  t.q.shift()!.fn(); t.q.shift()!.fn(); await settle(); // 경고 시점 -> 만료 (#29: 만료 전 경고 단계가 생겼다)
   assert.equal(flow.current.state, "IDLE");
   assert.equal(flow.current.text, null, "응답 문장을 지운다");
   assert.deepEqual(bodies.map((b) => b.kind), ["SESSION_START", "SESSION_END"]);
@@ -226,7 +226,7 @@ for (const row of TABLE) {
     assert.equal(r.flow.current.state, row.state);
     if (row.name.includes("실패")) assert.equal(r.flow.current.endFailed, true);
     assert.equal(r.t.q.length, row.timer ? 1 : 0, "타이머 개수");
-    for (const x of r.t.q.splice(0)) x.fn(); // 60초 경과(실제 타이머처럼 발화하면 큐에서 빠진다)
+    while (r.t.q.length) r.t.q.shift()!.fn(); // 60초 경과: 경고 시점 -> 만료 순서로 울린다(#29)
     await settle();
     assert.equal(r.flow.current.state, row.after);
     assert.equal(r.ends(), row.ends, "SESSION_END 요청 횟수");
@@ -244,7 +244,7 @@ test("K-1 표: STARTING·SENDING(요청 진행 중)에는 유휴 타이머가 �
 test("K-1: 유휴 종료 요청이 실패하면 처음 화면으로 돌리지 않고 종료 실패 안내를 유지한다", async () => {
   const r = rig({ endFail: true });
   await r.flow.start();
-  r.t.q.splice(0)[0]!.fn(); await settle();
+  while (r.t.q.length) r.t.q.shift()!.fn(); await settle(); // 경고 시점 -> 만료
   assert.equal(r.flow.current.state, "ENDED"); assert.equal(r.flow.current.endFailed, true);
   assert.equal(r.ends(), 1);
   assert.equal(r.t.q.length, 0, "안내에 자동 초기화 타이머가 없다");

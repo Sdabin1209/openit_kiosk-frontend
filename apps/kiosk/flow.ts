@@ -7,7 +7,7 @@ import { isOutcomeUnknown } from "../../api/retry.ts";
 import type { KioskStart } from "../../api/device.ts";
 import { isUsableTranscript, type SttErrorKind, type SttResult } from "./stt.ts";
 import type { ConversationEvent } from "./chat.ts";
-import { IDLE_RESET_MS, LONG_WAIT_NOTICE_MS, MAX_INPUT_CHARS, MAX_REPEAT } from "./clinical.ts";
+import { IDLE_RESET_MS, IDLE_WARNING_MS, LONG_WAIT_NOTICE_MS, MAX_INPUT_CHARS, MAX_REPEAT } from "./clinical.ts";
 
 export type KioskState =
   | "IDLE" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING"
@@ -23,6 +23,8 @@ export interface KioskView {
   repeatReason?: RepeatReason;
   /** 일시 장애로 같은 요청을 다시 보내는 중(STARTING·SENDING). 화면은 대기 문구와 직원 호출·그만하기를 보인다. */
   retrying?: boolean;
+  /** 유휴 만료 경고 중이다: 값은 만료까지 남은 초(경고를 띄운 시점의 값, 매초 줄이지 않는다: 낭독기가 되풀이해 읽지 않게). WCAG 2.2.1 */
+  idleWarnS?: number;
   /** 마이크를 쓸 수 없다(거부·오류): 화면 입력으로 대체한다. */
   textFallback?: boolean;
   /** 접수 참조 없이 시작했다(한 번 쓴 참조는 다시 쓰지 않는다). 현장 확인용 표시. */
@@ -111,18 +113,27 @@ export class KioskFlow {
     this.view = v; this.armIdle(); for (const l of this.listeners) l(v); }
   private patch(p: Partial<KioskView>) { this.view = { ...this.view, ...p }; for (const l of this.listeners) l(this.view); }
 
-  /** 유휴 초기화: 입력이 없으면 세션을 끝내고 화면을 처음으로 돌린다(다음 사람에게 남지 않게). 위험 정지 대기는 세션을 끝내지 않는다. */
+  /** 유휴 초기화: 입력이 없으면 세션을 끝내고 화면을 처음으로 돌린다(다음 사람에게 남지 않게). 위험 정지 대기는 세션을 끝내지 않는다.
+   * 왜 경고 단계가 있나: WCAG 2.2 SC 2.2.1 Timing Adjustable의 Extend 조건(끝나기 전에 알리고 20초 이상 연장할 수 있게 한다, 표준성 점검 #29).
+   * 총 제한(idleMs)은 바꾸지 않고 마지막 IDLE_WARNING_MS를 경고 구간으로 쓴다. 타이머는 항상 하나만 걸린다(경고 -> 만료). */
   private armIdle() {
     if (this.idleTimer !== null) { this.timers.clear(this.idleTimer); this.idleTimer = null; }
+    if (this.view.idleWarnS !== undefined) this.patch({ idleWarnS: undefined }); // 연장: 경고를 거둔다
     const s = this.view.state;
     // 직원 개입을 기다리는 화면(CALL_STAFF, WAITING_STAFF, 종료 실패 안내 등)에는 걸지 않는다: 그 화면에서는 reset()이
     // 서버 세션(PAUSED_RISK 등)을 그대로 두고 다음 사람이 시작할 수 있게 되기 때문이다(재점검 K-1). 벗어나는 길은 직원 결정이나 환자의 명시적 동작뿐이다.
     if (this.idleMs <= 0 || (s !== "LISTENING" && s !== "REPEAT_PROMPT")) return;
-    this.idleTimer = this.timers.set(() => {
+    const warnMs = Math.min(IDLE_WARNING_MS, this.idleMs); // 총 제한이 경고 구간보다 짧으면 처음부터 경고
+    const expire = () => {
       this.idleTimer = null;
       // 서버에 종료 요청을 먼저 보내고, 성공했을 때만 처음 화면으로 돌린다. 실패하면 종료 실패 안내(ENDED, endFailed)를 유지한다.
       void this.end().then(() => { if (this.view.state === "ENDED" && !this.view.endFailed) this.reset(); });
-    }, this.idleMs);
+    };
+    const warn = () => {
+      this.patch({ idleWarnS: Math.round(warnMs / 1000) });
+      this.idleTimer = this.timers.set(expire, warnMs);
+    };
+    this.idleTimer = this.idleMs > warnMs ? this.timers.set(warn, this.idleMs - warnMs) : this.timers.set(() => warn(), 0);
   }
   /** 환자 조작(버튼·입력)이 있었다: 유휴 시간을 다시 센다. */
   touch(): void { this.armIdle(); }

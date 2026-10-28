@@ -67,7 +67,7 @@ export const MSG = {
   CHAT_PATIENT: m("나"),
   CHAT_SYSTEM: m("안내"),
   // 유휴 만료 전 경고와 연장(WCAG 2.2 SC 2.2.1, #29)
-  IDLE_WARNING: m("{n}초 뒤에 처음 화면으로 돌아갑니다. 계속하시려면 아래 버튼을 눌러 주세요."),
+  IDLE_WARNING: m("{n}초 안에 아래 버튼을 누르지 않으면 처음 화면으로 돌아갑니다."),
   BTN_IDLE_EXTEND: m("계속하기"),
 } as const satisfies Record<string, Msg>;
 

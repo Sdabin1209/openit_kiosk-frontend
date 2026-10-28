@@ -17,7 +17,7 @@ const stt = new WebSpeechStt(); // 기본: 기기 안 인식만(D88 U3). 외부 
 void holder.loaded.then((c) => { stt.setAllowRemote(c.allowRemoteStt); return stt.init(); }).then(() => render(flow.current));
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const title = $("title"), text = $("text"), action = $("action") as HTMLButtonElement;
-const secondary = $("secondary") as HTMLButtonElement, staffBtn = $("staffcall") as HTMLButtonElement, notice = $("notice"), manual = $("manual"), countdown = $("countdown"), input = $("manual-input") as HTMLInputElement;
+const extendBtn = $("extend") as HTMLButtonElement, secondary = $("secondary") as HTMLButtonElement, staffBtn = $("staffcall") as HTMLButtonElement, notice = $("notice"), manual = $("manual"), countdown = $("countdown"), input = $("manual-input") as HTMLInputElement;
 
 let onAction: () => void = () => {};
 let onSecondary: (() => void) | null = null;
@@ -66,6 +66,13 @@ function render(v: KioskView) {
   if (v.startNotice === "NO_SUBJECT_REF") notes.push(MSG.NOTICE_NO_SUBJECT_REF.text);
   if (listening && stt.remote) notes.push(REMOTE_STT_NOTICE); // 외부 인식 허용 설정을 켠 기기에서만
   if (listening && !stt.available() && !stt.remote) notes.push(NO_STT_NOTICE);
+  // 유휴 만료 경고(WCAG 2.2.1): 안내(role=status)와 연장 버튼. 초점을 버튼으로 옮겨 키보드·스위치 사용자가 바로 누를 수 있게 한다.
+  const warning = v.idleWarnS !== undefined && listening;
+  if (warning) notes.push(fill(MSG.IDLE_WARNING, { n: v.idleWarnS! }));
+  extendBtn.hidden = !warning; extendBtn.textContent = MSG.BTN_IDLE_EXTEND.text;
+  if (warning && !wasWarning) extendBtn.focus();
+  if (!warning && wasWarning && listening) (action as HTMLElement).focus(); // 연장한 뒤 초점이 사라진 버튼에 남지 않게
+  wasWarning = warning;
   let noticeText = notes.join(" ");
   clearTimeout(idleTimer);
   switch (v.state) {
@@ -141,6 +148,7 @@ function render(v: KioskView) {
   if (v.state === "CALL_STAFF" && lastState !== "CALL_STAFF") (action as HTMLElement).focus();
   lastState = v.state;
 }
+let wasWarning = false;
 let lastState: string | null = null, lastWaitS = 0;
 let prev: KioskView | null = null;
 /** 카운트다운 1초 변화만이면 숫자 한 곳만 바꾼다: 화면 전체를 다시 그리면 aria-live 영역이 1초마다 낭독되고 글자가 깜빡인다. */
@@ -153,6 +161,7 @@ function onView(v: KioskView) {
   render(v);
 }
 action.addEventListener("click", () => { flow.touch(); onAction(); });
+extendBtn.addEventListener("click", () => flow.touch()); // 연장: 간단한 동작 한 번(WCAG 2.2.1), 몇 번이든 되풀이할 수 있다
 staffBtn.addEventListener("click", () => { if (flow.current.state === "CALL_STAFF") void flow.retryStaffCall(); else flow.callStaff(); });
 input.addEventListener("input", () => flow.touch());
 secondary.addEventListener("click", () => { flow.touch(); onSecondary?.(); });
