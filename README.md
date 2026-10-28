@@ -51,6 +51,8 @@ npm run smoke           # 이미지 빌드, /healthz, 라벨, non-root (Docker)
 npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식 이미지 안에서 실행 (Docker)
 ```
 
+`test/audit.test.ts`와 `test/mock.test.ts`는 `../boundary-contracts`와 `../survey-service/schema`를 읽으므로 워크스페이스 폴더 구조 안에서만 돌 수 있다(워크스페이스 규칙상 의도된 읽기 전용 의존, 단독 clone이면 ENOENT로 실패).
+
 이 문서를 쓰며 직접 돌려 본 것(2026-10-27, Node v24.14.0): `npm test`(통과, 숫자는 실행 결과 참조), `npm run typecheck`(오류 없음), `npm run check-schema`("스키마 열거값 일치"), `npm run doctor`("OK: 전제 충족").
 돌리지 않은 것: `npm ci`, `npm run build`, 모의 서버 시연, `npm run smoke`, `npm run test:e2e`, `npm run test:e2e:host`.
 
