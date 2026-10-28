@@ -42,16 +42,13 @@
       ],
       "unknown_keys": "reject",
       "note": "이 영역 이미지(Dockerfile, server/static.mjs)가 deploy에 약속하는 선언서. 이 선언서를 파일로 이미지에 싣는지는 정하지 않았다. 계약 승격 보정(wo6): user는 root/0이 아니어야 한다는 설명을 스키마 제약(not enum)으로 옮겼다. ADR 0012(mTLS)로 /config.json 경로와 device_config_schema 항목이 바뀔 수 있다. deploy 쪽이 이 선언서를 읽는 구현은 이웃 쪽 미확인."
-    },
+    }
+  ],
+  "not_promoted": [
     {
       "name": "TurnOutcome",
       "source_draft": "docs/change-requests/schemas/TurnOutcome.schema.json",
-      "producer": "survey-service",
-      "consumers": [
-        "kiosk-frontend"
-      ],
-      "unknown_keys": "reject",
-      "note": "survey-service FrontendInput/TurnFailureSignal(정본, 읽기 전용)과 구조가 겹치고 의미 제약만 더한다: 신호가 있으면 NOT_COMMITTED이거나 staff_alert가 NONE이 아니어야 한다. 읽는 쪽이 만든 부분집합 금지 원칙에 걸릴 수 있어 헤드가 정본 스키마에 흡수할지 판단해 주길 바란다. 보정(wo6): survey-service가 바꾼 FrontendInput에 맞춰 선택 필드 session_id(시작 응답, 서버 발급)와 response_text 문자열 minLength 1을 반영했다. 위험 정지 턴이 신호를 항상 싣는지는 서버 쪽 미확인(키오스크는 응답 뒤 /state도 확인한다). valid 예시 TurnOutcome.{start,normal,staff-delivered,staff-delivery-failed,not-committed}는 이 영역 모의 서버가 낸 실제 응답이다(서버 구현 아님)."
+      "reason": "survey-service가 내는 FrontendInput(TurnFailureSignal 포함, 시작 응답의 session_id 포함)과 구조가 겹치는 읽는 쪽 부분집합이라 계약에서 뺐다(읽는 쪽 부분집합 금지, 내는 쪽 스키마가 정본). 이 영역의 응답 검증은 survey-service의 FrontendInput 스키마를 쓴다(test/mock.test.ts가 모의 서버 응답을 그 스키마로 검사한다). 초안이 더한 의미 제약('신호가 있으면 NOT_COMMITTED이거나 staff_alert가 NONE이 아니어야 한다', 위험 정지 턴이 신호를 항상 싣는지)은 스키마가 아니라 PUBLIC_API.md 문장으로 헤드가 정할 사항이며 CR-005 5절에 남아 있다."
     }
   ]
 }

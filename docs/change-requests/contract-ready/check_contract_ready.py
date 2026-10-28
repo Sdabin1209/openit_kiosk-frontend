@@ -11,6 +11,13 @@ bad, passed, rejected = 0, 0, 0
 def fail(msg):
     global bad; bad += 1; print("FAIL", msg)
 names = [m["name"] for m in manifest["items"]]
+# 승격하지 않는 항목은 not_promoted에 이름과 사유를 적고, 그 이름의 스키마·예시 파일이 없어야 한다
+for n in manifest.get("not_promoted", []):
+    if not n.get("name") or not n.get("reason"): fail(f"not_promoted 항목에 name/reason 없음: {n}")
+    if n["name"] in names: fail(f"{n['name']}: items와 not_promoted에 모두 있음")
+    leftovers = list(here.glob(f"**/{n['name']}.*")) if n.get("name") else []
+    if leftovers: fail(f"{n['name']}: 승격하지 않는데 파일이 남아 있음 {[str(x.relative_to(here)) for x in leftovers]}")
+if "TurnOutcome" not in [n.get("name") for n in manifest.get("not_promoted", [])]: fail("TurnOutcome이 not_promoted에 없음")
 if sorted(names) != sorted(schemas): fail(f"MANIFEST와 schemas 불일치: {sorted(names)} vs {sorted(schemas)}")
 for m in manifest["items"]:
     for k in ("name", "source_draft", "producer", "consumers", "unknown_keys", "note"):
