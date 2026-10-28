@@ -39,7 +39,7 @@ async function rig(configFile: string | null) {
   const doc: Document = w.document;
   w.eval(readFileSync("dist/kiosk.js", "utf8"));
   const $ = (id: string) => doc.getElementById(id) as HTMLElement;
-  const bubbles = () => [...doc.querySelectorAll("#chat li")].map((li) => `${li.className}:${li.querySelector(".msg")!.textContent}`);
+  const bubbles = () => [...doc.querySelectorAll("#chat li:not(.status)")].map((li) => `${li.className}:${li.querySelector(".msg")!.textContent}`);
   const close = async () => { w.close(); front.closeAllConnections(); await new Promise<void>((r) => front.close(() => r())); mock.reset(); mock.server.closeAllConnections(); };
   return { w, doc, $, bubbles, seen, mock, close };
 }
@@ -83,6 +83,40 @@ test("기기 설정이 없으면(조각도 없음) 서버로 세션을 부르지
     t.$("action").click();
     await waitFor(() => t.$("title").textContent === "직원을 불러 주세요", "직원 호출 화면");
     assert.equal(t.seen.some((s) => s.path.startsWith("/v1/")), false);
-    assert.deepEqual(t.bubbles(), []);
+    assert.deepEqual(t.bubbles(), []); // 대화 기록은 없다
+    // 안내는 스레드의 시스템 말풍선(상태)으로 보인다(ADR 0023)
+    assert.match(t.doc.querySelector("#chat li.status .msg")!.textContent!, /설정이 필요합니다/);
+    assert.equal(t.$("text").closest("li")?.className.includes("status"), true);
   } finally { await t.close(); }
+});
+
+// 대화형 UI(ADR 0023): 화면의 중심은 대화 스레드이고, 현재 질문은 스레드의 마지막 시스템 말풍선이며, 입력은 아래 고정 영역에 있다.
+test("대화 스레드: 시간순으로 쌓이고, 마지막 시스템 말풍선이 현재 질문(#text)이며 같은 글이 두 번 보이지 않고, 입력은 스레드 밖 아래 영역에 있다", opt, async () => {
+  const cfg = tmpConfig({ device_token: TOKEN });
+  const t = await rig(cfg.f);
+  try {
+    await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
+    t.$("action").click();
+    await waitFor(() => t.bubbles().length === 1, "시작 인사가 첫 말풍선");
+    for (const [i, say] of ["머리가 아파요", "어제부터요"].entries()) {
+      (t.$("manual-input") as HTMLInputElement).value = say;
+      t.$("action").click();
+      await waitFor(() => t.bubbles().length === 3 + 2 * i, `${i + 1}번째 발화와 응답`);
+      await waitFor(() => t.$("title").textContent === "말씀해 주세요", "다시 듣기 화면");
+    }
+    const lis = [...t.doc.querySelectorAll("#chat li:not(.status)")] as HTMLElement[];
+    assert.deepEqual(lis.map((li) => li.className.split(" ")[0]), ["system", "patient", "system", "patient", "system"]);
+    assert.deepEqual(lis.filter((li) => li.className.startsWith("patient")).map((li) => li.querySelector(".msg")!.textContent), ["머리가 아파요", "어제부터요"]);
+    const last = lis[lis.length - 1];
+    assert.ok(last.className.startsWith("system"), "마지막이 시스템 말");
+    assert.equal(t.$("text").closest("li"), last, "현재 질문(#text)은 마지막 시스템 말풍선이다");
+    assert.equal(t.$("text").closest("#chat")?.id, "chat");
+    const sentence = last.querySelector(".msg")!.textContent!;
+    const same = [...t.doc.querySelectorAll("body *")].filter((e) => e.children.length === 0 && e.textContent === sentence);
+    assert.equal(same.length, 1, "같은 글이 화면에 두 번 있으면 안 된다");
+    assert.equal(t.$("chat").getAttribute("role"), "log", "새 시스템 말을 읽어 주는 영역");
+    assert.equal(t.$("chat").getAttribute("aria-live"), "polite");
+    for (const id of ["action", "secondary", "manual-input"]) assert.equal(t.$(id).closest("#chat"), null, id + "은 스레드 밖");
+    assert.equal(t.$("action").closest("footer")?.id, "controls", "입력은 아래 고정 영역");
+  } finally { await t.close(); cfg.done(); }
 });

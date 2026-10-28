@@ -8,9 +8,11 @@
 <link rel="stylesheet" href="kiosk.css">
 </head>
 <body>
-<main id="app" aria-live="polite">
-  <h1 id="title"></h1>
-  <p id="text"></p>
+<main id="app">
+  <h1 id="title" aria-live="polite"></h1>
+  <ol id="chat" class="chat" role="log" aria-live="polite" aria-relevant="additions" hidden></ol>
+</main>
+<footer id="controls">
   <div id="manual" hidden>
     <label id="manual-label" for="manual-input"></label>
     <input id="manual-input" type="text" autocomplete="off">
@@ -21,8 +23,7 @@
   <button id="secondary" type="button" hidden></button>
   <p id="countdown" aria-hidden="true" hidden></p>
   <p id="notice" role="status"></p>
-</main>
-<ol id="chat" class="chat" aria-live="off" hidden></ol>
+</footer>
 <script src="kiosk.js"></script>
 </body>
 </html>

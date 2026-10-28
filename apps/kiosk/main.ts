@@ -16,7 +16,9 @@ flow.subscribeConversation((e) => chat.accept(e));
 const stt = new WebSpeechStt(); // 기본: 기기 안 인식만(D88 U3). 외부 허용은 기기 설정 allow_remote_stt에서만.
 void holder.loaded.then((c) => { stt.setAllowRemote(c.allowRemoteStt); return stt.init(); }).then(() => render(flow.current));
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
-const title = $("title"), text = $("text"), action = $("action") as HTMLButtonElement;
+// 화면 문구(현재 질문·안내)는 스레드의 마지막 시스템 말풍선으로 그린다(chatview.ts). 상태 기계 코드는 이 버퍼에 쓰고 render 끝에서 스레드를 다시 맞춘다.
+const text = document.createElement("p");
+const title = $("title"), action = $("action") as HTMLButtonElement;
 const extendBtn = $("extend") as HTMLButtonElement, secondary = $("secondary") as HTMLButtonElement, staffBtn = $("staffcall") as HTMLButtonElement, notice = $("notice"), manual = $("manual"), countdown = $("countdown"), input = $("manual-input") as HTMLInputElement;
 
 let onAction: () => void = () => {};
@@ -51,6 +53,9 @@ function waitingButtons(v: KioskView) {
   action.hidden = false; action.textContent = MSG.BTN_CALL_STAFF.text; onAction = () => flow.callStaff();
   secondary.hidden = false; secondary.textContent = MSG.BTN_STOP.text; onSecondary = () => void flow.end();
 }
+
+/** 스레드를 다시 맞춘다: 대화 목록 + 현재 화면 문구(같은 글이면 합친다). */
+function paint() { renderChat(document, $("chat"), chat.current, text.textContent ? text.textContent : null); }
 
 function render(v: KioskView) {
   document.body.classList.toggle("warn", v.state === "CALL_STAFF");
@@ -147,6 +152,7 @@ function render(v: KioskView) {
   // 초점은 CALL_STAFF에 처음 들어올 때만 옮긴다(재알림 뒤 다시 그려질 때 환자가 누르던 버튼에서 초점을 빼앗지 않는다).
   if (v.state === "CALL_STAFF" && lastState !== "CALL_STAFF") (action as HTMLElement).focus();
   lastState = v.state;
+  paint();
 }
 let wasWarning = false;
 let lastState: string | null = null, lastWaitS = 0;
@@ -166,5 +172,5 @@ staffBtn.addEventListener("click", () => { if (flow.current.state === "CALL_STAF
 input.addEventListener("input", () => flow.touch());
 secondary.addEventListener("click", () => { flow.touch(); onSecondary?.(); });
 input.addEventListener("keydown", (e) => { if (e.key === "Enter") onAction(); });
-chat.subscribe((v) => renderChat(document, $("chat"), v));
+chat.subscribe(() => paint());
 flow.subscribe(onView);

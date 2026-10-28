@@ -684,3 +684,43 @@ test("CSRF 방어 호환: 브라우저의 모든 POST/DELETE가 Origin=요청 �
     assert.equal(m.site, "same-origin", `${m.method} ${m.path}: Sec-Fetch-Site=${m.site}`);
   }
 });
+
+// 대화형 UI(ADR 0023): 스레드가 화면 중심이고 입력은 아래에 고정된다. 스크린샷은 e2e-artifacts/에 남는다(사람이 눈으로 확인).
+test("키오스크 대화형 UI: normal 3턴이 스레드에 시간순으로 쌓이고 입력 영역은 화면 안 아래에 있다 (스크린샷)", async () => {
+  await scenario("normal");
+  const { page, ctx, errors } = await open("none");
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.locator("#chat li.system").first().waitFor();
+  for (const [i, say] of ["머리가 아파요", "어제부터 그랬어요", "열은 없어요"].entries()) {
+    await page.locator("#manual-input").fill(say);
+    await page.getByRole("button", { name: "말하기" }).click();
+    await page.waitForFunction((n) => document.querySelectorAll("#chat li.patient").length === n && document.querySelectorAll("#chat li.system:not(.status)").length === n + 1, i + 1);
+  }
+  const kinds = await page.locator("#chat li").evaluateAll((els) => els.map((e) => e.className.split(" ")[0]));
+  assert.deepEqual(kinds, ["system", "patient", "system", "patient", "system", "patient", "system"]);
+  const box = await page.locator("#controls").boundingBox();
+  assert.ok(box && box.y + box.height <= 1920 + 1 && box.y > 960, "입력 영역은 화면 아래쪽에 고정");
+  const atBottom = await page.locator("#chat").evaluate((e) => e.scrollTop + e.clientHeight >= e.scrollHeight - 2);
+  assert.equal(atBottom, true, "가장 최근 말이 보이게 아래로 스크롤");
+  assert.equal(await page.locator("#text").evaluate((e) => e.closest("li") === document.querySelector("#chat li:last-child")), true, "마지막 말풍선이 현재 질문");
+  await page.screenshot({ path: `${SHOTS}/kiosk-chat-normal.png` });
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("키오스크 대화형 UI: 위험 정지 안내가 스레드의 시스템 말풍선으로 보인다 (스크린샷)", async () => {
+  await scenario("risk_stop");
+  const { page, ctx } = await open("none");
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.locator("#chat li.system").first().waitFor();
+  await page.locator("#manual-input").fill("위험해요");
+  await page.getByRole("button", { name: "말하기" }).click();
+  await page.getByText("직원이 곧 도와드립니다").waitFor();
+  const last = await page.locator("#chat li").last().evaluate((e) => e.className.split(" ")[0]);
+  assert.equal(last, "system");
+  assert.equal(await page.getByText("직원이 곧 도와드립니다").count(), 1, "같은 안내가 두 번 보이지 않는다");
+  await page.screenshot({ path: `${SHOTS}/kiosk-chat-risk.png` });
+  await ctx.close();
+});
