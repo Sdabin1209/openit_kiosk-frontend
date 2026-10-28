@@ -16,7 +16,9 @@ test("소스에 저장소·쿠키·콘솔·CDN이 없고, 기기 토큰 헤더(A
   assert.deepEqual(auth, ["api/client.ts"]);
 });
 
-test("빌드 산출물에 토큰과 외부 URL이 없다", { skip: !existsSync("dist") && "먼저 npm run build" }, () => {
+// 왜: dist가 없을 때 건너뛰면 CI가 초록으로 보이므로 실패시킨다(ADR 0013). npm test는 pretest가 먼저 빌드한다.
+test("빌드 산출물에 토큰과 외부 URL이 없다", () => {
+  assert.ok(existsSync("dist"), "dist 없음: npm run build 먼저(npm test는 pretest로 자동 빌드)");
   const files = walk("dist");
   assert.ok(files.length > 0);
   for (const f of files) {

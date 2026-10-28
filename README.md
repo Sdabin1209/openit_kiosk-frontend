@@ -45,7 +45,7 @@ cd kiosk-frontend
 npm ci                  # 의존 설치(리포 안 node_modules)
 npm run doctor          # Docker 전제 점검
 npm run typecheck && npm run check-schema
-npm test                # 단위·계약 시험
+npm test                # 단위·계약 시험(pretest가 먼저 build를 돌린다, ADR 0013)
 npm run build && STATIC_DIR=dist MOCK_SCENARIO=risk_stop node mock-server/main.ts   # 모의 서버로 시연(PORT를 비우면 빈 포트)
 npm run smoke           # 이미지 빌드, /healthz, 라벨, non-root (Docker)
 npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식 이미지 안에서 실행 (Docker)
@@ -98,4 +98,4 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 
 
 ## 설계 결정 기록 (ADR)
-구조 선택의 이유는 [docs/adr/](docs/adr/README.md)에 있다: [0001](docs/adr/0001-프레임워크-없는-TypeScript와-esbuild-번들.md), [0002](docs/adr/0002-키오스크와-직원-콘솔을-한-리포에-둔다.md), [0003](docs/adr/0003-직원-알림은-SSEEventSource-재연결·heartbeat는-직접-처리.md), [0004](docs/adr/0004-재시도·백오프·총-예산-20초.md), [0005](docs/adr/0005-응답-검증을-손으로-쓴다.md), [0006](docs/adr/0006-기기-토큰-보관-메모리-+-설정-파일-영구-브라우저-저장소-없음.md), [0007](docs/adr/0007-음성-인식은-기기-안-처리가-기본D88-U3.md), [0008](docs/adr/0008-유휴-초기화·다시-말하기-상한-등-임상-판단-값은-한-곳에-둔다.md), [0009](docs/adr/0009-서비스-워커는-직원-콘솔에만-둔다.md), [0010](docs/adr/0010-정적-파일은-의존-없는-작은-Node-서버로-낸다.md), [0011](docs/adr/0011-브라우저-시험은-컨테이너-안-Playwright-Chromium과-모의-서버.md), [0012](docs/adr/0012-devDependency-취약점-3건-최소-범위-상향.md).
+구조 선택의 이유는 [docs/adr/](docs/adr/README.md)에 있다: [0001](docs/adr/0001-프레임워크-없는-TypeScript와-esbuild-번들.md), [0002](docs/adr/0002-키오스크와-직원-콘솔을-한-리포에-둔다.md), [0003](docs/adr/0003-직원-알림은-SSEEventSource-재연결·heartbeat는-직접-처리.md), [0004](docs/adr/0004-재시도·백오프·총-예산-20초.md), [0005](docs/adr/0005-응답-검증을-손으로-쓴다.md), [0006](docs/adr/0006-기기-토큰-보관-메모리-+-설정-파일-영구-브라우저-저장소-없음.md), [0007](docs/adr/0007-음성-인식은-기기-안-처리가-기본D88-U3.md), [0008](docs/adr/0008-유휴-초기화·다시-말하기-상한-등-임상-판단-값은-한-곳에-둔다.md), [0009](docs/adr/0009-서비스-워커는-직원-콘솔에만-둔다.md), [0010](docs/adr/0010-정적-파일은-의존-없는-작은-Node-서버로-낸다.md), [0011](docs/adr/0011-브라우저-시험은-컨테이너-안-Playwright-Chromium과-모의-서버.md), [0012](docs/adr/0012-devDependency-취약점-3건-최소-범위-상향.md), [0013](docs/adr/0013-npm-test는-pretest로-빌드하고-dist-없으면-실패한다.md).

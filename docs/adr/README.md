@@ -14,3 +14,4 @@
 - [0010 정적 파일은 의존 없는 작은 Node 서버로 낸다](0010-정적-파일은-의존-없는-작은-Node-서버로-낸다.md)
 - [0011 브라우저 시험은 컨테이너 안 Playwright Chromium과 모의 서버](0011-브라우저-시험은-컨테이너-안-Playwright-Chromium과-모의-서버.md)
 - [0012 devDependency 취약점 3건을 최소 범위로 올린다](0012-devDependency-취약점-3건-최소-범위-상향.md)
+- [0013 npm test는 pretest로 먼저 빌드하고, dist가 없으면 시험이 실패한다](0013-npm-test는-pretest로-빌드하고-dist-없으면-실패한다.md)

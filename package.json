@@ -10,6 +10,7 @@
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "check-schema": "node scripts/check-schema.mjs",
+    "pretest": "npm run build",
     "test": "node --test \"test/*.test.ts\"",
     "mock": "node mock-server/main.ts",
     "start": "node server/static.mjs",
