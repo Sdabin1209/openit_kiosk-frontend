@@ -57,7 +57,12 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 ## 현재 상태
 
 확인된 것(근거 문서):
-- 단위·계약 시험 157개 통과(건너뜀 0, 실패 0; 2026-10-28, 이 PC 한 환경, devDependency 상향 후), `test:dom` 8개 통과, 브라우저 시험(`test:e2e`, Playwright 1.55.1 이미지) 23개 통과, `npm run smoke` 통과. `npm audit`·`--omit=dev` 모두 0건(ADR 0012).
+- 시험 상태(이 영역 시험 개수는 이 절에만 적는다; 2026-10-28, 이 PC 한 환경, devDependency 상향 후):
+  - `npm test` 단위·계약 시험 157개 통과(건너뜀 0, 실패 0).
+  - `test:dom` 화면 구조 시험 8개 통과.
+  - 브라우저 시험 23개 통과(Playwright 1.55.1 이미지, `npm run test:e2e`).
+  - `npm run smoke` 통과. `npm audit`·`--omit=dev` 모두 0건(ADR 0012).
+  - 서비스끼리 도는 시험의 결과는 이 문서에 옮기지 않고 `deploy/docs/E2E_RESULTS.md`를 본다.
 - 브라우저 시험 통과, 이미지 빌드·`/healthz`·라벨·non-root 확인은 이전 작업 PC에서 했다고 기록되어 있다(`docs/runbook.md`, `docs/STATUS.md`). 이 세션에서는 다시 확인하지 않았다.
 - boundary-contracts v2.0.2, survey-schema 1 기준이다(D66 회신 반영은 v1.3.2 시점, v2에서 이 영역의 I10 응답 모양은 바뀌지 않았다). CR-002, CR-003은 헤드가 회신해 해소됐다(`docs/STATUS.md`, `docs/boundary.md`).
 
