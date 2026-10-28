@@ -18,6 +18,7 @@ void holder.loaded.then((c) => { stt.setAllowRemote(c.allowRemoteStt); return st
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 // 화면 문구(현재 질문·안내)는 스레드의 마지막 시스템 말풍선으로 그린다(chatview.ts). 상태 기계 코드는 이 버퍼에 쓰고 render 끝에서 스레드를 다시 맞춘다.
 const text = document.createElement("p");
+const controls = $("controls");
 const title = $("title"), action = $("action") as HTMLButtonElement;
 const extendBtn = $("extend") as HTMLButtonElement, secondary = $("secondary") as HTMLButtonElement, staffBtn = $("staffcall") as HTMLButtonElement, notice = $("notice"), manual = $("manual"), countdown = $("countdown"), input = $("manual-input") as HTMLInputElement;
 
@@ -152,6 +153,8 @@ function render(v: KioskView) {
   // 초점은 CALL_STAFF에 처음 들어올 때만 옮긴다(재알림 뒤 다시 그려질 때 환자가 누르던 버튼에서 초점을 빼앗지 않는다).
   if (v.state === "CALL_STAFF" && lastState !== "CALL_STAFF") (action as HTMLElement).focus();
   lastState = v.state;
+  // 보이는 입력·버튼·안내가 하나도 없으면 아래 영역 자체를 감춘다(빈 띠가 고장처럼 보이지 않게).
+  controls.hidden = [action, extendBtn, staffBtn, secondary].every((b) => b.hidden) && manual.hidden && countdown.hidden && notice.textContent === "";
   paint();
 }
 let wasWarning = false;

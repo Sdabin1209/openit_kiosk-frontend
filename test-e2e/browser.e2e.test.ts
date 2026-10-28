@@ -686,24 +686,34 @@ test("CSRF 방어 호환: 브라우저의 모든 POST/DELETE가 Origin=요청 �
 });
 
 // 대화형 UI(ADR 0023): 스레드가 화면 중심이고 입력은 아래에 고정된다. 스크린샷은 e2e-artifacts/에 남는다(사람이 눈으로 확인).
-test("키오스크 대화형 UI: normal 3턴이 스레드에 시간순으로 쌓이고 입력 영역은 화면 안 아래에 있다 (스크린샷)", async () => {
+test("키오스크 대화형 UI: normal 2턴이 스레드에 시간순으로 쌓이고, 서버가 문진을 끝내면(3턴) 종료 화면에 마무리 안내만 남고 입력 영역은 사라진다 (스크린샷)", async () => {
   await scenario("normal");
   const { page, ctx, errors } = await open("none");
   await page.goto(kioskUrl());
   await page.getByRole("button", { name: "시작하기" }).click();
   await page.locator("#chat li.system").first().waitFor();
-  for (const [i, say] of ["머리가 아파요", "어제부터 그랬어요", "열은 없어요"].entries()) {
-    await page.locator("#manual-input").fill(say);
+  const say = async (text: string, patients: number, systems: number) => {
+    await page.locator("#manual-input").fill(text);
     await page.getByRole("button", { name: "말하기" }).click();
-    await page.waitForFunction((n) => document.querySelectorAll("#chat li.patient").length === n && document.querySelectorAll("#chat li.system:not(.status)").length === n + 1, i + 1);
-  }
+    await page.waitForFunction(([p, y]) => document.querySelectorAll("#chat li.patient").length === p && document.querySelectorAll("#chat li.system:not(.status)").length === y, [patients, systems]);
+  };
+  await say("머리가 아파요", 1, 2);
+  await say("어제부터 그랬어요", 2, 3);
   const kinds = await page.locator("#chat li").evaluateAll((els) => els.map((e) => e.className.split(" ")[0]));
-  assert.deepEqual(kinds, ["system", "patient", "system", "patient", "system", "patient", "system"]);
+  assert.deepEqual(kinds, ["system", "patient", "system", "patient", "system"]);
   const box = await page.locator("#controls").boundingBox();
   assert.ok(box && box.y + box.height <= 1920 + 1 && box.y > 960, "입력 영역은 화면 아래쪽에 고정");
-  const atBottom = await page.locator("#chat").evaluate((e) => e.scrollTop + e.clientHeight >= e.scrollHeight - 2);
-  assert.equal(atBottom, true, "가장 최근 말이 보이게 아래로 스크롤");
+  assert.equal(await page.locator("#chat").evaluate((e) => e.scrollTop + e.clientHeight >= e.scrollHeight - 2), true, "가장 최근 말이 보이게 아래로 스크롤");
   assert.equal(await page.locator("#text").evaluate((e) => e.closest("li") === document.querySelector("#chat li:last-child")), true, "마지막 말풍선이 현재 질문");
+  await page.screenshot({ path: `${SHOTS}/kiosk-chat-normal-mid.png` });
+  // 3번째 답 뒤 서버가 문진을 끝낸다: 종료 화면
+  await page.locator("#manual-input").fill("열은 없어요");
+  await page.getByRole("button", { name: "말하기" }).click();
+  await page.getByText("수고하셨습니다").waitFor();
+  assert.equal(await title(page).textContent(), "수고하셨습니다");
+  assert.deepEqual(await page.locator("#chat li").evaluateAll((els) => els.map((e) => e.className)), ["system status"], "대화는 지워지고 마무리 안내만 남는다");
+  assert.equal(await page.getByText("문진이 끝났습니다").count(), 1);
+  assert.equal(await page.locator("#controls").isHidden(), true, "종료 화면에는 입력·버튼이 없다");
   await page.screenshot({ path: `${SHOTS}/kiosk-chat-normal.png` });
   assert.deepEqual(errors, []);
   await ctx.close();
@@ -721,6 +731,7 @@ test("키오스크 대화형 UI: 위험 정지 안내가 스레드의 시스템 
   const last = await page.locator("#chat li").last().evaluate((e) => e.className.split(" ")[0]);
   assert.equal(last, "system");
   assert.equal(await page.getByText("직원이 곧 도와드립니다").count(), 1, "같은 안내가 두 번 보이지 않는다");
+  assert.equal(await page.locator("#controls").isHidden(), true, "버튼이 없으면 아래 영역 자체를 감춘다(빈 띠 없음)");
   await page.screenshot({ path: `${SHOTS}/kiosk-chat-risk.png` });
   await ctx.close();
 });

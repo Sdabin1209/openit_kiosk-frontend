@@ -240,6 +240,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
           const q = QUESTIONS[Math.min(s.turns, QUESTIONS.length - 1)];
           s.values.push({ key: `answer_${s.turns}`, value: body.utterance, status: "ANSWERED", precision: "exact" });
           logTurn(s, body.turn_id, body.utterance, q, "ASK_NEXT");
+          if (s.turns >= QUESTIONS.length - 1) { s.ended = true; s.endedBy = "ENDED_COMPLETE"; } // 마지막 안내를 낸 뒤 서버가 문진을 끝낸다
           out = input(q);
         }
         state.cache.set(key, out);

@@ -188,8 +188,11 @@ export class KioskFlow {
       this.pendingTurnId = this.pendingUtterance = null; // 발화는 메모리에도 남기지 않는다
       // 계약상 위험 정지가 성공하면 turn_failure_signal은 null일 수 있다(DELIVERED는 신호가 오는 경우뿐).
       // 신호만으로 정지를 알 수 없으면 세션 상태(PAUSED_RISK)를 확인해 대기 화면으로 간다(H-2).
-      if (this.needsStateCheck(resp) && (await this.pausedByState(ctl))) return this.waitForStaff(resp.response_text);
+      const st = this.needsStateCheck(resp) ? await this.sessionStateOf(ctl) : null;
+      if (st === "PAUSED_RISK") return this.waitForStaff(resp.response_text);
       if (this.view.state !== "SENDING") return; // 확인하는 동안 환자가 직원 호출·그만하기를 눌렀다
+      // 서버가 문진을 끝냈다(FrontendInput에는 완료 필드가 없어 정지 확인용 상태 조회의 ENDED를 쓴다). 마지막 안내 문장을 종료 화면에 보이고 종료 요청은 보내지 않는다.
+      if (st === "ENDED") { this.sessionId = null; return this.set({ state: "ENDED", text: resp.response_text }); }
       this.handle(resp);
     } catch (e) {
       if (e instanceof AbortedError) return;
@@ -203,12 +206,12 @@ export class KioskFlow {
     return !(sig?.staff_alert === "DELIVERED" || sig?.staff_alert === "DELIVERY_FAILED" || sig?.write_committed === "NOT_COMMITTED");
   }
   /** 정지 여부를 상태 조회로 확인한다. 조회에 실패하면 정지가 아닌 것으로 보고 진행한다(조회 실패가 환자 턴을 막지 않게). */
-  private async pausedByState(ctl: AbortController): Promise<boolean> {
+  private async sessionStateOf(ctl: AbortController): Promise<string | null> {
     try {
       const s = await this.api.getSessionState(this.sessionId!, { signal: ctl.signal });
       this.lastPause = s.state === "PAUSED_RISK" ? normalizePauseReason(s.pause_reason) : undefined;
-      return s.state === "PAUSED_RISK";
-    } catch { return false; }
+      return s.state;
+    } catch { return null; }
   }
 
   /** 다시 말하기 화면. 연달아 MAX_REPEAT를 넘으면 직원 호출 안내로 넘긴다(무한 반복 방지). */

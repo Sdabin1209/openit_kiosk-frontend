@@ -61,7 +61,7 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 
 확인된 것(근거 문서):
 - 시험 상태(이 영역 시험 개수는 이 절에만 적는다; 2026-10-28, 이 PC 한 환경):
-  - `npm test` 단위·계약 시험 240개 통과(건너뜀 0, 실패 0; 2026-10-29 실측, 워크트리 한 환경). 호스트에 jsdom이 있어 화면 구조 시험과 앱 전체 jsdom 시험(`test/kiosk-app.test.ts`: 조각 없이 `/config.json`으로 시작, 대화 말풍선)도 이 안에서 돈다.
+  - `npm test` 단위·계약 시험 242개 통과(건너뜀 0, 실패 0; 2026-10-29 실측, 워크트리 한 환경). 호스트에 jsdom이 있어 화면 구조 시험과 앱 전체 jsdom 시험(`test/kiosk-app.test.ts`: 조각 없이 `/config.json`으로 시작, 대화 말풍선)도 이 안에서 돈다.
   - `test:dom`(Docker) 화면 구조 시험 20개 통과(staffview, chat, kiosk-app 세 파일; 2026-10-29 실측, 이 PC 한 환경).
   - `test:image`(Docker) 정적 서빙 성질 시험 14개 통과(2026-10-29 실측).
   - 브라우저 시험 34개 통과(Playwright 1.55.1 이미지, `npm run test:e2e`; 2026-10-29 실측, 대화형 UI 반영). 대화형 UI 전에는 같은 문구가 말풍선과 본문 두 곳에 있어 22개가 strict mode 위반으로 실패했고, 화면 구조 변경(ADR 0023)으로 해소됐다(로케이터는 바꾸지 않았다).

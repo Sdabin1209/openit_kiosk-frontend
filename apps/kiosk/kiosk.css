@@ -9,6 +9,7 @@ p { margin:0; font-size:40px; min-height:1.5em; }
 p#notice { font-size:24px; color:#555; min-height:0; }
 footer#controls { flex:none; border-top:4px solid #ccc; background:#f6f6f6; padding:24px 48px; }
 footer#controls > * { max-width:1100px; }
+footer#controls[hidden] { display:none; }
 footer#controls { display:flex; flex-wrap:wrap; gap:16px; justify-content:center; align-items:center; }
 footer#controls #manual, footer#controls #countdown, footer#controls #notice { flex-basis:100%; }
 #manual label { display:block; font-size:28px; }
