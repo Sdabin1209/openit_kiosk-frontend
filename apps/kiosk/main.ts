@@ -1,7 +1,7 @@
 import { PublicApiClient } from "../../api/client.ts";
 import { createStartHolder, loadKioskStart } from "../../api/device.ts";
 import { KioskFlow, type KioskView } from "./flow.ts";
-import { WebSpeechStt } from "./stt.ts";
+import { SttError, WebSpeechStt } from "./stt.ts";
 import { ChatLog } from "./chat.ts";
 import { renderChat } from "./chatview.ts";
 import { DELIVERY_FAILED_DIRECT_NOTICE, ENDED_RESET_MS, MAX_INPUT_CHARS, NO_STT_NOTICE, REASK_LIMIT_WAIT_NOTICE, REMOTE_STT_NOTICE, RETRY_BUTTON_LABEL, STAFF_CALL_NOTICES } from "./clinical.ts";
@@ -39,7 +39,7 @@ async function listenOnce() {
   if (!useStt()) { input.focus(); return; }
   action.disabled = true; action.textContent = "듣고 있어요…";
   try { await flow.hear(await stt.listen()); }
-  catch (e) { flow.sttError(e instanceof Error ? e.message : null); } // 거부·오류면 화면 입력으로 대체하고 상한까지만 다시 묻는다
+  catch (e) { flow.sttError(e instanceof SttError ? e.kind : "OTHER"); } // 거부·오류면 화면 입력으로 대체하고 상한까지만 다시 묻는다
 }
 
 /** 일시 장애로 다시 보내는 중이면 환자가 직원을 부르거나 그만둘 수 있게 한다. (문구는 임상 문구가 아니며 임시 UI 문구다.) */

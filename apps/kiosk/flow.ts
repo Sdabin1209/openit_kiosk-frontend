@@ -5,7 +5,7 @@ import type { PublicApiClient } from "../../api/client.ts";
 import { normalizePauseReason, type FrontendInput, type PauseReason, type StaffCallOutcome } from "../../api/types.ts";
 import { isOutcomeUnknown } from "../../api/retry.ts";
 import type { KioskStart } from "../../api/device.ts";
-import { isUsableTranscript, type SttResult } from "./stt.ts";
+import { isUsableTranscript, type SttErrorKind, type SttResult } from "./stt.ts";
 import type { ConversationEvent } from "./chat.ts";
 import { IDLE_RESET_MS, LONG_WAIT_NOTICE_MS, MAX_INPUT_CHARS, MAX_REPEAT } from "./clinical.ts";
 
@@ -206,10 +206,10 @@ export class KioskFlow {
   }
 
   /** 마이크 거부·STT 오류: 화면 입력으로 대체한다(같은 상한을 센다). */
-  sttError(code: string | null): void {
+  sttError(kind: SttErrorKind): void {
     const s = this.view.state;
     if (s !== "LISTENING" && s !== "REPEAT_PROMPT") return;
-    if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture" || code === "STT 사용 불가") this.micBlocked = true;
+    if (kind === "BLOCKED") this.micBlocked = true;
     this.repeat({ state: "REPEAT_PROMPT", text: null, repeatReason: "EMPTY_STT" });
   }
 

@@ -79,12 +79,12 @@ test("P4: 마이크 거부는 화면 입력으로 대체되고(textFallback) 직
   const { api } = server();
   const flow = new KioskFlow(api, { idleMs: 0 });
   await flow.start();
-  flow.sttError("not-allowed");
+  flow.sttError("BLOCKED");
   assert.equal(flow.current.state, "REPEAT_PROMPT");
   assert.equal(flow.current.textFallback, true);
-  for (let i = 1; i < clinical.MAX_REPEAT; i++) flow.sttError("not-allowed");
+  for (let i = 1; i < clinical.MAX_REPEAT; i++) flow.sttError("BLOCKED");
   assert.equal(flow.current.state, "REPEAT_PROMPT", "상한까지는 계속 묻는다");
-  flow.sttError("not-allowed");
+  flow.sttError("BLOCKED");
   assert.equal(flow.current.state, "CALL_STAFF");
   assert.equal(flow.current.callStaffReason, "REPEAT_LIMIT");
 });

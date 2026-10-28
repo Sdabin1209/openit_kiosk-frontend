@@ -3,9 +3,23 @@ export interface SttResult {
   text: string;
   confidence: number | null; // 알 수 없으면 null
 }
+/** STT 실패의 종류(어댑터 -> 상태 기계 오류 스키마, KF-10). 상태 기계는 이 열거만 본다: 에러 메시지 문구나 브라우저 오류 코드 문자열을 읽지 않는다.
+ * BLOCKED = 마이크 권한·장치 문제이거나 이 기기에서 음성 입력을 쓸 수 없음(화면 입력으로 대체한다), NO_SPEECH = 말이 들리지 않음, OTHER = 그 밖. */
+export type SttErrorKind = "BLOCKED" | "NO_SPEECH" | "OTHER";
+export class SttError extends Error {
+  kind: SttErrorKind;
+  constructor(kind: SttErrorKind, message: string) { super(message); this.name = "SttError"; this.kind = kind; }
+}
+/** Web Speech API 오류 코드(SpeechRecognitionErrorCode) -> SttErrorKind. 표준 코드 밖의 값은 OTHER. */
+export function sttErrorKind(code: string): SttErrorKind {
+  if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture") return "BLOCKED";
+  if (code === "no-speech") return "NO_SPEECH";
+  return "OTHER";
+}
+
 export interface SttAdapter {
   available(): boolean;
-  /** 한 번 듣고 결과를 돌려준다. 실패하면 reject. */
+  /** 한 번 듣고 결과를 돌려준다. 실패하면 SttError로 reject. */
   listen(): Promise<SttResult>;
   cancel(): void;
 }
@@ -80,7 +94,7 @@ export class WebSpeechStt implements SttAdapter {
   listen(): Promise<SttResult> {
     return new Promise((resolve, reject) => {
       const C = this.ctor();
-      if (!C || !this.available()) return reject(new Error("STT 사용 불가"));
+      if (!C || !this.available()) return reject(new SttError("BLOCKED", "STT 사용 불가"));
       const r = new C();
       this.rec = r;
       r.lang = "ko-KR";
@@ -93,7 +107,7 @@ export class WebSpeechStt implements SttAdapter {
         const alt = e.results[0][0];
         resolve({ text: String(alt.transcript ?? ""), confidence: typeof alt.confidence === "number" ? alt.confidence : null });
       };
-      r.onerror = (e: any) => { if (!got) reject(new Error(String(e.error ?? "stt-error"))); };
+      r.onerror = (e: any) => { if (!got) reject(new SttError(sttErrorKind(String(e.error ?? "")), String(e.error ?? "stt-error"))); };
       r.onend = () => { if (!got) resolve({ text: "", confidence: null }); };
       r.start();
     });
