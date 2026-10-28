@@ -7,7 +7,7 @@
 키오스크·직원 콘솔의 화면 흐름, 서비스 워커, CSP, 모의 서버 시나리오를 실제 브라우저에서 확인해야 한다. 개발 PC마다 환경이 다르다.
 
 ## 결정
-Playwright 공식 이미지(`mcr.microsoft.com/playwright:v1.55.0-noble`, `package.json`의 playwright 버전과 같아야 함) 안에서 빌드·모의 서버(빈 포트)·헤드리스 Chromium을 돌린다(`npm run test:e2e`). 가짜 `SpeechRecognition`은 `addInitScript`로 주입한다. 단위 시험은 `node:test` + 가짜 fetch·가짜 시계.
+Playwright 공식 이미지(`mcr.microsoft.com/playwright:v1.55.1-noble`, `package.json`의 playwright 버전과 같아야 함) 안에서 빌드·모의 서버(빈 포트)·헤드리스 Chromium을 돌린다(`npm run test:e2e`). 가짜 `SpeechRecognition`은 `addInitScript`로 주입한다. 단위 시험은 `node:test` + 가짜 fetch·가짜 시계.
 
 ## 왜 (따른 표준과 근거)
 - 따른 기준: 컨테이너는 개발 환경이 아니라 확인 산출물(워크스페이스 D22), 두 번째 환경 검증(통과를 한 환경에서만 보지 않는다), 고정 포트 금지.

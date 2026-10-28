@@ -15,7 +15,7 @@
 ## 브라우저 시험(`test-e2e/`) 전제
 전제는 Docker 하나다(데몬 접속 가능, `npm run doctor`로 점검. `smoke`와 같은 전제). 호스트에 브라우저, 시스템 라이브러리, 글꼴을 설치하지 않는다.
 `npm run test:e2e`는 `scripts/e2e-docker.sh`가 `test-e2e/Dockerfile`로 이미지를 만들어 실행한다.
-- 베이스: `mcr.microsoft.com/playwright:v1.55.0-noble`(익명 pull). 태그는 `package.json`의 playwright 버전(1.55.0)과 같아야 한다. 올릴 때 둘을 함께 바꾼다.
+- 베이스: `mcr.microsoft.com/playwright:v1.55.1-noble`(익명 pull). 태그는 `package.json`의 playwright 버전(1.55.1)과 같아야 한다. 올릴 때 둘을 함께 바꾼다.
 - 얇은 층: node 24(리포 엔진 요구, 이미지 기본은 22), `fonts-noto-cjk`(공식 이미지는 한국어 전용 글꼴이 없어 `fc-list :lang=ko`가 중국어·유니폰트뿐이다). 컨테이너는 시작 때 Noto CJK가 있는지 확인한다.
 - non-root(pwuser)로 실행, `--init --ipc=host`(Playwright 문서 권장). 모의 서버와 정적 서버는 컨테이너 안의 빈 포트이고 호스트 포트를 열지 않는다. 이미지와 컨테이너 이름에 리포 이름과 PID를 넣어 동시 실행해도 충돌하지 않는다.
 - 스크린샷은 컨테이너에서 `e2e-artifacts/`(gitignore)로 복사된다. 환자 정보 없는 가짜 문장만 쓴다.

@@ -22,10 +22,10 @@
   "devDependencies": {
     "@types/jsdom": "21.1.7",
     "@types/node": "^24.19.2",
-    "ajv": "8.17.1",
+    "ajv": "8.20.0",
     "esbuild": "0.25.9",
     "jsdom": "26.1.0",
-    "playwright": "1.55.0",
+    "playwright": "1.55.1",
     "typescript": "5.9.2"
   }
 }
