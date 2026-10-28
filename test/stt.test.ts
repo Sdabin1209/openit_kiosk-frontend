@@ -46,7 +46,7 @@ test("기기 안 인식을 지원하지 않으면(unavailable·설치 실패·AP
     const stt = new WebSpeechStt(); await stt.init();
     assert.equal(stt.available(), false, JSON.stringify(o));
     assert.equal(stt.remote, false);
-    await assert.rejects(stt.listen(), /STT 사용 불가/);
+    await assert.rejects(stt.listen(), /STT_UNAVAILABLE/);
   }
   const none = new WebSpeechStt(); delete g.SpeechRecognition; await none.init(); assert.equal(none.available(), false);
 });

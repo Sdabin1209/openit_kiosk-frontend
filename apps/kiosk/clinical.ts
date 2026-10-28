@@ -1,7 +1,9 @@
+// 문구(환자에게 보이는 글)의 정본은 messages.ts다. 여기서는 기존 이름으로 다시 내보낼 뿐이다.
 // 임상·운영 판단이 들어간 값을 한 곳에 모은다. D88: 아래 값은 모두 설정이고 **잠정, H1(24GB) 실측 뒤 재정**한다(사용자 결정 U10).
 // 근거 구분: 재질문 3회·유휴 60초 = D88 U10 / 신뢰도 0.4·ENDED 8초 = 기존 코드의 임의 값(근거 기록 없음) / 나머지 = 임의(측정 안 함). 이유: docs/adr/0008.
 // 정한 것이지 확인한 것이 아니다. 값을 바꿀 때는 이 파일만 고친다. 근거가 있는 값은 근거를, 없는 값은 '임의'라고 적었다.
 // (재시도 총 예산 20초는 같은 성격이라 api/retry.ts에 있다. FAULT_POLICY의 사용자 결정 항목.)
+import { MSG } from "./messages.ts";
 
 /** [사용자 결정 U10, 잠정] STT 신뢰도가 이 값 미만이면 서버로 보내지 않고 다시 말해 달라고 한다. 근거 없음(임의). 낮으면 오인식이 들어가고 높으면 증상 발화가 버려진다. */
 export const MIN_CONFIDENCE = 0.4;
@@ -26,25 +28,25 @@ export const MAX_INPUT_CHARS = 500;
  * 지원하지 않으면 음성 입력을 끄고 텍스트 입력으로 안내한다. 켜려면 기기 설정(/config.json의 allow_remote_stt: true)에서만 켠다.
  * 켜면 화면에 환자 고지 문구(아래, 임시)가 보이고 음성이 Chrome이면 Google 서버 등 외부로 나간다. 임상·법무 검토 전 문구다. */
 export const ALLOW_REMOTE_STT_DEFAULT = false;
-export const REMOTE_STT_NOTICE = "음성은 외부 음성 인식 서비스로 전송될 수 있습니다. 원치 않으시면 글자로 입력해 주세요."; // 임시 문구, 임상/법무 검토 전
-export const NO_STT_NOTICE = "이 기기에서는 음성 인식을 쓸 수 없어요. 아래에 글자로 입력해 주세요."; // 임시 UI 문구
+export const REMOTE_STT_NOTICE = MSG.NOTICE_REMOTE_STT.text; // 임시 문구, 임상/법무 검토 전(messages.ts)
+export const NO_STT_NOTICE = MSG.NOTICE_NO_STT.text; // 임시 UI 문구(messages.ts)
 
 /** [임상 검토 필요, 임시 문구] 되묻기 한도(REASK_LIMIT)로 멈췄는데 서버가 환자용 고정 문장(response_text)을 주지 않았을 때만 쓰는 대기 안내.
  * 서버 고정 문장이 있으면 항상 그것이 우선한다(이 영역은 환자에게 가는 임상 문장을 새로 정하지 않는다). 위험 정지 문구와 구분되며,
  * '위험하지 않다'는 단정은 하지 않는다(임상 판단이므로). ADR 0014. */
-export const REASK_LIMIT_WAIT_NOTICE = "답변을 잘 알아듣지 못해 잠시 멈췄어요. 직원이 와서 도와드릴 때까지 그대로 기다려 주세요.";
+export const REASK_LIMIT_WAIT_NOTICE = MSG.NOTICE_REASK_LIMIT_WAIT.text;
 /** [임상 검토 필요, 임시 UI 문구] 직원 알림 재전송 안내(ADR 0014). 재알림 간격·상한 값은 서버 설정이며 이 영역은 값을 정하지 않는다. */
 export const STAFF_CALL_NOTICES = {
-  STILL_FAILED: "아직 직원에게 알림이 닿지 않았어요. 접수처로 직접 가서 직원에게 알려 주세요. 잠시 뒤 다시 부를 수 있어요.",
-  NETWORK: "연결이 되지 않아 다시 부르지 못했어요. 다시 눌러 주시거나 직원에게 직접 알려 주세요.",
-  NO_ALERT: "서버에 열린 호출이 없다고 해요. 그래도 접수처로 직접 가서 직원에게 알려 주세요.",
-  AUTH: "이 기기의 인증이 거부되어 다시 부를 수 없어요. 접수처로 직접 가서 직원에게 알려 주세요.",
-  BUSY: "잠시 다른 요청이 처리 중이에요. 잠시 뒤 다시 눌러 주세요. 접수처로 직접 가서 알려도 좋아요.",
-  READY: "다시 부르기를 누를 수 있습니다.",
-  LIMIT: "더 이상 다시 부를 수 없어요. 접수처로 직접 가서 직원에게 알려 주세요.",
-  UNSUPPORTED: "지금은 다시 부르기를 쓸 수 없어요. 접수처로 직접 가서 직원에게 알려 주세요.",
-  REPORT_FAILED: "알린 내용을 기록하지 못했어요. 직원에게 직접 알려 주세요.",
+  STILL_FAILED: MSG.STAFF_CALL_STILL_FAILED.text,
+  NETWORK: MSG.STAFF_CALL_NETWORK.text,
+  NO_ALERT: MSG.STAFF_CALL_NO_ALERT.text,
+  AUTH: MSG.STAFF_CALL_AUTH.text,
+  BUSY: MSG.STAFF_CALL_BUSY.text,
+  READY: MSG.STAFF_CALL_READY.text,
+  LIMIT: MSG.STAFF_CALL_LIMIT.text,
+  UNSUPPORTED: MSG.STAFF_CALL_UNSUPPORTED.text,
+  REPORT_FAILED: MSG.STAFF_CALL_REPORT_FAILED.text,
 } as const;
 /** [provisional, 임상 검토 전] 전달 실패 화면의 상시 안내. 다시 부르기가 끝나거나 막혀도 이 안내는 남는다(헤드 결정, ADR 0014). */
-export const DELIVERY_FAILED_DIRECT_NOTICE = "직원에게 알림이 닿지 않았을 수 있어요. 접수처로 직접 가서 직원에게 알려 주세요.";
-export const RETRY_BUTTON_LABEL = "직원 다시 부르기";
+export const DELIVERY_FAILED_DIRECT_NOTICE = MSG.DELIVERY_FAILED_DIRECT.text;
+export const RETRY_BUTTON_LABEL = MSG.BTN_RETRY_STAFF_CALL.text;

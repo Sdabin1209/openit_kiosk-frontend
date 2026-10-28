@@ -1,3 +1,4 @@
+import { MSG } from "./messages.ts";
 // ChatView를 DOM에 그린다. 글자는 textContent로만 넣는다(발화의 HTML이 해석되지 않게 한다).
 export function renderChat(doc: Document, list: HTMLElement, v: { bubbles: ReadonlyArray<{ speaker: "patient" | "system"; text: string }> }): void {
   list.replaceChildren();
@@ -6,7 +7,7 @@ export function renderChat(doc: Document, list: HTMLElement, v: { bubbles: Reado
     li.className = b.speaker;
     const who = doc.createElement("span");
     who.className = "who";
-    who.textContent = b.speaker === "patient" ? "나" : "안내"; // 임시 UI 문구(임상 문구 아님)
+    who.textContent = b.speaker === "patient" ? MSG.CHAT_PATIENT.text : MSG.CHAT_SYSTEM.text; // 임시 UI 문구(messages.ts)
     const msg = doc.createElement("span");
     msg.className = "msg";
     msg.textContent = b.text;

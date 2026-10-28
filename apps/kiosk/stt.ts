@@ -94,7 +94,7 @@ export class WebSpeechStt implements SttAdapter {
   listen(): Promise<SttResult> {
     return new Promise((resolve, reject) => {
       const C = this.ctor();
-      if (!C || !this.available()) return reject(new SttError("BLOCKED", "STT 사용 불가"));
+      if (!C || !this.available()) return reject(new SttError("BLOCKED", "STT_UNAVAILABLE"));
       const r = new C();
       this.rec = r;
       r.lang = "ko-KR";

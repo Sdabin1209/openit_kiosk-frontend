@@ -11,16 +11,16 @@
   <h1 id="title"></h1>
   <p id="text"></p>
   <div id="manual" hidden>
-    <label for="manual-input">말씀하실 내용을 입력해 주세요</label>
+    <label id="manual-label" for="manual-input"></label>
     <input id="manual-input" type="text" autocomplete="off">
   </div>
   <button id="action" type="button"></button>
-  <button id="staffcall" type="button" hidden>직원 부르기</button>
+  <button id="staffcall" type="button" hidden></button>
   <button id="secondary" type="button" hidden></button>
   <p id="countdown" aria-hidden="true" hidden></p>
   <p id="notice" role="status"></p>
 </main>
-<ol id="chat" class="chat" aria-label="대화" aria-live="off" hidden></ol>
+<ol id="chat" class="chat" aria-live="off" hidden></ol>
 <script src="kiosk.js"></script>
 </body>
 </html>
