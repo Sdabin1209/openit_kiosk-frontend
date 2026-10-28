@@ -21,6 +21,10 @@ test("빌드 산출물에 토큰과 외부 URL이 없다", () => {
   assert.ok(existsSync("dist"), "dist 없음: npm run build 먼저(npm test는 pretest로 자동 빌드)");
   const files = walk("dist");
   assert.ok(files.length > 0);
+  // 왜: node --test를 직접 돌리면 pretest가 안 돌아 낡은 dist로 통과한다. 소스가 dist보다 새로우면 실패시킨다(ADR 0013).
+  const newest = (fs: string[]) => Math.max(...fs.map((f) => statSync(f).mtimeMs));
+  const srcAll = ["api", "apps"].flatMap((d) => walk(d)).concat("scripts/build.mjs");
+  assert.ok(newest(srcAll) <= newest(files), "dist가 소스보다 낡았다: npm run build 먼저(npm test는 pretest로 자동 빌드)");
   for (const f of files) {
     const s = readFileSync(f, "utf8");
     assert.doesNotMatch(s, /Bearer\s+(?!\$\{)[A-Za-z0-9_.-]{6,}/i, f); // 토큰 값이 박혀 있으면 안 된다(헤더 이름만 허용)

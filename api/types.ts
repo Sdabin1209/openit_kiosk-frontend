@@ -43,7 +43,7 @@ export interface StaffCallRetryResult {
 export const SESSION_STATES = ["ACTIVE", "PAUSED_RISK", "ENDED"] as const;
 export const ALERT_STATUS = ["OPEN", "RESOLVED"] as const;
 
-// StaffAlert / StaffAlertPage / SessionState / PushConfig: boundary-contracts v2.0.2 schemas.
+// StaffAlert / StaffAlertPage / SessionState / PushConfig: boundary-contracts schemas(기준 버전은 Dockerfile의 ARG BOUNDARY_CONTRACT).
 // 읽을 때는 관대하게: kind, status, state에 모르는 값이 올 수 있다.
 export interface StaffAlert {
   alert_id: string;

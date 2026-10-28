@@ -9,6 +9,7 @@
 ## 결정
 1. `package.json`에 `"pretest": "npm run build"`를 둔다. `npm test`는 항상 새로 빌드한 `dist`를 검사한다.
 2. 해당 시험은 `dist`가 없으면 건너뛰지 않고 실패한다(`node --test`를 직접 돌린 경우 포함).
+3. 같은 시험은 소스(`api/`, `apps/`, `scripts/build.mjs`)가 `dist`보다 새로우면(mtime) 실패한다. `node --test` 직접 실행은 pretest가 안 돌아 낡은 `dist`로 통과할 수 있어서다.
 
 ## 왜 (따른 표준과 근거)
 - 표준: npm의 `pre<script>` 수명주기 훅은 선행 준비 단계를 두는 관용 방식이다. `npm test` 한 명령으로 시험이 끝나므로 README 절차가 단순하다.

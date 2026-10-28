@@ -20,7 +20,7 @@
 
 ## 3. 소비하는 것
 
-- 소비하는 계약: **I10 공개 API**(`PUBLIC_API.md`): 세션 시작·발화·종료, 직원 콘솔(알림 목록, SSE, 푸시 구독, 개입 결정). 응답 스키마 `FrontendInput`, `TurnFailureSignal`(문진 스키마).
+- 소비하는 계약: **I10 공개 API**(`PUBLIC_API.md`): 세션 시작·발화·종료, 직원 콘솔(알림 목록, SSE, 푸시 구독, 개입 결정). 응답 스키마 `FrontendInput`, `TurnFailureSignal`(문진 스키마). 직원 콘솔이 읽는 `StaffAlert`(재전달 `delivery_attempts`), `SessionState`(정지 사유 `pause_reason`)와 클라이언트 `HttpStaffCall`(boundary_contracts.clients; 기준 계약 버전은 Dockerfile의 ARG BOUNDARY_CONTRACT).
 - 다른 영역의 SDK나 코드는 쓰지 않는다. 서버 주소는 배포 환경이 정하는 같은 출처의 `/v1`이다.
 - 타입은 문진 스키마 JSON(`../survey-service/schema/schemas`)에서 생성하거나 손으로 쓰되, 복사한 스키마를 리포지토리에 두지 않는다(생성 스크립트가 읽어 온다).
 
