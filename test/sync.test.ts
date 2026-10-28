@@ -186,5 +186,5 @@ test("재알림 이벤트: 같은 alert_id에서 delivery_attempts가 커지면 
 test("서비스 워커: 같은 tag의 재알림도 소리·진동을 내도록 renotify를 켠다", async () => {
   const { readFileSync } = await import("node:fs");
   const src = readFileSync(new URL("../apps/staff/sw.ts", import.meta.url), "utf8");
-  assert.match(src, /tag: d\.alert_id[^}]*renotify: true/);
+  assert.match(src, /tag, renotify: true/);
 });

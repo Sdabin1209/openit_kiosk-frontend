@@ -109,3 +109,21 @@ test("정적 서버: PORT가 정수가 아니면 명확한 메시지로 종료�
     assert.match(out, /"path":"\/"/);
   } finally { child.kill(); }
 });
+
+// 왜: 잘못된 퍼센트 인코딩(%zz)은 decodeURIComponent가 예외를 낸다. 예전에는 바깥 catch가 보안 헤더 없는 500을 냈다.
+test("정적 서버: 잘못된 퍼센트 인코딩은 보안 헤더가 붙은 400이다(500 아님)", async () => {
+  const { createServer } = await import("node:http");
+  const { makeStaticHandler } = await import("../server/static.mjs");
+  const h = makeStaticHandler({ dir: "apps/kiosk" });
+  const srv = createServer((q, r) => { h(q, r).catch(() => { r.writeHead(500); r.end(); }); });
+  await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${(srv.address() as any).port}`;
+  try {
+    for (const p of ["/%zz", "/%E0%A4%A", "/staff/%"]) {
+      const r = await fetch(base + p);
+      assert.equal(r.status, 400, p);
+      assert.match(r.headers.get("content-security-policy")!, /default-src 'self'/, p);
+      assert.equal(r.headers.get("x-content-type-options"), "nosniff", p);
+    }
+  } finally { srv.closeAllConnections(); srv.close(); }
+});

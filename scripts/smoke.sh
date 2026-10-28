@@ -16,7 +16,7 @@ fi
 NAME=kiosk-frontend
 TAG="$NAME:smoke-$$"
 CTR="$NAME-smoke-$$"
-REV="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+REV="$(git rev-parse --short HEAD 2>/dev/null || echo n/a)"
 cleanup() { "$DOCKER" rm -f "$CTR" >/dev/null 2>&1 || true; "$DOCKER" rmi -f "$TAG" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 

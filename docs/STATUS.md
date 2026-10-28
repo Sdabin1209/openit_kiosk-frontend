@@ -1,5 +1,11 @@
 # STATUS
 
+## 단위 3 (2026-10-29, 브랜치 wo-u3)
+- 계약 핀 v2.2.1(Dockerfile ARG). 이 영역은 turn-engine·model-runtime을 쓰지 않는다. 문진 스키마 패키지를 설치하지 않는다(라벨 `survey-schema`는 주 버전 `1`).
+- 손으로 쓴 형식 검사를 계약 스키마의 검증기로 바꿨다(ADR 0021): `/config.json`(DeviceConfig), 시작 URL 조각(KioskStartFragment), 서비스 워커 푸시 본문(StaffPushPayload). 모르는 키가 있으면 그 출처를 쓰지 않는다(예전에는 무시). `docs/image-interface.json`(StaticImageInterface 선언)과 이미지 라벨(ImageLabels)은 `test/image-contract.test.ts`가 검사한다. `ARG REVISION` 기본값은 `n/a`.
+- 정적 서버: 잘못된 퍼센트 인코딩(`/%zz`)은 보안 헤더가 붙은 400(전에는 헤더 없는 500).
+- 확인 못 한 것: deploy·병원 접수·survey-service가 실제로 이 모양을 만드는지(MANIFEST note), 실기기.
+
 ## 한 일
 - 설계서 `design.md`, 경계 문서 `boundary.md`, 변경 요청 CR-001~003.
 - `api/`(클라이언트: 재시도, 순서, 타임아웃), `mock-server/`, 키오스크 앱, 직원 콘솔(SSE, 푸시 구독 서비스 워커, 개입 결정), 정적 서버, Dockerfile, 스모크 스크립트.

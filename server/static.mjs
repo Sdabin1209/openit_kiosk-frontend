@@ -28,7 +28,9 @@ export function makeStaticHandler({ dir, configFile = null }) {
       try { return send(200, await readFile(configFile), "application/json"); } catch { return send(404, "not found"); }
     }
     if (url.pathname === "/staff") return send(301, "", "text/plain", { location: "/staff/" });
-    let p = decodeURIComponent(url.pathname);
+    // 왜 400: 잘못된 퍼센트 인코딩은 요청이 틀린 것이다(RFC 9110 15.5.1). 예외를 바깥으로 보내면 보안 헤더 없는 500이 나간다.
+    let p;
+    try { p = decodeURIComponent(url.pathname); } catch { return send(400, "bad request"); }
     if (p.endsWith("/")) p += "index.html";
     const file = normalize(join(root, p));
     if (!file.startsWith(root + "/")) return send(403, "forbidden");

@@ -1,13 +1,13 @@
 // 키오스크 시작 값: 환자 참조(subject_ref)와 기기 토큰(PUBLIC_API.md 추가 인터페이스 A, F).
 // 두 값 모두 메모리에만 둔다. 로그·콘솔·스토리지에 쓰지 않고, 쿼리 문자열은 서버 로그에 남으므로 쓰지 않는다.
 // 받는 길: 시작 URL의 조각(#subject_ref=..., #device=...) 또는 기기 설정 /config.json({"device_token","subject_ref"}).
+// 설정과 조각은 계약 스키마(DeviceConfig, KioskStartFragment)로 검증한다: 모르는 키가 있으면 그 출처를 통째로 쓰지 않는다.
 // 조각은 한 번 읽고 주소창에서 지운다(history.replaceState). 조각이 설정보다 먼저다.
 
-export const SUBJECT_REF_RE = /^[A-Za-z0-9._:/#=+-]{1,128}$/;
-export const DEVICE_TOKEN_RE = /^[\x21-\x7e]{1,512}$/; // 헤더에 그대로 넣을 수 있는 보이는 ASCII
+import { usableKeys, validateDeviceConfig, validateKioskStartFragment } from "./contract.ts";
 
-export function isValidSubjectRef(v: unknown): v is string { return typeof v === "string" && SUBJECT_REF_RE.test(v); }
-export function isValidDeviceToken(v: unknown): v is string { return typeof v === "string" && DEVICE_TOKEN_RE.test(v); }
+// 형식(토큰 1~512자 보이는 ASCII, 환자 참조 1~128자)은 계약 스키마 DeviceConfig가 정한다. 여기에 정규식을 되풀이하지 않는다(R7, ADR 0021).
+export function isValidSubjectRef(v: unknown): v is string { return typeof v === "string" && validateDeviceConfig({ subject_ref: v }); }
 
 export interface KioskStart {
   deviceToken: string | null;
@@ -39,26 +39,34 @@ export interface FragmentWindow {
 }
 
 export async function loadKioskStart(win: FragmentWindow, fetchFn: typeof fetch = (...a) => globalThis.fetch(...a)): Promise<KioskStart> {
-  const frag = parseFragment(win.location.hash);
-  if (win.location.hash) win.history.replaceState(null, "", win.location.pathname + win.location.search); // 값을 주소창과 기록에서 지운다
-  let device: string | undefined = frag.device;
-  let subject: string | undefined = frag.subject_ref;
+  const hadHash = Boolean(win.location.hash);
+  const rawFrag = parseFragment(win.location.hash);
+  if (hadHash) win.history.replaceState(null, "", win.location.pathname + win.location.search); // 값을 주소창과 기록에서 지운다
+  const frag = usableKeys(validateKioskStartFragment, rawFrag);
+  let device: unknown = frag.ok.device;
+  let subject: unknown = frag.ok.subject_ref;
+  // 환자 참조가 있었는데 쓸 수 없게 됐으면(형식 오류, 조각 전체 거부) 참조 없이 시작하지 않고 직원을 부르게 한다.
+  let subjectBad = frag.bad.has("subject_ref") || (frag.whole && "subject_ref" in rawFrag);
   let allowRemote = false;
   if (device === undefined || subject === undefined) {
     try {
       const res = await fetchFn("/config.json", { cache: "no-store", credentials: "same-origin" });
       if (res.ok) {
-        const c = (await res.json()) as Record<string, unknown>;
-        if (device === undefined && typeof c?.device_token === "string") device = c.device_token;
-        if (subject === undefined && typeof c?.subject_ref === "string") subject = c.subject_ref;
-        if (c?.allow_remote_stt === true) allowRemote = true;
+        const raw: unknown = await res.json();
+        const c = usableKeys(validateDeviceConfig, raw);
+        if (device === undefined && typeof c.ok.device_token === "string") device = c.ok.device_token;
+        if (subject === undefined && !subjectBad) {
+          if (typeof c.ok.subject_ref === "string") subject = c.ok.subject_ref;
+          else if (c.bad.has("subject_ref") || (c.whole && typeof raw === "object" && raw !== null && "subject_ref" in raw)) subjectBad = true;
+        }
+        if (c.ok.allow_remote_stt === true) allowRemote = true;
       }
     } catch { /* 설정이 없거나 JSON이 아니면 없는 것으로 본다 */ }
   }
   return {
-    deviceToken: isValidDeviceToken(device) ? device : null,
-    subjectRef: subject !== undefined && isValidSubjectRef(subject) ? subject : null,
-    subjectInvalid: subject !== undefined && !isValidSubjectRef(subject),
+    deviceToken: typeof device === "string" ? device : null,
+    subjectRef: typeof subject === "string" ? subject : null,
+    subjectInvalid: subjectBad,
     ...(allowRemote ? { allowRemoteStt: true } : {}),
   };
 }

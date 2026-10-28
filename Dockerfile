@@ -10,8 +10,8 @@ COPY scripts/build.mjs ./scripts/build.mjs
 RUN node scripts/build.mjs
 
 FROM node:24-alpine
-ARG REVISION=unknown
-ARG BOUNDARY_CONTRACT=v2.2.0
+ARG REVISION=n/a
+ARG BOUNDARY_CONTRACT=v2.2.1
 ARG SURVEY_SCHEMA=1
 ARG APP_VERSION=0.1.0
 # 이 영역은 turn-engine, model-runtime을 쓰지 않는다(해당 없음).

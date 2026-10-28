@@ -19,12 +19,12 @@
 
 | 경로 | 역할 |
 |---|---|
-| `api/` | 공개 API 클라이언트. UI를 모른다. 재시도(같은 `turn_id`, 지수 백오프+지터, 총 예산 20초; 재시도·처리 여부 불명 분류는 `api/retry.ts` 한 곳), 세션별 순서 큐, 10초 타임아웃, 상태 코드 분기 |
+| `api/` | 공개 API 클라이언트. UI를 모른다. `contract.ts`와 생성물 `contract-validators.gen.cjs`는 계약 경계 스키마(DeviceConfig, KioskStartFragment, StaffPushPayload)의 검증기(ADR 0021). 재시도(같은 `turn_id`, 지수 백오프+지터, 총 예산 20초; 재시도·처리 여부 불명 분류는 `api/retry.ts` 한 곳), 세션별 순서 큐, 10초 타임아웃, 상태 코드 분기 |
 | `apps/kiosk/` | 키오스크 앱. `flow.ts` 상태 기계, `stt.ts` 음성 어댑터(오류는 `SttError.kind` 열거), `chat.ts` 현재 세션 대화 목록(입력 이벤트, 출력 뷰 모델, 메모리 전용, ADR 0015)과 `chatview.ts` 그리기, `main.ts` 화면 |
 | `apps/staff/` | 직원 콘솔. `decide.ts` 개입 결정(확인 후 전송), `push.ts` 푸시 구독, `sw.ts` 서비스 워커 |
 | `mock-server/` | 공개 API 모의 서버(시나리오: normal, risk_stop, delivery_failed, not_committed, delay, hang, error 등). 서버 없이 혼자 시험·시연하는 대역 |
 | `server/static.mjs` | 빌드 결과를 내는 정적 서버(`/healthz`, `/readyz`) |
-| `scripts/` | `build.mjs`, `check-schema.mjs`(스키마 열거값 대조), `doctor.mjs`(전제 점검), `smoke.sh`, `e2e-docker.sh` |
+| `scripts/` | `build.mjs`, `check-schema.mjs`(스키마 열거값 대조), `gen-validators.mjs`(계약 경계 스키마에서 검증기 생성, ADR 0021), `doctor.mjs`(전제 점검), `smoke.sh`, `e2e-docker.sh` |
 | `test/`, `test-e2e/` | 단위·계약 시험(`node:test`), 브라우저 시험(Playwright 컨테이너) |
 | `Dockerfile` | 정적 빌드 이미지(non-root, 라벨 `io.openit.*`) |
 | `docs/` | 아래 "더 자세한 문서" 참고 |
@@ -51,7 +51,7 @@ npm run smoke           # 이미지 빌드, /healthz, 라벨, non-root (Docker)
 npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식 이미지 안에서 실행 (Docker)
 ```
 
-`npm run check-schema`와 `test/audit.test.ts`, `test/mock.test.ts`, `test/staffcall.test.ts`는 `../boundary-contracts`와 `../survey-service/schema`를 읽으므로 워크스페이스 폴더 구조(두 폴더가 이 리포와 같은 상위 폴더에 있음) 안에서만 통과한다. 워크스페이스 규칙상 의도된 읽기 전용 의존이다. `setup-env.sh`는 이 폴더들을 가져오지 않는다. 새 머신에서는 워크스페이스를 같은 구조로 준비한 뒤 실행한다. 이 리포만 clone하면 `typecheck`는 통과하지만 `check-schema`는 이유를 내고 비0으로 끝나고 `npm test`는 위 3개 파일이 ENOENT로 실패한다(2026-10-28, 새 clone에서 확인: 시험 118개 중 파일 3개 실패).
+`npm run check-schema`와 `test/audit.test.ts`, `test/mock.test.ts`, `test/staffcall.test.ts`, `test/contract-validation.test.ts`, `test/image-contract.test.ts`는 `../boundary-contracts`와 `../survey-service/schema`를 읽으므로 워크스페이스 폴더 구조(두 폴더가 이 리포와 같은 상위 폴더에 있음) 안에서만 통과한다. 워크스페이스 규칙상 의도된 읽기 전용 의존이다. `setup-env.sh`는 이 폴더들을 가져오지 않는다. 새 머신에서는 워크스페이스를 같은 구조로 준비한 뒤 실행한다. 이 리포만 clone하면 `typecheck`는 통과하지만 `check-schema`는 이유를 내고 비0으로 끝나고 `npm test`는 위 3개 파일이 ENOENT로 실패한다(2026-10-28, 새 clone에서 확인: 시험 118개 중 파일 3개 실패).
 
 이 문서를 쓰며 직접 돌려 본 것(2026-10-27, Node v24.14.0): `npm test`(통과, 숫자는 실행 결과 참조), `npm run typecheck`(오류 없음), `npm run check-schema`("스키마 열거값 일치"), `npm run doctor`("OK: 전제 충족").
 `bash scripts/setup-env.sh`는 2026-10-28 새 clone에서 두 번 돌려 둘 다 성공했다(위 설명). 돌리지 않은 것: `npm run build`, 모의 서버 시연, `npm run smoke`, `npm run test:e2e`, `npm run test:e2e:host`.
@@ -60,7 +60,7 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 
 확인된 것(근거 문서):
 - 시험 상태(이 영역 시험 개수는 이 절에만 적는다; 2026-10-28, 이 PC 한 환경):
-  - `npm test` 단위·계약 시험 198개 통과(건너뜀 0, 실패 0). 호스트에 jsdom이 있어 화면 구조 시험과 앱 전체 jsdom 시험(`test/kiosk-app.test.ts`: 조각 없이 `/config.json`으로 시작, 대화 말풍선)도 이 안에서 돈다.
+  - `npm test` 단위·계약 시험 238개 통과(건너뜀 0, 실패 0; 2026-10-29 단위 3, 워크트리 한 환경). 호스트에 jsdom이 있어 화면 구조 시험과 앱 전체 jsdom 시험(`test/kiosk-app.test.ts`: 조각 없이 `/config.json`으로 시작, 대화 말풍선)도 이 안에서 돈다.
   - `test:dom`(Docker) 화면 구조 시험 19개 통과(staffview, chat, kiosk-app 세 파일; 이 PC 한 환경).
   - 브라우저 시험 32개 통과(Playwright 1.55.1 이미지, `npm run test:e2e`). 이 숫자는 대화 목록 추가 전에 돌린 값이고 다시 돌리지 않았다.
   - `npm run smoke` 통과. `npm audit`·`--omit=dev` 모두 0건(ADR 0012).
@@ -100,4 +100,4 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 
 
 ## 설계 결정 기록 (ADR)
-구조 선택의 이유는 [docs/adr/](docs/adr/README.md)에 있다: [0001](docs/adr/0001-프레임워크-없는-TypeScript와-esbuild-번들.md), [0002](docs/adr/0002-키오스크와-직원-콘솔을-한-리포에-둔다.md), [0003](docs/adr/0003-직원-알림은-SSEEventSource-재연결·heartbeat는-직접-처리.md), [0004](docs/adr/0004-재시도·백오프·총-예산-20초.md), [0005](docs/adr/0005-응답-검증을-손으로-쓴다.md), [0006](docs/adr/0006-기기-토큰-보관-메모리-+-설정-파일-영구-브라우저-저장소-없음.md), [0007](docs/adr/0007-음성-인식은-기기-안-처리가-기본D88-U3.md), [0008](docs/adr/0008-유휴-초기화·다시-말하기-상한-등-임상-판단-값은-한-곳에-둔다.md), [0009](docs/adr/0009-서비스-워커는-직원-콘솔에만-둔다.md), [0010](docs/adr/0010-정적-파일은-의존-없는-작은-Node-서버로-낸다.md), [0011](docs/adr/0011-브라우저-시험은-컨테이너-안-Playwright-Chromium과-모의-서버.md), [0012](docs/adr/0012-devDependency-취약점-3건-최소-범위-상향.md), [0013](docs/adr/0013-npm-test는-pretest로-빌드하고-dist-없으면-실패한다.md), [0015](docs/adr/0015-대화-목록은-메모리-전용-별도-컴포넌트.md), [0016](docs/adr/0016-환자-노출-문구는-한-모듈에-모으고-검토-표식을-둔다.md), [0017](docs/adr/0017-유휴-초기화에-만료-전-경고와-연장을-둔다.md), [0018](docs/adr/0018-오프라인-글꼴은-Noto-Sans-KR-가변-글꼴-OFL을-포함한다.md), [0019](docs/adr/0019-임의로-정한-값의-출처-분류와-측정하지-않았다는-기록.md), [0020](docs/adr/0020-세션-ID는-서버가-발급하고-응답에서-받는다.md).
+구조 선택의 이유는 [docs/adr/](docs/adr/README.md)에 있다: [0001](docs/adr/0001-프레임워크-없는-TypeScript와-esbuild-번들.md), [0002](docs/adr/0002-키오스크와-직원-콘솔을-한-리포에-둔다.md), [0003](docs/adr/0003-직원-알림은-SSEEventSource-재연결·heartbeat는-직접-처리.md), [0004](docs/adr/0004-재시도·백오프·총-예산-20초.md), [0005](docs/adr/0005-응답-검증을-손으로-쓴다.md), [0006](docs/adr/0006-기기-토큰-보관-메모리-+-설정-파일-영구-브라우저-저장소-없음.md), [0007](docs/adr/0007-음성-인식은-기기-안-처리가-기본D88-U3.md), [0008](docs/adr/0008-유휴-초기화·다시-말하기-상한-등-임상-판단-값은-한-곳에-둔다.md), [0009](docs/adr/0009-서비스-워커는-직원-콘솔에만-둔다.md), [0010](docs/adr/0010-정적-파일은-의존-없는-작은-Node-서버로-낸다.md), [0011](docs/adr/0011-브라우저-시험은-컨테이너-안-Playwright-Chromium과-모의-서버.md), [0012](docs/adr/0012-devDependency-취약점-3건-최소-범위-상향.md), [0013](docs/adr/0013-npm-test는-pretest로-빌드하고-dist-없으면-실패한다.md), [0015](docs/adr/0015-대화-목록은-메모리-전용-별도-컴포넌트.md), [0016](docs/adr/0016-환자-노출-문구는-한-모듈에-모으고-검토-표식을-둔다.md), [0017](docs/adr/0017-유휴-초기화에-만료-전-경고와-연장을-둔다.md), [0018](docs/adr/0018-오프라인-글꼴은-Noto-Sans-KR-가변-글꼴-OFL을-포함한다.md), [0019](docs/adr/0019-임의로-정한-값의-출처-분류와-측정하지-않았다는-기록.md), [0020](docs/adr/0020-세션-ID는-서버가-발급하고-응답에서-받는다.md), [0021](docs/adr/0021-경계-스키마-검증기는-계약-스키마에서-생성한다.md).
