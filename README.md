@@ -59,20 +59,20 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 ## 현재 상태
 
 확인된 것(근거 문서):
-- 시험 상태(이 영역 시험 개수는 이 절에만 적는다; 2026-10-28, 이 PC 한 환경, 계약 2.1.0 작업 트리 스펙 반영 후):
+- 시험 상태(이 영역 시험 개수는 이 절에만 적는다; 2026-10-28, 이 PC 한 환경):
   - `npm test` 단위·계약 시험 181개 통과(건너뜀 0, 실패 0).
   - `test:dom` 화면 구조 시험 10개 통과.
   - 브라우저 시험 32개 통과(Playwright 1.55.1 이미지, `npm run test:e2e`).
   - `npm run smoke` 통과. `npm audit`·`--omit=dev` 모두 0건(ADR 0012).
   - 서비스끼리 도는 시험의 결과는 이 문서에 옮기지 않고 `deploy/docs/E2E_RESULTS.md`를 본다.
 - 브라우저 시험 통과, 이미지 빌드·`/healthz`·라벨·non-root 확인은 이전 작업 PC에서 했다고 기록되어 있다(`docs/runbook.md`, `docs/STATUS.md`). 이 세션에서는 다시 확인하지 않았다.
-- boundary-contracts v2.1.0(작업 트리 스펙 86da3bf 기준 구현, 직원 호출 재알림·정지 사유: ADR 0014), survey-schema 1 기준이다(이전 기록: D66 회신 반영은 v1.3.2 시점, v2에서 이 영역의 I10 응답 모양은 바뀌지 않았다). CR-002, CR-003은 헤드가 회신해 해소됐다(`docs/STATUS.md`, `docs/boundary.md`).
+- 기준 계약 버전은 `Dockerfile`의 `ARG BOUNDARY_CONTRACT`가 정본이다(직원 호출 재알림·정지 사유: ADR 0014)(이전 기록: D66 회신 반영은 v1.3.2 시점, v2에서 이 영역의 I10 응답 모양은 바뀌지 않았다). CR-002, CR-003은 헤드가 회신해 해소됐다(`docs/STATUS.md`, `docs/boundary.md`).
 
 확인 못 한 것:
 - 실제 survey-service와의 연동(시험은 모의 서버뿐). 실제 게이트웨이(CR-001)도 확인하지 못했다.
 - 실제 기기의 마이크 권한, 한국어 STT 정확도, TTS 음성, 단말 한글 글꼴, 웹 푸시 구독과 실제 푸시 전달, HTTPS 서비스 워커(`docs/runbook.md` 체크리스트가 모두 미체크).
 - 호스트 직접 브라우저 시험(`test:e2e:host`): 이 PC에서 돌리지 못했다고 기록됨.
-- 계약 버전 정합: Dockerfile `BOUNDARY_CONTRACT=v2.1.0`. `npm run check-schema`가 계약 패키지 버전·pipeline_schema_version과 대조한다. v2의 I10 변화는 SSE `id:` 설명뿐(PUBLIC_API.md 차이 확인).
+- 계약 버전 정합: Dockerfile `ARG BOUNDARY_CONTRACT`가 정본이다. `npm run check-schema`가 계약 패키지 버전·pipeline_schema_version과 대조한다. v2의 I10 변화는 SSE `id:` 설명뿐(PUBLIC_API.md 차이 확인).
 
 ## 이 영역의 열린 항목
 

@@ -163,7 +163,7 @@ test("resync를 받으면 목록을 즉시 다시 읽어 놓친 알림을 채운
   sync.stop();
 });
 
-// 2.1.0 M-1: 같은 alert_id의 재전달은 delivery_attempts가 커졌을 때만 배너(onRedelivery). 목록은 한 건으로 합친다.
+// 같은 alert_id의 재전달은 delivery_attempts가 커졌을 때만 배너(onRedelivery). 목록은 한 건으로 합친다.
 test("재알림 이벤트: 같은 alert_id에서 delivery_attempts가 커지면 재전달 알림, 같은/오래된 번호는 조용히", async () => {
   FakeES.all = [];
   const client = new PublicApiClient({ fetch: (async () => new Response(JSON.stringify({ items: [], next_cursor: null }))) as any, retry: { maxAttempts: 1 }, sleep: async () => {} });

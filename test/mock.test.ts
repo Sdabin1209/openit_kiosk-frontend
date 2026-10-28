@@ -62,11 +62,11 @@ test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async ()
   assert.match(String(body.pipeline_schema_version), /^2\./);
 });
 
-test("알림·목록·상태·푸시 설정 응답이 v2.0.2 스키마를 지킨다", async () => {
+test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨다", async () => {
   const { m, api } = await mk({ vapidPublicKey: "PUBKEY" });
   await api.startSession("s1"); await api.sendUtterance("s1", "위험");
   const page = await new StaffApi(api).listAlerts("OPEN");
-  assert.ok(vPage(page), JSON.stringify(vPage.errors)); // 2.1.0 새 optional 필드 포함 목록 전체(계약 2ec2849에서 StaffAlertPage가 StaffAlert를 $ref)
+  assert.ok(vPage(page), JSON.stringify(vPage.errors)); // 새 optional 필드 포함 목록 전체(계약 2ec2849에서 StaffAlertPage가 StaffAlert를 $ref)
   assert.ok(vAlert(page.items[0]), JSON.stringify(vAlert.errors));
   const st = await api.getSessionState("s1");
   assert.ok(vState(st), JSON.stringify(vState.errors));

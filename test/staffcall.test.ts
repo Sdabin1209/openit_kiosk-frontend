@@ -163,7 +163,7 @@ test("직원 콘솔 보조 표시: 정지 사유는 글자로 구분, 필드 없
   assert.match(l[0], /3회.*전달 실패.*직원이 직접 확인/); assert.match(l[1], /아직 직원에게 알리지 못했다/);
 });
 
-// ---- 모의 서버 계약 시험: 응답이 계약 v2.1.0 스키마를 지킨다 ----
+// ---- 모의 서버 계약 시험: 응답이 설치된 계약 스키마를 지킨다 ----
 const ajv = new Ajv2020({ strict: false });
 const B = new URL("../../boundary-contracts/schemas/", import.meta.url);
 const bs = (n: string) => ajv.compile(JSON.parse(readFileSync(new URL(n, B), "utf8")));
