@@ -5,6 +5,7 @@ import type { PublicApiClient } from "../../api/client.ts";
 import { normalizePauseReason, type FrontendInput, type PauseReason, type StaffCallOutcome } from "../../api/types.ts";
 import type { KioskStart } from "../../api/device.ts";
 import { isUsableTranscript, type SttResult } from "./stt.ts";
+import type { ConversationEvent } from "./chat.ts";
 import { IDLE_RESET_MS, LONG_WAIT_NOTICE_MS, MAX_INPUT_CHARS, MAX_REPEAT } from "./clinical.ts";
 
 export type KioskState =
@@ -57,6 +58,8 @@ const REPORT_ATTEMPTS = 2;
 export class KioskFlow {
   private view: KioskView = { state: "IDLE", text: null };
   private listeners = new Set<(v: KioskView) => void>();
+  private convListeners = new Set<(e: ConversationEvent) => void>();
+  private resumeSeq = 0;
   private sessionId: string | null = null;
   private pendingTurnId: string | null = null; // 실패한 같은 발화를 다시 보낼 때 재사용
   private pendingUtterance: string | null = null;
@@ -92,8 +95,17 @@ export class KioskFlow {
     this.listeners.add(fn); fn(this.view);
     return () => this.listeners.delete(fn);
   }
+  /** 대화 이벤트(환자 발화·시스템 응답·지움)를 받는다. 대화 목록 컴포넌트(chat.ts)가 입력으로 쓴다. 내용은 여기서 저장하지 않는다. */
+  subscribeConversation(fn: (e: ConversationEvent) => void): () => void {
+    this.convListeners.add(fn);
+    return () => this.convListeners.delete(fn);
+  }
+  private emit(e: ConversationEvent): void { for (const l of this.convListeners) l(e); }
+  private say(text: string | null | undefined, id: string): void { if (text) this.emit({ type: "SYSTEM", id, text }); }
+
   private set(v: KioskView) {
     this.stopCallTimer();
+    if (v.state === "IDLE" || v.state === "ENDED") this.emit({ type: "CLEAR" }); // 세션이 끝났거나 처음 화면이면 대화를 지운다
     if (v.state !== "WAITING_STAFF") this.gen++; // 대기 화면을 떠나면 폴링 종료
     if (this.notice && (v.state === "LISTENING" || v.state === "REPEAT_PROMPT" || v.state === "SENDING")) v = { ...v, startNotice: this.notice };
     if (this.micBlocked && (v.state === "LISTENING" || v.state === "REPEAT_PROMPT")) v = { ...v, textFallback: true };
@@ -135,6 +147,7 @@ export class KioskFlow {
       const ctl = this.begin();
       const r = await this.api.startSession(this.sessionId, subjectRef, this.opts(ctl));
       this.inflight = null;
+      this.say(r.response_text, `${this.sessionId}:start`);
       confirm?.(); // 시작이 서버에 접수된 뒤에만 한 번 쓴 환자 참조를 비운다(실패한 시작은 같은 참조로 다시 시작할 수 있다)
       this.handle(r);
     } catch (e) {
@@ -154,11 +167,13 @@ export class KioskFlow {
     // 직전 발화가 응답 없이 실패해 같은 발화를 다시 보내는 경우만 같은 turn_id를 쓴다.
     const turnId = this.pendingUtterance === text && this.pendingTurnId ? this.pendingTurnId : newTurnId();
     this.pendingTurnId = turnId; this.pendingUtterance = text;
+    this.emit({ type: "PATIENT", id: turnId, text }); // 같은 turn_id의 재전송은 같은 말풍선이다
     this.set({ state: "SENDING", text: null });
     try {
       const ctl = this.begin();
       const resp = await this.api.sendUtterance(this.sessionId!, text, turnId, this.opts(ctl));
       this.inflight = null;
+      this.say(resp.response_text, `${turnId}:r`);
       this.pendingTurnId = this.pendingUtterance = null; // 발화는 메모리에도 남기지 않는다
       // 계약상 위험 정지가 성공하면 turn_failure_signal은 null일 수 있다(DELIVERED는 신호가 오는 경우뿐).
       // 신호만으로 정지를 알 수 없으면 세션 상태(PAUSED_RISK)를 확인해 대기 화면으로 간다(H-2).
@@ -376,7 +391,7 @@ export class KioskFlow {
           if (this.gen !== g) return;
           if (this.view.waitNotice === "SERVER_UNREACHABLE") this.patch({ waitNotice: polls >= longAfter ? "LONG_WAIT" : undefined }); // 연결 회복
           else if (polls >= longAfter && !this.view.waitNotice) this.patch({ waitNotice: "LONG_WAIT" });
-          if (s.state === "ACTIVE") return this.set({ state: "LISTENING", text: s.resume_text });
+          if (s.state === "ACTIVE") { this.say(s.resume_text, `${id}:resume:${++this.resumeSeq}`); return this.set({ state: "LISTENING", text: s.resume_text }); }
           if (s.state === "ENDED") { this.sessionId = null; return this.set({ state: "ENDED", text: null }); }
           // PAUSED_RISK 또는 모르는 값: 계속 기다린다. 정지 사유는 폴링 응답으로 갱신한다(없으면 미상으로 둔다).
           const pr = s.state === "PAUSED_RISK" ? normalizePauseReason(s.pause_reason) : undefined;

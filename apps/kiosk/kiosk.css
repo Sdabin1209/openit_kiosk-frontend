@@ -13,3 +13,9 @@ input { font:inherit; width:100%; padding:20px; border:3px solid #333; border-ra
 body.warn main { border-left:24px solid var(--warn); }
 body.warn h1 { color:var(--warn); }
 #countdown { font-size:36px; margin:16px 0; }
+ol.chat { list-style:none; margin:0 auto 48px; padding:0 48px; max-width:1100px; display:flex; flex-direction:column; gap:16px; max-height:40vh; overflow-y:auto; }
+ol.chat[hidden] { display:none; }
+ol.chat li { font-size:32px; padding:16px 24px; border-radius:24px; max-width:80%; display:flex; flex-direction:column; }
+ol.chat li .who { font-size:20px; color:#444; }
+ol.chat li.patient { align-self:flex-end; background:#dbe7ff; }
+ol.chat li.system { align-self:flex-start; background:#eee; }

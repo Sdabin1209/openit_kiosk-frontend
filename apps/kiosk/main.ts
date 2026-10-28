@@ -2,12 +2,16 @@ import { PublicApiClient } from "../../api/client.ts";
 import { createStartHolder, loadKioskStart } from "../../api/device.ts";
 import { KioskFlow, type KioskView } from "./flow.ts";
 import { WebSpeechStt } from "./stt.ts";
+import { ChatLog } from "./chat.ts";
+import { renderChat } from "./chatview.ts";
 import { DELIVERY_FAILED_DIRECT_NOTICE, ENDED_RESET_MS, MAX_INPUT_CHARS, NO_STT_NOTICE, REASK_LIMIT_WAIT_NOTICE, REMOTE_STT_NOTICE, RETRY_BUTTON_LABEL, STAFF_CALL_NOTICES } from "./clinical.ts";
 
 // 기기 토큰과 환자 참조는 메모리에만 둔다(주소창 조각은 읽자마자 지운다). 환자 참조는 한 번 쓰면 비운다(다음 환자에게 재사용하지 않는다).
 const holder = createStartHolder(() => loadKioskStart(window));
 const api = new PublicApiClient({ baseUrl: "/v1", deviceToken: () => holder.deviceToken() });
 const flow = new KioskFlow(api, { startValues: () => holder.take() });
+const chat = new ChatLog(); // 현재 세션의 대화(메모리에만, 세션이 끝나면 지운다: ADR 0015)
+flow.subscribeConversation((e) => chat.accept(e));
 const stt = new WebSpeechStt(); // 기본: 기기 안 인식만(D88 U3). 외부 허용은 기기 설정 allow_remote_stt에서만.
 void holder.loaded.then((c) => { stt.setAllowRemote(c.allowRemoteStt); return stt.init(); }).then(() => render(flow.current));
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -151,4 +155,5 @@ staffBtn.addEventListener("click", () => { if (flow.current.state === "CALL_STAF
 input.addEventListener("input", () => flow.touch());
 secondary.addEventListener("click", () => { flow.touch(); onSecondary?.(); });
 input.addEventListener("keydown", (e) => { if (e.key === "Enter") onAction(); });
+chat.subscribe((v) => renderChat(document, $("chat"), v));
 flow.subscribe(onView);

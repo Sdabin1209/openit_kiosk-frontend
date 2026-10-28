@@ -7,4 +7,4 @@ DOCKER="${DOCKER:-docker}"
 set -e
 mkdir /work && cd /src && tar cf - --exclude=node_modules --exclude=dist --exclude=.git --exclude=e2e-artifacts . | tar xf - -C /work
 cd /work && npm ci --ignore-scripts --no-audit --no-fund >/dev/null 2>&1
-node --test test/staffview.test.ts'
+npm run build >/dev/null && node --test test/staffview.test.ts test/chat.test.ts test/kiosk-app.test.ts'
