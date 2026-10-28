@@ -19,9 +19,16 @@ export interface Scenario {
   autoResumeMs: number;         // 0보다 크면 위험 정지 후 이 시간 뒤 직원이 RESUME한 것처럼 처리
   vapidPublicKey: string | null; // GET /v1/staff/push-config
   deviceToken: string | null;   // 있으면 /v1/sessions* 에 Authorization: Bearer <이 값>이 없을 때 401(F절). null이면 검증하지 않음
+  staffCallApi: boolean;        // false면 staff-call 두 경로가 404(2.1.0 이전 서버 모의)
+  pauseReasonField: boolean;    // false면 /state에 pause_reason을 싣지 않는다(옛 서버)
+  reaskKeyword: string;         // 발화에 이 말이 있으면 되묻기 한도 정지(pause_reason=REASK_LIMIT, 알림 kind CALL_STAFF)
+  retryDelivery: "DELIVERED" | "DELIVERY_FAILED"; // 재알림 결과
+  retryAfterS: number;          // 재알림 응답의 retry_after_s(실서버 기본 권고 30초는 측정하지 않은 값)
+  retryLimit: number;           // 세션당 재알림 상한(기본 권고 10)
+  enforceInterval: boolean;     // true면 retry_after_s 안의 재요청을 429 + Retry-After
   requireSubjectRef: boolean;   // SURVEY_REQUIRE_SUBJECT_REF 대역: 켜면 subject_ref 없을 때 400(A절)
 }
-const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, heartbeat: true, resyncOnConnect: false, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, requireSubjectRef: false };
+const DEFAULT: Scenario = { delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, heartbeat: true, resyncOnConnect: false, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, staffCallApi: true, pauseReasonField: true, reaskKeyword: "알수없음", retryDelivery: "DELIVERED", retryAfterS: 30, retryLimit: 10, enforceInterval: false, requireSubjectRef: false };
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
@@ -33,13 +40,16 @@ const PRESETS: Record<string, Partial<Scenario>> = {
   error: { errorStatus: 503, errorTimes: 2 },
   turn_in_progress: { errorStatus: 409, errorTimes: 2, errorReason: "TURN_IN_PROGRESS", retryAfterSec: 1 },
   rate_limited: { errorStatus: 429, errorTimes: 2, retryAfterSec: 1 },
+  delivery_failed_retry_fails: { alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERY_FAILED", retryAfterS: 2, enforceInterval: true },
+  delivery_failed_old_server: { alertDelivery: "DELIVERY_FAILED", staffCallApi: false },
+  old_server_no_pause_reason: { alertDelivery: "DELIVERED", pauseReasonField: false },
   risk_resume: { alertDelivery: "DELIVERED", autoResumeMs: 4000 },
 };
 
 interface MockTurn { turn_index: number; turn_id: string; at: string; utterance: string | null; response_text: string | null; action: string | null }
 interface MockValue { key: string; value: unknown; status: string; precision: string }
 // turnLog·values는 StaffSessionView 응답용이다(모의 전용). 발화는 요청 로그(state.log)에는 남기지 않는다.
-interface Session { id: string; turns: number; paused: boolean; alertId: string | null; ended: boolean; resumeText: string | null; createdAt: string; subjectRef: string | null; endedBy: string | null; turnLog: MockTurn[]; values: MockValue[] }
+interface Session { id: string; turns: number; paused: boolean; pauseReason: string; retries: number; lastRetryAt: number; alertId: string | null; ended: boolean; resumeText: string | null; createdAt: string; subjectRef: string | null; endedBy: string | null; turnLog: MockTurn[]; values: MockValue[] }
 export interface MockState {
   sc: Scenario; sessions: Map<string, Session>; alerts: any[]; subs: Map<string, any>;
   cache: Map<string, any>; events: { id: number; name: string; data: any }[]; sse: Set<ServerResponse>; seq: number; requests: number;
@@ -51,7 +61,7 @@ const SUBJECT_REF_RE = /^[A-Za-z0-9._:/#=+-]{1,128}$/; // PUBLIC_API.md A절
 const ts = (d = new Date()) => d.toISOString().replace(/\.\d+Z$/, "Z"); // 스키마 Timestamp: 초 단위, 끝에 Z
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 // boundary-contracts v2.0.2의 PIPELINE_SCHEMA_VERSION. scripts/check-schema.mjs가 계약과 대조한다.
-export const PIPELINE_SCHEMA_VERSION = "2.0";
+export const PIPELINE_SCHEMA_VERSION = "2.1";
 const berr = (code: string, message: string, retryable = false) => ({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message, retryable });
 
 export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: number } = {}): { server: Server; state: MockState; reset: (s?: Partial<Scenario>) => void } {
@@ -102,7 +112,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     created_at: s.createdAt,
     turns: s.turnLog,
     values: s.values,
-    alerts: state.alerts.filter((a) => a.session_id === s.id).map((a) => ({ alert_id: a.alert_id, kind: a.kind === "RISK_STOP" ? "RISK" : a.kind, status: a.status, created_at: a.created_at, rule_id: a.kind === "RISK_STOP" ? "mock-risk-keyword" : null, resolved_by: resolvedBy.get(a.alert_id) ?? null })),
+    alerts: state.alerts.filter((a) => a.session_id === s.id).map((a) => ({ alert_id: a.alert_id, kind: a.kind === "RISK_STOP" ? "RISK" : a.kind, status: a.status, created_at: a.created_at, rule_id: a.kind === "RISK_STOP" ? "mock-risk-keyword" : null, resolved_by: resolvedBy.get(a.alert_id) ?? null, ...(a.delivery_attempts !== undefined ? { delivery_attempts: a.delivery_attempts, last_delivery_status: a.last_delivery_status } : {}), ...(a.manual_notice_outcome ? { manual_notice_outcome: a.manual_notice_outcome, manual_notice_reported_at: a.manual_notice_reported_at } : {}), ...(a.pause_reason ? { pause_reason: a.pause_reason } : {}) })),
   });
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
@@ -145,7 +155,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       if (Object.keys(startRest).some((k) => !["kind", "session_id", "subject_ref"].includes(k))) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
       if (body.subject_ref !== undefined && (typeof body.subject_ref !== "string" || !SUBJECT_REF_RE.test(body.subject_ref))) return json(res, 400, berr("INVALID_RECORD", "bad subject_ref")); // 값은 응답·로그에 되풀이하지 않는다
       if (state.sc.requireSubjectRef && body.subject_ref === undefined) return json(res, 400, berr("INVALID_RECORD", "subject_ref required"));
-      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, alertId: null, ended: false, resumeText: null, createdAt: ts(), subjectRef: body.subject_ref ?? null, endedBy: null, turnLog: [], values: [] });
+      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { id: body.session_id, turns: 0, paused: false, pauseReason: "RISK", retries: 0, lastRetryAt: 0, alertId: null, ended: false, resumeText: null, createdAt: ts(), subjectRef: body.subject_ref ?? null, endedBy: null, turnLog: [], values: [] });
       const first = "안녕하세요. 문진을 시작합니다. " + QUESTIONS[0];
       logTurn(state.sessions.get(body.session_id)!, typeof body.turn_id === "string" ? body.turn_id : "start", null, first, "SESSION_START");
       return json(res, 200, input(first));
@@ -154,7 +164,41 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     if (m === "GET" && sm) {
       const s = state.sessions.get(sm[1]);
       if (!s) return json(res, 404, berr("NOT_FOUND", "unknown session"));
-      return json(res, 200, { session_id: s.id, state: s.ended ? "ENDED" : s.paused ? "PAUSED_RISK" : "ACTIVE", resume_text: s.resumeText });
+      return json(res, 200, { session_id: s.id, state: s.ended ? "ENDED" : s.paused ? "PAUSED_RISK" : "ACTIVE", resume_text: s.resumeText, ...(state.sc.pauseReasonField ? { pause_reason: s.paused ? s.pauseReason : null } : {}) });
+    }
+    // 2.1.0 G절: 직원 호출 재알림·실패 기록. 키오스크 기기 토큰 경로(위의 F절 검사가 /sessions* 전체에 적용된다).
+    const scm = path.match(/^\/v1\/sessions\/([^/]+)\/staff-call\/(retry|report)$/);
+    if (m === "POST" && scm) {
+      if (!state.sc.staffCallApi) return json(res, 404, berr("NOT_FOUND", "no route"));
+      const s = state.sessions.get(scm[1]);
+      if (!s) return json(res, 404, berr("NOT_FOUND", "unknown session"));
+      if (typeof body.turn_id !== "string" || body.turn_id === "") return json(res, 400, berr("INVALID_RECORD", "turn_id required"));
+      const key = `${s.id}:sc-${scm[2]}:${body.turn_id}`;
+      const alert = state.alerts.find((a) => a.alert_id === s.alertId);
+      if (scm[2] === "report") {
+        if (!["STAFF_NOTIFIED_MANUALLY", "NOT_NOTIFIED"].includes(body.outcome) || Object.keys(body).some((k) => !["outcome", "turn_id"].includes(k))) return json(res, 400, berr("INVALID_RECORD", "bad report"));
+        if (!alert) return json(res, 409, berr("CONFLICT", "no alert"));
+        const prev = state.cache.get(key);
+        if (prev && prev.outcome !== body.outcome) return json(res, 409, berr("CONFLICT", "same turn_id, different outcome"));
+        Object.assign(alert, { manual_notice_outcome: body.outcome, manual_notice_reported_at: ts() });
+        state.cache.set(key, { outcome: body.outcome });
+        return json(res, 200, alert);
+      }
+      if (Object.keys(body).some((k) => k !== "turn_id")) return json(res, 400, berr("INVALID_RECORD", "bad retry"));
+      if (state.cache.has(key)) return json(res, 200, state.cache.get(key)); // 멱등: 시도 횟수를 늘리지 않는다
+      if (!alert || alert.status !== "OPEN") { const e: any = berr("CONFLICT", "no open alert"); e.details = { reason: "NO_OPEN_ALERT" }; return json(res, 409, e); }
+      const now = Date.now();
+      if (s.retries >= state.sc.retryLimit) { const e: any = berr("UNAVAILABLE", "retry limit"); e.details = { reason: "RETRY_LIMIT" }; return json(res, 429, e); }
+      if (state.sc.enforceInterval && s.lastRetryAt && now - s.lastRetryAt < state.sc.retryAfterS * 1000) {
+        const left = Math.ceil((state.sc.retryAfterS * 1000 - (now - s.lastRetryAt)) / 1000);
+        res.writeHead(429, { "content-type": "application/json; charset=utf-8", "retry-after": String(left) }); return res.end(JSON.stringify(berr("UNAVAILABLE", "too soon", true)));
+      }
+      s.retries++; s.lastRetryAt = now;
+      alert.delivery_attempts = (alert.delivery_attempts ?? 1) + 1; alert.last_delivery_status = state.sc.retryDelivery;
+      publish("alert", alert); // 같은 alert_id로 다시 보낸다(새 이벤트 이름 없음)
+      const out = { alert_id: alert.alert_id, staff_alert: state.sc.retryDelivery, delivery_attempts: alert.delivery_attempts, retry_after_s: state.sc.retryAfterS };
+      state.cache.set(key, out);
+      return json(res, 200, out);
     }
     let mm = path.match(/^\/v1\/sessions\/([^/]+)\/(turns|end|intervention)$/);
     if (m === "POST" && mm) {
@@ -172,9 +216,16 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
         if (s.ended) return json(res, 409, berr("CONFLICT", "session ended"));
         s.resumeText = null; // 다음 발화 턴이 접수되면 resume_text는 null
         let out;
-        if (state.sc.riskKeyword && body.utterance.includes(state.sc.riskKeyword)) {
-          s.paused = true;
-          const alert = { alert_id: "a-" + (state.alerts.length + 1), session_id: sid, kind: "RISK_STOP", created_at: ts(), status: "OPEN", resolved_by_decision: null, resolved_at: null };
+        if (state.sc.reaskKeyword && body.utterance.includes(state.sc.reaskKeyword)) {
+          // 되묻기 한도 정지: 서버 고정 문장 + 알림 kind CALL_STAFF + pause_reason REASK_LIMIT(PUBLIC_API.md H절). 위험 정지와 같은 PAUSED_RISK다.
+          s.paused = true; s.pauseReason = "REASK_LIMIT";
+          const alert: any = { alert_id: "a-" + (state.alerts.length + 1), session_id: sid, kind: "CALL_STAFF", created_at: ts(), status: "OPEN", resolved_by_decision: null, resolved_at: null, delivery_attempts: 1, last_delivery_status: state.sc.alertDelivery === "DELIVERY_FAILED" ? "DELIVERY_FAILED" : "DELIVERED", pause_reason: "REASK_LIMIT" };
+          s.alertId = alert.alert_id; state.alerts.push(alert); publish("alert", alert);
+          logTurn(s, body.turn_id, body.utterance, "직원이 도와드리겠습니다. 잠시만 기다려 주세요.", "CALL_STAFF");
+          out = input("직원이 도와드리겠습니다. 잠시만 기다려 주세요.", state.sc.alertDelivery === "NULL_SIGNAL" ? null : { session_id: sid, write_committed: "COMMITTED", staff_alert: state.sc.alertDelivery });
+        } else if (state.sc.riskKeyword && body.utterance.includes(state.sc.riskKeyword)) {
+          s.paused = true; s.pauseReason = "RISK";
+          const alert: any = { alert_id: "a-" + (state.alerts.length + 1), session_id: sid, kind: "RISK_STOP", created_at: ts(), status: "OPEN", resolved_by_decision: null, resolved_at: null, delivery_attempts: 1, last_delivery_status: state.sc.alertDelivery === "DELIVERY_FAILED" ? "DELIVERY_FAILED" : "DELIVERED", pause_reason: "RISK" };
           s.alertId = alert.alert_id; state.alerts.push(alert); publish("alert", alert);
           if (state.sc.autoResumeMs > 0) { const t = setTimeout(() => { timers.delete(t); if (s.paused) resolve(s, "RESUME"); }, state.sc.autoResumeMs); timers.add(t); }
           logTurn(s, body.turn_id, body.utterance, "확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.", "RISK_STOP");
@@ -250,6 +301,9 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       const { name, ...rest } = b;
       reset({ ...preset, ...rest });
       return json(res, 200, state.sc);
+    }
+    if (path === "/__mock/config" && req.method === "POST") { // 세션을 지우지 않고 시나리오 값만 바꾼다(시험 중 서버 상태 변화 모의)
+      Object.assign(state.sc, await readBody(req)); return json(res, 200, state.sc);
     }
     if (path === "/__mock/stream" && req.method === "POST") { // {mute?: bool, resync?: true}
       const b = await readBody(req);

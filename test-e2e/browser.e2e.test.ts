@@ -203,6 +203,155 @@ test("키오스크: 직원 호출 화면(알림 전달 실패) → 처음으로"
   await ctx.close();
 });
 
+const config = (o: object) => fetch(`${base}/__mock/config`, { method: "POST", body: JSON.stringify(o) }).then((r) => assert.equal(r.status, 200));
+const mockAlerts = async () => ((await (await fetch(`${base}/__mock/state`)).json()) as any).alerts as any[];
+async function toDeliveryFailed(page: Page, word = "위험해요") {
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.getByText("어디가 불편하신가요?").waitFor();
+  await page.locator("#manual-input").fill(word);
+  await page.getByRole("button", { name: "말하기" }).click();
+  await page.getByText("직원을 불러 주세요").waitFor();
+}
+
+test("키오스크 2.1.0: 다시 부르기 - 실패하면 카운트다운 동안 비활성, 키보드로 누르고, 성공하면 대기 안내로 바뀐다", async () => {
+  await scenario("delivery_failed_retry_fails");
+  const { page, ctx } = await open("none");
+  await toDeliveryFailed(page);
+  const btn = page.getByRole("button", { name: "직원 다시 부르기" });
+  await btn.waitFor();
+  assert.match(await page.locator("#text").innerText(), /접수처로 직접 가서 직원에게 알려 주세요/, "직접 안내가 상시 보인다");
+  assert.equal(await page.evaluate(() => document.activeElement?.id), "action", "CALL_STAFF 진입 때 초점은 처음으로");
+  await page.keyboard.press("Tab"); // 키보드만으로 도달: 다음 초점이 다시 부르기
+  assert.equal(await page.evaluate(() => document.activeElement?.id), "staffcall");
+  await page.keyboard.press("Enter");
+  await page.locator("#countdown").waitFor({ state: "visible" });
+  assert.equal(await btn.isDisabled(), true, "retry_after_s 동안 비활성");
+  assert.equal(await page.locator("#countdown").getAttribute("aria-hidden"), "true", "초마다 바뀌는 숫자는 낭독하지 않는다");
+  assert.match(await page.locator("#countdown").innerText(), /\d초 뒤에 다시 부를 수 있어요/);
+  assert.match(await page.locator("#notice").innerText(), /아직 직원에게 알림이 닿지 않았어요/);
+  assert.equal(await page.getByText("직원을 불러 주세요").count(), 1, "화면은 끝나지 않는다");
+  await page.screenshot({ path: `${SHOTS}/kiosk-7-retry-countdown.png` });
+  await page.waitForFunction(() => !(document.getElementById("staffcall") as HTMLButtonElement).disabled, null, { timeout: 8_000 }); // 상한은 실패 시에만 쓰인다
+  assert.equal(await page.locator("#countdown").isHidden(), true);
+  await config({ retryDelivery: "DELIVERED", enforceInterval: false });
+  await btn.click();
+  await page.getByText("직원이 곧 도와드립니다").waitFor();
+  const al = (await mockAlerts())[0];
+  assert.equal(al.delivery_attempts, 3);
+  await ctx.close();
+});
+
+test("키오스크 2.1.0: 오프라인에서 다시 부르기는 화면을 유지하고, 복구 뒤 같은 요청으로 성공한다", async () => {
+  await scenario("delivery_failed", { retryAfterS: 1 });
+  const { page, ctx } = await open("none");
+  await toDeliveryFailed(page);
+  await ctx.setOffline(true);
+  await page.getByRole("button", { name: "직원 다시 부르기" }).click();
+  await page.getByText("연결이 되지 않아 다시 부르지 못했어요").waitFor();
+  assert.equal(await page.getByText("직원을 불러 주세요").count(), 1);
+  assert.equal(await page.getByRole("button", { name: "직원 다시 부르기" }).isEnabled(), true, "오프라인 오류 뒤에는 다시 누를 수 있다");
+  await ctx.setOffline(false);
+  await page.getByRole("button", { name: "직원 다시 부르기" }).click();
+  await page.getByText("직원이 곧 도와드립니다").waitFor();
+  await ctx.close();
+});
+
+test("키오스크 2.1.0: 상한(RETRY_LIMIT)이면 버튼이 사라지고 직접 안내만 남는다. 화면은 끝나지 않는다", async () => {
+  await scenario("delivery_failed_retry_fails", { retryAfterS: 1, enforceInterval: false, retryLimit: 1 });
+  const { page, ctx } = await open("none");
+  await toDeliveryFailed(page);
+  const btn = page.getByRole("button", { name: "직원 다시 부르기" });
+  await btn.click();
+  await page.waitForFunction(() => !(document.getElementById("staffcall") as HTMLButtonElement).disabled && !document.getElementById("staffcall")!.hidden, null, { timeout: 8_000 });
+  await btn.click();
+  await page.getByText("더 이상 다시 부를 수 없어요").waitFor();
+  await btn.waitFor({ state: "hidden" });
+  assert.match(await page.locator("#text").innerText(), /접수처로 직접 가서/);
+  assert.equal(await page.getByText("직원을 불러 주세요").count(), 1);
+  await ctx.close();
+});
+
+test("키오스크 2.1.0: '못 알렸어요'(취소)는 NOT_NOTIFIED를, '직접 알렸어요'는 STAFF_NOTIFIED_MANUALLY를 서버에 남기고 직원 호출 화면은 취소로 끝나지 않는다", async () => {
+  await scenario("delivery_failed");
+  const { page, ctx } = await open("none");
+  await toDeliveryFailed(page);
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByRole("button", { name: "취소" }).click();
+  await page.getByRole("button", { name: "처음으로" }).waitFor();
+  await page.waitForFunction(async () => ((await (await fetch("/__mock/state")).json()) as any).alerts[0]?.manual_notice_outcome === "NOT_NOTIFIED");
+  assert.equal(await page.getByText("직원을 불러 주세요").count(), 1);
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByRole("button", { name: "직접 알렸어요, 처음으로" }).click();
+  await page.getByRole("button", { name: "시작하기" }).waitFor();
+  assert.equal((await mockAlerts())[0].manual_notice_outcome, "STAFF_NOTIFIED_MANUALLY");
+  const sess = ((await (await fetch(`${base}/__mock/state`)).json()) as any).sessions[0];
+  assert.equal(sess.ended, false, "환자가 서버 세션을 끝내지 못한다(직원 개입으로만 해제)");
+  await ctx.close();
+});
+
+test("키오스크 2.1.0: 옛 서버(경로 404)면 기능 감지로 다시 부르기를 끄고 기존 '직접 알리셨나요?' 동작을 유지한다", async () => {
+  await scenario("delivery_failed_old_server");
+  const { page, ctx } = await open("none");
+  await toDeliveryFailed(page);
+  await page.getByRole("button", { name: "직원 다시 부르기" }).click();
+  await page.getByText("이 기기에서는 다시 부르기를 쓸 수 없어요").waitFor();
+  await page.getByRole("button", { name: "직원 다시 부르기" }).waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByText("직원에게 직접 알리셨나요?").waitFor();
+  await page.getByRole("button", { name: "직접 알렸어요, 처음으로" }).click();
+  await page.getByRole("button", { name: "시작하기" }).waitFor();
+  await ctx.close();
+});
+
+test("키오스크 2.1.0: 정지 사유 - 위험 정지와 되묻기 한도 정지를 구분하고(서버 고정 문장 우선), 옛 서버는 기존 화면", async () => {
+  for (const [word, reason, sentence] of [["위험해요", "RISK", /확인이 필요합니다/], ["알수없음", "REASK_LIMIT", /직원이 도와드리겠습니다/]] as const) {
+    await scenario("risk_stop");
+    const { page, ctx } = await open("none");
+    await page.goto(kioskUrl());
+    await page.getByRole("button", { name: "시작하기" }).click();
+    await page.getByText("어디가 불편하신가요?").waitFor();
+    await page.locator("#manual-input").fill(word);
+    await page.getByRole("button", { name: "말하기" }).click();
+    await page.getByText("직원이 곧 도와드립니다").waitFor();
+    await page.waitForFunction((r) => document.body.dataset.pauseReason === r, reason, { timeout: 8_000 }); // 폴링(2초)으로 사유를 알게 된다
+    assert.match(await page.locator("#text").innerText(), sentence, "서버 고정 문장이 우선");
+    await ctx.close();
+  }
+  await scenario("old_server_no_pause_reason");
+  const { page, ctx } = await open("none");
+  await page.goto(kioskUrl());
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await page.getByText("어디가 불편하신가요?").waitFor();
+  await page.locator("#manual-input").fill("알수없음");
+  await page.getByRole("button", { name: "말하기" }).click();
+  await page.getByText("직원이 곧 도와드립니다").waitFor();
+  await new Promise((r) => setTimeout(r, 2500));
+  assert.equal(await page.evaluate(() => document.body.dataset.pauseReason), undefined, "필드가 없으면 미상: 기존 화면");
+  await ctx.close();
+});
+
+test("직원 콘솔 2.1.0: 전달 시도·직접 통지 보고와 정지 사유가 글자로 구분되어 보인다(구버전 필드 없음은 기존 표시)", async () => {
+  await scenario("delivery_failed");
+  const k = await open("none");
+  await toDeliveryFailed(k.page);
+  await k.page.getByRole("button", { name: "직원 다시 부르기" }).click(); // 재전달 시도 +1 (DELIVERED)
+  await k.page.getByText("직원이 곧 도와드립니다").waitFor();
+  const staff = await open("none"); await staff.page.goto(base + "/staff/");
+  const li = staff.page.locator("#open li").first();
+  await li.waitFor();
+  await li.getByText("[위험 정지]").waitFor();
+  assert.match(await li.innerText(), /전달 2회 시도, 마지막: 전달됨/);
+  await staff.page.screenshot({ path: `${SHOTS}/staff-3-delivery-pause.png` });
+  await scenario("risk_stop"); // 새 시나리오가 알림을 비운다. 되묻기 한도 정지 알림
+  const k2 = await open("none");
+  await k2.page.goto(kioskUrl()); await k2.page.getByRole("button", { name: "시작하기" }).click();
+  await k2.page.getByText("어디가 불편하신가요?").waitFor();
+  await k2.page.locator("#manual-input").fill("알수없음"); await k2.page.getByRole("button", { name: "말하기" }).click();
+  await staff.page.locator("#open li", { hasText: "[되묻기 한도 정지]" }).waitFor();
+  await k.ctx.close(); await k2.ctx.close(); await staff.ctx.close();
+});
+
 test("키오스크: 서버 오류가 계속되면 직원 호출 화면 (503)", async () => {
   await scenario("error", { errorTimes: 100 });
   const { page, ctx } = await open("none");

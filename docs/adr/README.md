@@ -15,3 +15,4 @@
 - [0011 브라우저 시험은 컨테이너 안 Playwright Chromium과 모의 서버](0011-브라우저-시험은-컨테이너-안-Playwright-Chromium과-모의-서버.md)
 - [0012 devDependency 취약점 3건을 최소 범위로 올린다](0012-devDependency-취약점-3건-최소-범위-상향.md)
 - [0013 npm test는 pretest로 먼저 빌드하고, dist가 없으면 시험이 실패한다](0013-npm-test는-pretest로-빌드하고-dist-없으면-실패한다.md)
+- [0014 직원 호출 재알림·실패 기록과 정지 사유 구분 (계약 2.1.0)](0014-직원-호출-재알림·정지-사유-구분-계약-2.1.0.md)

@@ -1,4 +1,5 @@
 import { ApiError } from "../../api/errors.ts";
+import { deliveryLines, pauseLabel } from "./alertinfo.ts";
 import type { Decision, StaffSessionView } from "../../api/types.ts";
 
 /**
@@ -75,6 +76,8 @@ export function createRecordViewer(deps: RecordViewerDeps) {
       info.append(el("dt", k), el("dd", v));
     }
     body.append(info);
+    const pl = pauseLabel(view);
+    if (pl) { const p = el("p", pl.text, `pause pause-${pl.reason}`); p.id = "record-pause"; body.append(p); }
 
     const conv = section("conv", "대화");
     const turns = [...(view.turns ?? [])].sort((a, b) => a.turn_index - b.turn_index);
@@ -106,7 +109,7 @@ export function createRecordViewer(deps: RecordViewerDeps) {
     const alerts = view.alerts ?? [];
     if (alerts.length === 0) al.append(el("p", "알림이 없습니다.", "empty"));
     else {
-      al.append(table("이 세션의 알림", ["종류", "상태", "시각", "규칙 id", "해결한 직원"], alerts.map((a) => [a.kind, a.status, a.created_at, a.rule_id ?? "-", a.resolved_by ?? "(없음)"])));
+      al.append(table("이 세션의 알림", ["종류", "상태", "시각", "규칙 id", "해결한 직원", "전달·환자 통지"], alerts.map((a) => [a.kind, a.status, a.created_at, a.rule_id ?? "-", a.resolved_by ?? "(없음)", [pauseLabel(a)?.text, ...deliveryLines(a)].filter(Boolean).join(" / ") || "-"])));
       const open = alerts.filter((a) => a.status === "OPEN");
       if (open.length > 0) {
         const bar = el("div", undefined, "actions"); bar.setAttribute("role", "group"); bar.setAttribute("aria-label", "개입 결정");

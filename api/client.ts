@@ -1,9 +1,9 @@
 import { AbortedError, ApiError, CallStaffError } from "./errors.ts";
 import { isValidSessionId, newTurnId } from "./ids.ts";
 import { isValidSubjectRef } from "./device.ts";
-import { validateFrontendInput, validateSessionState } from "./validate.ts";
+import { validateFrontendInput, validateSessionState, validateStaffAlertBody, validateStaffCallRetryResult } from "./validate.ts";
 import { DEFAULT_RETRY, RETRYABLE_STATUS, TURN_IN_PROGRESS, waitMs, type RetryPolicy } from "./retry.ts";
-import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionStart, SessionState } from "./types.ts";
+import type { BoundaryError, Decision, FrontendInput, PushConfig, SessionStart, SessionState, StaffAlert, StaffCallOutcome, StaffCallRetryResult } from "./types.ts";
 
 export interface ClientOptions {
   /** 같은 출처의 /v1. 직원 콘솔은 게이트웨이가 직원 인증을 붙인다. */
@@ -22,6 +22,8 @@ export interface ClientOptions {
 /** 호출마다 붙이는 선택 사항. 키오스크가 대기 표시와 직원 호출·그만하기에 쓴다. */
 export interface CallOptions {
   signal?: AbortSignal;
+  /** true면 한 번만 보내고 어떤 오류도 그대로 던진다(자동 재시도·CallStaffError 변환 없음). 재알림처럼 429(간격/상한)의 의미를 호출자가 직접 다뤄야 하는 호출용. */
+  single?: boolean;
   /** 재시도하기 직전에 부른다(대기 화면 표시용). */
   onRetry?: (info: { attempt: number; waitMs: number; status: number | null }) => void;
 }
@@ -85,6 +87,19 @@ export class PublicApiClient {
     this.check(sessionId);
     return this.call("GET", `/sessions/${sessionId}/state`, undefined, true, co, validateSessionState);
   }
+  /**
+   * 직원 호출 재알림(2.1.0, PUBLIC_API.md G절). single: 429는 '너무 일찍 눌렀다/상한'이라는 답이지 일시 장애가 아니므로 자동 재시도하지 않는다(환자 화면의 카운트다운이 대신한다).
+   * 같은 turnId 재전송은 서버가 같은 응답을 주므로(멱등) 응답 없이 실패했으면 호출자가 같은 turnId로 다시 보낸다.
+   */
+  staffCallRetry(sessionId: string, turnId: string, co: CallOptions = {}): Promise<StaffCallRetryResult> {
+    this.check(sessionId);
+    return this.serial(sessionId, () => this.call<StaffCallRetryResult>("POST", `/sessions/${sessionId}/staff-call/retry`, { turn_id: turnId }, false, { ...co, single: true }, validateStaffCallRetryResult));
+  }
+  /** 환자가 직접 알렸는지(2.1.0 G절)를 서버에 남긴다. 자유 문장 없음. */
+  staffCallReport(sessionId: string, outcome: StaffCallOutcome, turnId: string, co: CallOptions = {}): Promise<StaffAlert> {
+    this.check(sessionId);
+    return this.serial(sessionId, () => this.call<StaffAlert>("POST", `/sessions/${sessionId}/staff-call/report`, { outcome, turn_id: turnId }, false, { ...co, single: true }, validateStaffAlertBody));
+  }
   getPushConfig(): Promise<PushConfig> {
     return this.request("GET", `/staff/push-config`);
   }
@@ -136,6 +151,7 @@ export class PublicApiClient {
         return r;
       } catch (e) {
         if (e instanceof AbortedError) throw e;
+        if (co.single) throw e;
         if (e instanceof ApiError && !(RETRYABLE_STATUS.has(e.status) || (e.status === 409 && (e.body?.details as { reason?: unknown } | undefined)?.reason === TURN_IN_PROGRESS))) throw e;
         last = e;
         const wait = waitMs(i, e instanceof ApiError ? e.retryAfterMs : null, p, this.rand);

@@ -2,7 +2,7 @@
 import { AbortedError, ApiError, CallStaffError } from "../../api/errors.ts";
 import { newSessionId, newTurnId } from "../../api/ids.ts";
 import type { PublicApiClient } from "../../api/client.ts";
-import type { FrontendInput } from "../../api/types.ts";
+import { normalizePauseReason, type FrontendInput, type PauseReason, type StaffCallOutcome } from "../../api/types.ts";
 import type { KioskStart } from "../../api/device.ts";
 import { isUsableTranscript, type SttResult } from "./stt.ts";
 import { IDLE_RESET_MS, LONG_WAIT_NOTICE_MS, MAX_INPUT_CHARS, MAX_REPEAT } from "./clinical.ts";
@@ -31,6 +31,21 @@ export interface KioskView {
   endFailed?: boolean;
   /** CALL_STAFF(DELIVERY_FAILED)에서 '처음으로'를 한 번 눌렀다: 직원 알림이 닿지 않았을 수 있음을 알리고 한 번 더 확인한다. */
   confirmLeave?: boolean;
+  /** 위험 정지 대기(WAITING_STAFF)의 정지 사유(CR-H002). 서버가 알려 주지 않으면(옛 서버) undefined = 미상, 화면은 기존 문구. */
+  pauseReason?: PauseReason;
+  /** CALL_STAFF(DELIVERY_FAILED)의 '다시 부르기' 상태(CR-H001). staffCall이 undefined면 기능 없음(옛 서버): 기존 화면. */
+  staffCall?: StaffCallView;
+}
+export interface StaffCallView {
+  /** 다시 부르기를 보낼 수 있는지(false면 버튼을 숨긴다): 옛 서버(404/405)이거나 서버가 상한(RETRY_LIMIT)을 알렸다. */
+  canRetry: boolean;
+  /** 요청이 나가는 중. */
+  sending: boolean;
+  /** 남은 비활성 시간(초). 0이면 누를 수 있다. 서버가 준 retry_after_s로만 정한다. */
+  waitS: number;
+  attempts: number;
+  /** 마지막 시도 결과: 안내 문구 선택용. */
+  notice?: "NO_ALERT" | "STILL_FAILED" | "NETWORK" | "LIMIT" | "UNSUPPORTED" | "REPORT_FAILED";
 }
 
 export class KioskFlow {
@@ -52,6 +67,10 @@ export class KioskFlow {
   private idleMs: number;
   private timers: { set: (fn: () => void, ms: number) => unknown; clear: (h: unknown) => void };
   private idleTimer: unknown = null;
+  private callTimer: unknown = null; // 다시 부르기 카운트다운
+  private retryTurnId: string | null = null; // 응답 없이 실패한 재알림은 같은 turn_id로 다시 보낸다(서버 멱등)
+  private staffCallSupported = true; // 기능 감지: 404/405를 한 번 받으면 이 세션 동안 끈다
+  private lastPause: PauseReason | undefined;
   constructor(api: PublicApiClient, o: { pollMs?: number; sleep?: (ms: number) => Promise<void>; startValues?: () => Promise<KioskStart>; idleMs?: number; timers?: { set: (fn: () => void, ms: number) => unknown; clear: (h: unknown) => void } } = {}) {
     this.idleMs = o.idleMs ?? IDLE_RESET_MS;
     this.timers = o.timers ?? { set: (fn, ms) => { const h = setTimeout(fn, ms) as unknown as { unref?: () => void }; h.unref?.(); return h; }, clear: (h) => clearTimeout(h as number) };
@@ -68,6 +87,7 @@ export class KioskFlow {
     return () => this.listeners.delete(fn);
   }
   private set(v: KioskView) {
+    this.stopCallTimer();
     if (v.state !== "WAITING_STAFF") this.gen++; // 대기 화면을 떠나면 폴링 종료
     if (this.notice && (v.state === "LISTENING" || v.state === "REPEAT_PROMPT" || v.state === "SENDING")) v = { ...v, startNotice: this.notice };
     if (this.micBlocked && (v.state === "LISTENING" || v.state === "REPEAT_PROMPT")) v = { ...v, textFallback: true };
@@ -154,6 +174,7 @@ export class KioskFlow {
   private async pausedByState(ctl: AbortController): Promise<boolean> {
     try {
       const s = await this.api.getSessionState(this.sessionId!, { signal: ctl.signal });
+      this.lastPause = s.state === "PAUSED_RISK" ? normalizePauseReason(s.pause_reason) : undefined;
       return s.state === "PAUSED_RISK";
     } catch { return false; }
   }
@@ -200,6 +221,7 @@ export class KioskFlow {
     if (this.view.state !== "CALL_STAFF") return;
     if (this.view.callStaffReason === "DELIVERY_FAILED") {
       if (!this.view.confirmLeave) return this.patch({ confirmLeave: true });
+      await this.report("STAFF_NOTIFIED_MANUALLY"); // 서버에 남기는 것은 최선 노력: 실패해도 환자를 화면에 가두지 않는다
       return this.reset();
     }
     const id = this.sessionId;
@@ -213,7 +235,70 @@ export class KioskFlow {
     if (this.view.state === "CALL_STAFF") this.reset();
   }
   /** 확인 단계에서 취소한다. */
-  cancelLeave(): void { if (this.view.state === "CALL_STAFF" && this.view.confirmLeave) this.patch({ confirmLeave: false }); }
+  cancelLeave(): void {
+    if (this.view.state === "CALL_STAFF" && this.view.confirmLeave) { this.patch({ confirmLeave: false }); void this.report("NOT_NOTIFIED"); }
+  }
+
+  /** 환자의 '직접 알렸다/못 알렸다'를 서버에 남긴다(CR-H001). 매번 새 turn_id: 같은 turn_id에 다른 outcome은 409이기 때문이다. */
+  private async report(outcome: StaffCallOutcome): Promise<void> {
+    const id = this.sessionId;
+    if (!id || !this.staffCallSupported) return;
+    try { await this.api.staffCallReport(id, outcome, newTurnId()); }
+    catch (e) {
+      if (e instanceof ApiError && (e.status === 404 || e.status === 405)) { this.staffCallSupported = false; return; } // 옛 서버: 기존 동작
+      if (this.view.state === "CALL_STAFF" && this.view.staffCall) this.patch({ staffCall: { ...this.view.staffCall, notice: "REPORT_FAILED" } });
+    }
+  }
+
+  /**
+   * '다시 부르기'(CR-H001). 서버가 준 retry_after_s 동안 버튼을 비활성(카운트다운)으로 둔다.
+   * 성공(DELIVERED)이면 대기 화면으로 가서 상태 폴링을 이어 간다. 여전히 실패면 화면에 남아 다시 센다.
+   */
+  async retryStaffCall(): Promise<void> {
+    const v = this.view, sc = v.staffCall, id = this.sessionId;
+    if (v.state !== "CALL_STAFF" || !sc || !id || sc.sending || sc.waitS > 0 || !sc.canRetry) return;
+    this.retryTurnId ??= newTurnId();
+    this.patch({ staffCall: { ...sc, sending: true, notice: undefined } });
+    const turnId = this.retryTurnId;
+    try {
+      const r = await this.api.staffCallRetry(id, turnId);
+      this.retryTurnId = null;
+      if (this.view.state !== "CALL_STAFF") return; // 보내는 동안 환자가 화면을 떠났다
+      if (r.staff_alert === "DELIVERED") return this.waitForStaff(v.text);
+      this.startCountdown({ canRetry: true, sending: false, waitS: r.retry_after_s, attempts: r.delivery_attempts, notice: "STILL_FAILED" });
+    } catch (e) {
+      if (this.view.state !== "CALL_STAFF") return;
+      const cur = this.view.staffCall ?? sc;
+      if (e instanceof ApiError) {
+        this.retryTurnId = null; // 서버가 답했다: 다음 눌림은 새 요청
+        if (e.status === 404 || e.status === 405) { this.staffCallSupported = false; return this.patch({ staffCall: { ...cur, sending: false, canRetry: false, notice: "UNSUPPORTED" } }); }
+        // 열린 알림이 없다(409): 직원이 처리했을 수도, 서버 기록이 어긋났을 수도 있다. 어느 쪽인지 키오스크는 모르므로 화면을 끝내지 않고
+        // 직접 안내를 남긴 채 버튼만 거둔다(헤드 결정, ADR 0014: 환자 안전 쪽으로 기운다).
+        if (e.status === 409) return this.patch({ staffCall: { ...cur, sending: false, canRetry: false, notice: "NO_ALERT" } });
+        if (e.status === 429) {
+          const reason = (e.body?.details as { reason?: unknown } | undefined)?.reason;
+          if (reason === "RETRY_LIMIT") return this.patch({ staffCall: { ...cur, sending: false, canRetry: false, notice: "LIMIT" } });
+          return this.startCountdown({ ...cur, sending: false, waitS: Math.max(1, Math.ceil((e.retryAfterMs ?? 1000) / 1000)), notice: "STILL_FAILED" });
+        }
+        if (e.status === 401 || e.status === 403) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "AUTH" });
+      }
+      // 네트워크·시간 초과·5xx: 같은 turn_id로 다시 누를 수 있게 둔다(서버가 못 받았는지 받았는지 모른다).
+      this.patch({ staffCall: { ...cur, sending: false, notice: "NETWORK" } });
+    }
+  }
+  private startCountdown(sc: StaffCallView): void {
+    this.patch({ staffCall: sc });
+    if (sc.waitS <= 0) return;
+    const tick = () => {
+      const cur = this.view.staffCall;
+      if (this.view.state !== "CALL_STAFF" || !cur) return;
+      const n = Math.max(0, cur.waitS - 1);
+      this.patch({ staffCall: { ...cur, waitS: n } });
+      this.callTimer = n > 0 ? this.timers.set(tick, 1000) : null;
+    };
+    this.callTimer = this.timers.set(tick, 1000);
+  }
+  private stopCallTimer(): void { if (this.callTimer !== null) { this.timers.clear(this.callTimer); this.callTimer = null; } }
 
   reset(): void {
     this.inflight?.abort(); this.inflight = null;
@@ -239,7 +324,8 @@ export class KioskFlow {
   private handle(r: FrontendInput): void {
     const sig = r.turn_failure_signal;
     if (sig?.staff_alert === "DELIVERY_FAILED") {
-      return this.set({ state: "CALL_STAFF", text: r.response_text, callStaffReason: "DELIVERY_FAILED" });
+      this.retryTurnId = null; this.staffCallSupported = true;
+      return this.set({ state: "CALL_STAFF", text: r.response_text, callStaffReason: "DELIVERY_FAILED", staffCall: { canRetry: true, sending: false, waitS: 0, attempts: 0 } });
     }
     if (sig?.staff_alert === "DELIVERED") {
       return this.waitForStaff(r.response_text);
@@ -253,7 +339,8 @@ export class KioskFlow {
 
   /** 위험 정지 화면: 2초 간격으로 세션 상태를 보고, 재개되면 resume_text를 보이며 이어간다. */
   private waitForStaff(text: string | null): void {
-    this.set({ state: "WAITING_STAFF", text });
+    this.set(this.lastPause ? { state: "WAITING_STAFF", text, pauseReason: this.lastPause } : { state: "WAITING_STAFF", text });
+    this.lastPause = undefined;
     const id = this.sessionId!, g = this.gen;
     const longAfter = Math.ceil(LONG_WAIT_NOTICE_MS / this.pollMs);
     let polls = 0;
@@ -269,7 +356,9 @@ export class KioskFlow {
           else if (polls >= longAfter && !this.view.waitNotice) this.patch({ waitNotice: "LONG_WAIT" });
           if (s.state === "ACTIVE") return this.set({ state: "LISTENING", text: s.resume_text });
           if (s.state === "ENDED") { this.sessionId = null; return this.set({ state: "ENDED", text: null }); }
-          // PAUSED_RISK 또는 모르는 값: 계속 기다린다
+          // PAUSED_RISK 또는 모르는 값: 계속 기다린다. 정지 사유는 폴링 응답으로 갱신한다(없으면 미상으로 둔다).
+          const pr = s.state === "PAUSED_RISK" ? normalizePauseReason(s.pause_reason) : undefined;
+          if (pr !== this.view.pauseReason) this.patch({ pauseReason: pr });
         } catch (e) {
           if (this.gen !== g) return;
           if (e instanceof ApiError && e.status === 404) { this.sessionId = null; return this.set({ state: "IDLE", text: null }); }

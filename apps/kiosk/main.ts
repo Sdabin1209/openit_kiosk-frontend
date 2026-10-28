@@ -2,7 +2,7 @@ import { PublicApiClient } from "../../api/client.ts";
 import { createStartHolder, loadKioskStart } from "../../api/device.ts";
 import { KioskFlow, type KioskView } from "./flow.ts";
 import { WebSpeechStt } from "./stt.ts";
-import { ENDED_RESET_MS, MAX_INPUT_CHARS, NO_STT_NOTICE, REMOTE_STT_NOTICE } from "./clinical.ts";
+import { DELIVERY_FAILED_DIRECT_NOTICE, ENDED_RESET_MS, MAX_INPUT_CHARS, NO_STT_NOTICE, REASK_LIMIT_WAIT_NOTICE, REMOTE_STT_NOTICE, RETRY_BUTTON_LABEL, STAFF_CALL_NOTICES } from "./clinical.ts";
 
 // 기기 토큰과 환자 참조는 메모리에만 둔다(주소창 조각은 읽자마자 지운다). 환자 참조는 한 번 쓰면 비운다(다음 환자에게 재사용하지 않는다).
 const holder = createStartHolder(() => loadKioskStart(window));
@@ -12,7 +12,7 @@ const stt = new WebSpeechStt(); // 기본: 기기 안 인식만(D88 U3). 외부 
 void holder.loaded.then((c) => { stt.setAllowRemote(c.allowRemoteStt); return stt.init(); }).then(() => render(flow.current));
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const title = $("title"), text = $("text"), action = $("action") as HTMLButtonElement;
-const secondary = $("secondary") as HTMLButtonElement, staffBtn = $("staffcall") as HTMLButtonElement, notice = $("notice"), manual = $("manual"), input = $("manual-input") as HTMLInputElement;
+const secondary = $("secondary") as HTMLButtonElement, staffBtn = $("staffcall") as HTMLButtonElement, notice = $("notice"), manual = $("manual"), countdown = $("countdown"), input = $("manual-input") as HTMLInputElement;
 
 let onAction: () => void = () => {};
 let onSecondary: (() => void) | null = null;
@@ -48,17 +48,19 @@ function waitingButtons(v: KioskView) {
 
 function render(v: KioskView) {
   document.body.classList.toggle("warn", v.state === "CALL_STAFF");
+  // 정지 사유는 글자와 data 속성으로 구분한다(색에 의존하지 않는다). 시험·접근성 도구용.
+  if (v.state === "WAITING_STAFF" && v.pauseReason) document.body.dataset.pauseReason = v.pauseReason; else delete document.body.dataset.pauseReason;
   const listening = v.state === "LISTENING" || v.state === "REPEAT_PROMPT";
   manual.hidden = !listening || (stt.available() && !v.textFallback);
   if (!listening) { input.value = ""; stt.cancel(); } // 미전송 입력을 남기지 않고, 듣고 있던 마이크도 멈춘다
   action.hidden = false;
-  staffBtn.hidden = !listening; // 말하기 대기·다시 말하기에서도 언제든 직원을 부를 수 있다
+  staffBtn.hidden = !listening; staffBtn.disabled = false; staffBtn.textContent = "직원 부르기"; // 말하기 대기·다시 말하기에서도 언제든 직원을 부를 수 있다
   secondary.hidden = true; onSecondary = null; action.disabled = false; text.textContent = v.text ?? "";
   const notes: string[] = [];
   if (v.startNotice === "NO_SUBJECT_REF") notes.push("접수 정보 없이 시작했습니다. 직원에게 알려 주세요.");
   if (listening && stt.remote) notes.push(REMOTE_STT_NOTICE); // 외부 인식 허용 설정을 켠 기기에서만
   if (listening && !stt.available() && !stt.remote) notes.push(NO_STT_NOTICE);
-  notice.textContent = notes.join(" ");
+  let noticeText = notes.join(" ");
   clearTimeout(idleTimer);
   switch (v.state) {
     case "IDLE": void stt.recheck().then((did) => { if (did && flow.current.state === "IDLE") render(flow.current); }); // 언어 팩 설치 시간 초과였으면 새로고침 없이 다시 확인
@@ -76,7 +78,8 @@ function render(v: KioskView) {
     case "SENDING": title.textContent = v.retrying ? "잠시만 기다려 주세요" : "확인하고 있어요"; action.hidden = true; waitingButtons(v); break;
     case "WAITING_STAFF":
       title.textContent = "직원이 곧 도와드립니다"; action.hidden = true;
-      if (!v.text) text.textContent = "그대로 기다려 주세요. 직원이 오면 이어서 안내해 드립니다.";
+      // 서버 고정 문장(v.text)이 있으면 항상 그것을 쓴다. 없을 때만 사유별 기본 안내(REASK_LIMIT 문구는 임상 검토 필요, ADR 0014).
+      if (!v.text) text.textContent = v.pauseReason === "REASK_LIMIT" ? REASK_LIMIT_WAIT_NOTICE : "그대로 기다려 주세요. 직원이 오면 이어서 안내해 드립니다.";
       if (v.waitNotice === "SERVER_UNREACHABLE") text.textContent = "상태를 확인하지 못하고 있어요. 가까이 있는 직원에게 알려 주세요."; // 임시 UI 문구
       else if (v.waitNotice === "LONG_WAIT") text.textContent = `${text.textContent} 오래 걸리면 가까이 있는 직원에게 알려 주세요.`;
       break;
@@ -90,7 +93,18 @@ function render(v: KioskView) {
       onAction = () => void flow.leaveCallStaff();
       if (v.callStaffReason === "DELIVERY_FAILED") {
         // 직원 알림이 닿지 않았다: 직접 직원에게 알리는 것이 우선이고, 처음으로는 한 번 더 확인한다.
-        text.textContent = "직원에게 알림이 닿지 않았을 수 있어요. 가까이 있는 직원에게 직접 알려 주세요.";
+        text.textContent = DELIVERY_FAILED_DIRECT_NOTICE; // provisional(임상 검토 전)
+        const sc = v.staffCall;
+        if (sc && !v.confirmLeave) {
+          // 다시 부르기(CR-H001). 카운트다운은 버튼 글자로만 보이고(1초마다 읽어 주지 않게 live 영역을 쓰지 않는다), 안내 문장은 시간 제한 없이 남는다.
+          if (sc.canRetry) {
+            staffBtn.hidden = false;
+            staffBtn.disabled = sc.sending || sc.waitS > 0;
+            staffBtn.textContent = sc.sending ? "보내는 중…" : RETRY_BUTTON_LABEL; // 카운트다운은 별도 요소(live 영역 밖 취급)에 둔다
+          }
+          if (sc.notice) noticeText = STAFF_CALL_NOTICES[sc.notice];
+          countdown.hidden = !(sc.canRetry && sc.waitS > 0); countdown.textContent = `${sc.waitS}초 뒤에 다시 부를 수 있어요`;
+        }
         if (v.confirmLeave) {
           text.textContent = "직원에게 직접 알리셨나요? 알리지 않았다면 취소를 눌러 직원을 찾아 주세요.";
           action.textContent = "직접 알렸어요, 처음으로";
@@ -110,11 +124,26 @@ function render(v: KioskView) {
   if (v.state === "IDLE") action.hidden = false;
   if (v.state === "REPEAT_PROMPT" && v.repeatReason === "NOT_COMMITTED") text.textContent = v.text ?? "저장하지 못했어요. 다시 말씀해 주세요.";
   if (v.state === "LISTENING" || v.state === "REPEAT_PROMPT") speak(text.textContent);
-  if (v.state === "CALL_STAFF") (action as HTMLElement).focus();
+  if (notice.textContent !== noticeText) notice.textContent = noticeText; // 같은 글자를 다시 쓰면 낭독기가 되풀이해 읽을 수 있다
+  if (countdown.hidden === false && !(v.state === "CALL_STAFF" && v.staffCall && v.staffCall.waitS > 0)) countdown.hidden = true;
+  // 초점은 CALL_STAFF에 처음 들어올 때만 옮긴다(재알림 뒤 다시 그려질 때 환자가 누르던 버튼에서 초점을 빼앗지 않는다).
+  if (v.state === "CALL_STAFF" && lastState !== "CALL_STAFF") (action as HTMLElement).focus();
+  lastState = v.state;
+}
+let lastState: string | null = null;
+let prev: KioskView | null = null;
+/** 카운트다운 1초 변화만이면 숫자 한 곳만 바꾼다: 화면 전체를 다시 그리면 aria-live 영역이 1초마다 낭독되고 글자가 깜빡인다. */
+function onView(v: KioskView) {
+  const p = prev; prev = v;
+  const a = p?.staffCall, b = v.staffCall;
+  if (p && p.state === "CALL_STAFF" && v.state === "CALL_STAFF" && a && b && a.waitS > 0 && b.waitS > 0 && a.waitS !== b.waitS && a.sending === b.sending && a.notice === b.notice && p.confirmLeave === v.confirmLeave) {
+    countdown.textContent = `${b.waitS}초 뒤에 다시 부를 수 있어요`; return;
+  }
+  render(v);
 }
 action.addEventListener("click", () => { flow.touch(); onAction(); });
-staffBtn.addEventListener("click", () => flow.callStaff());
+staffBtn.addEventListener("click", () => { if (flow.current.state === "CALL_STAFF") void flow.retryStaffCall(); else flow.callStaff(); });
 input.addEventListener("input", () => flow.touch());
 secondary.addEventListener("click", () => { flow.touch(); onSecondary?.(); });
 input.addEventListener("keydown", (e) => { if (e.key === "Enter") onAction(); });
-flow.subscribe(render);
+flow.subscribe(onView);

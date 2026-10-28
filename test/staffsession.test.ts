@@ -28,7 +28,8 @@ test("GET /v1/staff/sessions/{id}: 모양이 StaffSessionView와 같고 위험 �
   assert.deepEqual(Object.keys(v.turns[1]).sort(), ["action", "at", "response_text", "turn_id", "turn_index", "utterance"]);
   assert.deepEqual(Object.keys(v.values[0]).sort(), ["key", "precision", "status", "value"]);
   assert.equal(v.alerts.length, 1);
-  assert.deepEqual(Object.keys(v.alerts[0]).sort(), ["alert_id", "created_at", "kind", "resolved_by", "rule_id", "status"]);
+  // 2.1.0: 필수 키는 그대로이고 optional(delivery_attempts, last_delivery_status, pause_reason)이 더해진다.
+  assert.deepEqual(Object.keys(v.alerts[0]).sort().filter((k) => !["delivery_attempts", "last_delivery_status", "pause_reason"].includes(k)), ["alert_id", "created_at", "kind", "resolved_by", "rule_id", "status"]);
   assert.equal(v.alerts[0].kind, "RISK");
   assert.equal(typeof v.alerts[0].rule_id, "string");
 });

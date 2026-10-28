@@ -129,7 +129,26 @@ test("환자 참조와 해결한 직원: 값이 없으면 '(없음)', HTML은 �
   await v.open("s1");
   assert.deepEqual(text("dl.info dt").slice(-1), ["환자 참조"]);
   assert.deepEqual(text("dl.info dd").slice(-1), ["(없음)"]);
-  const rows = [...doc.querySelectorAll('table[aria-label="이 세션의 알림"] tbody tr')].map((r) => r.lastElementChild!.textContent);
+  const rows = [...doc.querySelectorAll('table[aria-label="이 세션의 알림"] tbody tr')].map((r) => r.children[4].textContent); // 해결한 직원 열
   assert.deepEqual(rows, ["(없음)", "<i>staff-1</i>"]);
   assert.equal(doc.querySelectorAll("#record i").length, 0);
+});
+
+test("2.1.0: 세션 기록에 정지 사유(글자 접두)와 전달 시도·환자 직접 통지 보고가 보인다", opt, async () => {
+  const { doc, v } = setup(async () => view({ pause_reason: "REASK_LIMIT", alerts: [{ alert_id: "a1", kind: "CALL_STAFF", status: "OPEN", created_at: "x", rule_id: null, resolved_by: null, delivery_attempts: 3, last_delivery_status: "DELIVERY_FAILED", manual_notice_outcome: "NOT_NOTIFIED", manual_notice_reported_at: "2026-01-01T00:01:00Z", pause_reason: "REASK_LIMIT" }] }));
+  await v.open("s1");
+  const p = doc.getElementById("record-pause")!;
+  assert.match(p.textContent!, /^\[되묻기 한도 정지\]/); assert.ok(p.classList.contains("pause-REASK_LIMIT"));
+  const cell = doc.querySelector('table[aria-label="이 세션의 알림"] tbody tr')!.children[5].textContent!;
+  assert.match(cell, /3회 시도, 마지막: 전달 실패/); assert.match(cell, /아직 직원에게 알리지 못했다고 보고/); assert.match(cell, /2026-01-01T00:01:00Z/);
+});
+
+test("2.1.0: 위험 정지는 [위험 정지]로, 모르는 값은 OTHER로, 옛 서버(필드 없음)는 기존 화면 그대로", opt, async () => {
+  const a = setup(async () => view({ pause_reason: "RISK" })); await a.v.open("s1");
+  assert.match(a.doc.getElementById("record-pause")!.textContent!, /^\[위험 정지\]/);
+  const b = setup(async () => view({ pause_reason: "FUTURE_VALUE" })); await b.v.open("s1");
+  assert.match(b.doc.getElementById("record-pause")!.textContent!, /^\[정지: 그 밖의 사유\]/);
+  const c = setup(async () => view()); await c.v.open("s1");
+  assert.equal(c.doc.getElementById("record-pause"), null);
+  assert.equal(c.doc.querySelector('table[aria-label="이 세션의 알림"] tbody tr')!.children[5].textContent, "-");
 });

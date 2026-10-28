@@ -28,3 +28,10 @@ dialog { border-radius:8px; }
 #conn.bad { background:#8a1c1c; color:#fff; padding:6px 12px; font-weight:bold; }
 #list-status { background:#7a5a00; color:#fff; padding:12px 24px; font-weight:bold; }
 #push-status { background:#444; color:#fff; padding:8px 24px; }
+/* 정지 사유·전달 상태(2.1.0). 구분은 글자 접두가 하는 일이고 색·테두리는 보조다. 글자색은 흰 배경 대비 4.5:1 이상(#8a1c1c 약 8:1, #7a5a00 약 6:1). */
+.pause { flex-basis:100%; padding:4px 8px; border-left:8px solid; }
+.pause-RISK { color:#8a1c1c; border-left-color:#8a1c1c; }
+.pause-REASK_LIMIT { color:#7a5a00; border-left-color:#7a5a00; border-left-style:double; }
+.pause-OTHER { color:#333; border-left-color:#333; border-left-style:dotted; }
+.delivery { flex-basis:100%; color:#333; }
+.delivery-failed { color:#8a1c1c; font-weight:bold; }

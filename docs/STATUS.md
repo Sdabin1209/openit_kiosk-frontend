@@ -6,6 +6,12 @@
 - 시험: `npm test`, `npm run test:dom`(jsdom, 컨테이너), `npm run typecheck`, `npm run check-schema`, `npm run smoke`, `npm run test:e2e`.
 - 직원 콘솔 세션 기록 보기: 알림의 '기록 보기'로 대화·저장된 값·세션 알림(규칙 id)을 읽기 전용으로 본다. 같은 화면에서 이어서 진행/종료(확인 단계 유지). 환자 발화는 메모리·DOM에만 두고 닫으면 지운다. `GET /v1/staff/sessions/{id}`(StaffSessionView)는 모의 서버에만 있고 실제 survey-service 구현은 확인하지 못했다.
 
+## 계약 v2.1.0 (CR-H001·CR-H002, ADR 0014)
+- 작업 트리 스펙(boundary-contracts 86da3bf) 기준으로 구현했다. 태그 v2.1.0은 아직 받지 못했다: 받으면 `npm run check-schema`·`npm test`·`npm run test:e2e`를 다시 돌린다(Dockerfile `BOUNDARY_CONTRACT`는 이미 v2.1.0, 모의 서버 pipeline_schema_version "2.1").
+- 키오스크: DELIVERY_FAILED에서 '직원 다시 부르기'(retry_after_s 카운트다운), report 연결, 기능 감지, 정지 사유(pause_reason) 구분. 직원 콘솔: 전달 시도·직접 통지 보고·정지 사유 글자 표시.
+- 열린 문제(헤드 확인 요청): v2.1.0 작업 트리의 `StaffAlertPage.schema.json`이 items를 인라인으로 정의하고 additionalProperties=false라 `StaffAlert`의 새 optional 필드를 거부한다. 임시로 `test/mock.test.ts`가 새 필드를 뺀 모양으로 목록을 검사한다.
+- 문구는 모두 provisional(임상 검토 전). 실제 survey-service 연동은 하지 못했다.
+
 ## 계약 v2.0.2 정렬
 Dockerfile `BOUNDARY_CONTRACT=v2.0.2`, 모의 서버 오류 본문 `pipeline_schema_version` "2.0"(이전 "1.0"은 어떤 계약 버전과도 맞지 않던 값). `check-schema`가 계약 버전 표기를 대조하도록 확장했다. 공개 API 응답 모양 변화는 SSE `id:` 설명(이벤트 순번) 한 줄뿐이며 모의 서버는 이미 그렇게 동작한다. 이미지·리포지토리에 비밀은 없다(VAPID는 공개키만).
 

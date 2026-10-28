@@ -28,3 +28,20 @@ export const MAX_INPUT_CHARS = 500;
 export const ALLOW_REMOTE_STT_DEFAULT = false;
 export const REMOTE_STT_NOTICE = "음성은 외부 음성 인식 서비스로 전송될 수 있습니다. 원치 않으시면 글자로 입력해 주세요."; // 임시 문구, 임상/법무 검토 전
 export const NO_STT_NOTICE = "이 기기에서는 음성 인식을 쓸 수 없어요. 아래에 글자로 입력해 주세요."; // 임시 UI 문구
+
+/** [임상 검토 필요, 임시 문구] 되묻기 한도(REASK_LIMIT)로 멈췄는데 서버가 환자용 고정 문장(response_text)을 주지 않았을 때만 쓰는 대기 안내.
+ * 서버 고정 문장이 있으면 항상 그것이 우선한다(이 영역은 환자에게 가는 임상 문장을 새로 정하지 않는다). 위험 정지 문구와 구분되며,
+ * '위험하지 않다'는 단정은 하지 않는다(임상 판단이므로). ADR 0014. */
+export const REASK_LIMIT_WAIT_NOTICE = "답변을 잘 알아듣지 못해 잠시 멈췄어요. 직원이 와서 도와드릴 때까지 그대로 기다려 주세요.";
+/** [임상 검토 필요, 임시 UI 문구] 직원 알림 재전송 안내(ADR 0014). 재알림 간격·상한 값은 서버 설정이며 이 영역은 값을 정하지 않는다. */
+export const STAFF_CALL_NOTICES = {
+  STILL_FAILED: "아직 직원에게 알림이 닿지 않았어요. 접수처로 직접 가서 직원에게 알려 주세요. 잠시 뒤 다시 부를 수 있어요.",
+  NETWORK: "연결이 되지 않아 다시 부르지 못했어요. 다시 눌러 주시거나 직원에게 직접 알려 주세요.",
+  NO_ALERT: "서버에 열린 호출이 없다고 해요. 그래도 접수처로 직접 가서 직원에게 알려 주세요.",
+  LIMIT: "더 이상 다시 부를 수 없어요. 접수처로 직접 가서 직원에게 알려 주세요.",
+  UNSUPPORTED: "이 기기에서는 다시 부르기를 쓸 수 없어요. 접수처로 직접 가서 직원에게 알려 주세요.",
+  REPORT_FAILED: "알린 내용을 기록하지 못했어요. 직원에게 직접 알려 주세요.",
+} as const;
+/** [provisional, 임상 검토 전] 전달 실패 화면의 상시 안내. 다시 부르기가 끝나거나 막혀도 이 안내는 남는다(헤드 결정, ADR 0014). */
+export const DELIVERY_FAILED_DIRECT_NOTICE = "직원에게 알림이 닿지 않았을 수 있어요. 접수처로 직접 가서 직원에게 알려 주세요.";
+export const RETRY_BUTTON_LABEL = "직원 다시 부르기";

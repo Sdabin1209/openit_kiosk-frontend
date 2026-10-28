@@ -22,3 +22,12 @@ export function validateFrontendInput(v: unknown): void {
 export function validateSessionState(v: unknown): void {
   if (!isObj(v) || typeof v.state !== "string" || !(v.resume_text === null || typeof v.resume_text === "string")) throw new BadBodyError("SessionState");
 }
+
+/** StaffCallRetryResult(2.1.0). 형식이 틀리면 성공으로 보지 않는다(retry_after_s가 없으면 버튼 비활성 시간을 지어내야 하므로). */
+export function validateStaffCallRetryResult(v: unknown): void {
+  if (!isObj(v) || typeof v.alert_id !== "string" || v.alert_id === "" || !["DELIVERED", "DELIVERY_FAILED"].includes(v.staff_alert as string)
+    || !Number.isInteger(v.delivery_attempts) || (v.delivery_attempts as number) < 1 || !Number.isInteger(v.retry_after_s) || (v.retry_after_s as number) < 0) throw new BadBodyError("StaffCallRetryResult");
+}
+export function validateStaffAlertBody(v: unknown): void {
+  if (!isObj(v) || typeof v.alert_id !== "string" || typeof v.session_id !== "string") throw new BadBodyError("StaffAlert");
+}

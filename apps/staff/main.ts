@@ -1,6 +1,7 @@
 import { PublicApiClient } from "../../api/client.ts";
 import { StaffApi } from "../../api/staff.ts";
 import type { StaffAlert } from "../../api/types.ts";
+import { deliveryLines, pauseLabel } from "./alertinfo.ts";
 import { InterventionDeciding } from "./decide.ts";
 import { disablePush, enablePush, hasPush } from "./push.ts";
 import { createRecordViewer } from "./record.ts";
@@ -43,6 +44,10 @@ function row(a: StaffAlert): HTMLLIElement {
   // textContent만 쓴다. 모르는 kind/status도 그대로 보인다.
   meta.textContent = `${a.kind} · 세션 ${a.session_id} · ${a.created_at}` + (a.status !== "OPEN" ? ` · ${a.status}/${a.resolved_by_decision ?? "-"}` : "");
   li.append(meta);
+  // 2.1.0: 정지 사유와 전달 상태. 글자 접두로 구분하고 색은 보조(.pause-RISK 등)다. 필드가 없으면 아무것도 붙지 않는다.
+  const pl = pauseLabel(a);
+  if (pl) { const p = document.createElement("strong"); p.className = `pause pause-${pl.reason}`; p.textContent = pl.text; li.append(p); li.dataset.pauseReason = pl.reason; }
+  for (const t of deliveryLines(a)) { const d = document.createElement("span"); d.className = "delivery"; d.textContent = t; if (a.last_delivery_status === "DELIVERY_FAILED") d.classList.add("delivery-failed"); li.append(d); }
   const rec = document.createElement("button");
   rec.type = "button"; rec.className = "alt"; rec.textContent = "기록 보기";
   rec.setAttribute("aria-label", `세션 ${a.session_id} 기록 보기`);
