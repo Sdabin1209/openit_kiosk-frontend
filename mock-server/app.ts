@@ -290,7 +290,11 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       if (typeof body.endpoint !== "string" || !body.keys) return json(res, 400, berr("INVALID_RECORD", "bad subscription"));
       state.subs.set(body.endpoint, body); res.writeHead(201); return res.end();
     }
-    if (m === "DELETE" && path === "/v1/staff/push-subscriptions") {
+    if (m === "POST" && path === "/v1/staff/push-subscriptions/unsubscribe") { // 계약 2.2.0: 본문 {"endpoint"}, 204
+      if (typeof body.endpoint !== "string" || body.endpoint === "" || Object.keys(body).some((k) => k !== "endpoint")) return json(res, 400, berr("INVALID_RECORD", "bad unsubscribe"));
+      state.subs.delete(body.endpoint); res.writeHead(204); return res.end();
+    }
+    if (m === "DELETE" && path === "/v1/staff/push-subscriptions") { // 폐기 예정 방식(2.x 호환). 이 영역의 클라이언트는 쓰지 않는다.
       state.subs.delete(url.searchParams.get("endpoint") ?? ""); res.writeHead(204); return res.end();
     }
     return json(res, 404, berr("NOT_FOUND", "no route"));

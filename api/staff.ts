@@ -27,7 +27,9 @@ export class StaffApi {
     return this.client.request("POST", `/staff/push-subscriptions`, sub);
   }
   unregisterPush(endpoint: string): Promise<void> {
-    return this.client.request("DELETE", `/staff/push-subscriptions?endpoint=${encodeURIComponent(endpoint)}`);
+    // 푸시 엔드포인트 URL은 그 자체가 푸시 권한을 주는 값이라 URL(쿼리 문자열은 서버·게이트웨이 로그에 남는다)에 싣지 않고 본문으로 보낸다
+    // (계약 2.2.0 `POST /v1/staff/push-subscriptions/unsubscribe`, 표준성 점검 #42, CR-006). 옛 `DELETE ?endpoint=`로 되돌아가지 않는다.
+    return this.client.request("POST", `/staff/push-subscriptions/unsubscribe`, { endpoint });
   }
 
   intervene(sessionId: string, decision: Decision, turnId: string): Promise<FrontendInput> {

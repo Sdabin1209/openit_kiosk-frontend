@@ -1,6 +1,6 @@
 # CR-006 (대상: 헤드) 푸시 구독 해지가 엔드포인트를 쿼리 문자열로 받는다
 
-작성: kiosk-frontend, 2026-10-29. 상태: 요청. 표준성 점검 #42, 결정표 2절 "푸시 해지가 엔드포인트 URL을 쿼리 문자열로 보냄 -> 요청 본문으로 보낸다"에서 나왔다.
+작성: kiosk-frontend, 2026-10-29. **상태: 계약 반영됨(2026-10-29, 계약 2.2.0 `PUBLIC_API.md`: `POST /v1/staff/push-subscriptions/unsubscribe`, 본문 `{"endpoint"}`, 204. 옛 `DELETE ?endpoint=`는 2.x에서만 허용하는 폐기 예정, 3.0.0 제거). 이 영역은 새 경로로 바꿨다(`api/staff.ts` `unregisterPush`, 모의 서버, `test/push-unsub.test.ts`).** 아래는 요청 당시의 글이다. 표준성 점검 #42, 결정표 2절 "푸시 해지가 엔드포인트 URL을 쿼리 문자열로 보냄 -> 요청 본문으로 보낸다"에서 나왔다.
 
 ## 왜 이 영역에서 고치지 않았나
 현재 계약은 `DELETE /v1/staff/push-subscriptions?endpoint=`로 해지한다(`../boundary-contracts/PUBLIC_API.md` 푸시 구독 행). 이 영역이 본문으로 바꿔 보내면 서버(survey-service)가 `endpoint`를 쿼리에서만 읽는 한 해지가 조용히 실패한다(서버 등록이 남은 채 브라우저 구독만 사라지거나 그 반대). 이 영역이 계약이나 이웃 서버를 바꿀 수 없으므로 코드는 건드리지 않았다. 모의 서버도 쿼리를 읽는다(`mock-server/app.ts`, 계약에 맞춤).
