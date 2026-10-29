@@ -14,7 +14,7 @@ const ex = (dir: string, n: string) => JSON.parse(readFileSync(new URL(`${dir}/$
 const gen = createRequire(import.meta.url)("../scripts/build-validators.gen.cjs");
 const REPO = process.cwd();
 
-const REQ = { source_dir: REPO, revision: "bad876c", versions: { boundary: "v2.5.0", survey_schema: "v1.2.0" }, image_tag: "kiosk-frontend-test/kiosk-frontend:bad876c" };
+const REQ = { source_dir: REPO, revision: "bad876c", versions: { boundary: "v2.5.1", survey_schema: "v1.2.0" }, image_tag: "kiosk-frontend-test/kiosk-frontend:bad876c" };
 
 /** 가짜 docker: build 인자를 기록하고, inspect는 요청과 같은 라벨을 돌려준다(labelsOverride로 어긋난 이미지를 흉내 낸다). */
 function fakeDocker(dir: string, labelsOverride?: Record<string, string>) {
@@ -48,13 +48,13 @@ test("진입점: 계약 예시 요청 모양을 받아 가짜 docker로 빌드�
     assert.equal(result.image, REQ.image_tag);
     assert.match(result.image_id, /^sha256:[0-9a-f]{64}$/);
     assert.equal(result.labels["io.openit.revision"], REQ.revision);
-    assert.equal(result.labels["io.openit.contracts.boundary"], "v2.5.0");
+    assert.equal(result.labels["io.openit.contracts.boundary"], "v2.5.1");
     assert.equal(result.labels["io.openit.contracts.survey-schema"], "1"); // 요청의 v1.2.0에서 주 버전
     assert.equal(result.labels["org.opencontainers.image.base.name"], undefined, "io.openit.* 라벨만 낸다");
     assert.ok(r.stderr.includes("가짜 빌드 진행 기록"), "진행 기록은 표준 오류");
     assert.doesNotMatch(r.stdout.trimEnd().split("\n").slice(0, -1).join("\n"), /가짜 빌드/, "표준 출력에는 결과 한 줄뿐");
     const build = readFileSync(log, "utf8").split("\n").find((l) => l.startsWith("build"))!;
-    for (const a of ["REVISION=bad876c", "BOUNDARY_CONTRACT=v2.5.0", "SURVEY_SCHEMA=1", `-t ${REQ.image_tag}`]) assert.ok(build.includes(a), `${a} in ${build}`);
+    for (const a of ["REVISION=bad876c", "BOUNDARY_CONTRACT=v2.5.1", "SURVEY_SCHEMA=1", `-t ${REQ.image_tag}`]) assert.ok(build.includes(a), `${a} in ${build}`);
     assert.ok(build.trimEnd().endsWith(REPO), "source_dir만 빌드 컨텍스트");
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
@@ -82,7 +82,7 @@ test("진입점: 계약이 거부하는 요청(모르는 키, 필수 키 없음,
 test("진입점: 이 영역이 쓰는 versions 키(survey_schema)가 없으면 기본값을 두지 않고 실패하고, 모르는 variant도 실패한다", () => {
   const d = tmp(); try {
     const { bin } = fakeDocker(d);
-    const noSs = run({ ...REQ, versions: { boundary: "v2.5.0" } }, bin, d);
+    const noSs = run({ ...REQ, versions: { boundary: "v2.5.1" } }, bin, d);
     assert.notEqual(noSs.status, 0); assert.match(noSs.stderr, /survey_schema/);
     const v = run({ ...REQ, variant: "gpu" }, bin, d);
     assert.notEqual(v.status, 0); assert.match(v.stderr, /variant/);

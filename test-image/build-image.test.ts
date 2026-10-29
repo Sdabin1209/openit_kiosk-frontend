@@ -16,7 +16,7 @@ after(() => { spawnSync("docker", ["rmi", "-f", TAG]); rmSync(dir, { recursive: 
 
 function build() {
   const f = join(dir, "req.json");
-  writeFileSync(f, JSON.stringify({ source_dir: process.cwd(), revision: REV, versions: { boundary: "v2.5.0", survey_schema: "v1.2.0" }, image_tag: TAG }));
+  writeFileSync(f, JSON.stringify({ source_dir: process.cwd(), revision: REV, versions: { boundary: "v2.5.1", survey_schema: "v1.2.0" }, image_tag: TAG }));
   return spawnSync("bash", ["scripts/build-image.sh", f], { encoding: "utf8" });
 }
 
@@ -28,7 +28,7 @@ test("실제 docker 빌드: 결과 마지막 줄이 BuildImageResult이고 라�
   assert.equal(result.image, TAG);
   assert.equal(result.labels["io.openit.service"], "kiosk-frontend");
   assert.equal(result.labels["io.openit.revision"], REV);
-  assert.equal(result.labels["io.openit.contracts.boundary"], "v2.5.0");
+  assert.equal(result.labels["io.openit.contracts.boundary"], "v2.5.1");
   assert.equal(result.labels["io.openit.contracts.survey-schema"], "1");
   console.error("BuildImageResult:", JSON.stringify(result)); // 보고용
   const again = JSON.parse(build().stdout.trimEnd().split("\n").pop()!);

@@ -1,7 +1,7 @@
 # STATUS
 
-## U42: 영역 빌드 진입점 + 계약 v2.5.0 (2026-10-30, 브랜치 wo-42, ADR 0026)
-- `bash scripts/build-image.sh <요청 JSON>` 추가(계약 BuildImageRequest/Result). 계약 핀 v2.5.0(Dockerfile ARG, 생성 검증기, 모의 서버 pipeline_schema_version 2.5). 옛 deploy 빌드(`REVISION`, `BOUNDARY_CONTRACT`, `SURVEY_SCHEMA`)와 같은 인자·같은 라벨이다. 같은 요청의 image_id는 빌드마다 다르다(재현 빌드 아님).
+## U42: 영역 빌드 진입점 + 계약 진입점 2.5.0, 핀 v2.5.1 (2026-10-30, 브랜치 wo-42, ADR 0026)
+- `bash scripts/build-image.sh <요청 JSON>` 추가(계약 BuildImageRequest/Result). 계약 핀 v2.5.1(Dockerfile ARG, 생성 검증기, 모의 서버 pipeline_schema_version 2.5). 옛 deploy 빌드(`REVISION`, `BOUNDARY_CONTRACT`, `SURVEY_SCHEMA`)와 같은 인자·같은 라벨이다. 같은 요청의 image_id는 빌드마다 다르다(재현 빌드 아님).
 
 ## 계약 v2.4.1 핀 (2026-10-30, 브랜치 wo-24, D115)
 - Dockerfile ARG, 생성 검증기 헤더, 모의 서버 `pipeline_schema_version` "2.4". 이 영역이 쓰는 세 스키마(DeviceConfig, KioskStartFragment, StaffPushPayload)는 2.3.0과 같아 생성 검증기는 헤더 줄만 바뀌었다. 동작 변화 없음.
