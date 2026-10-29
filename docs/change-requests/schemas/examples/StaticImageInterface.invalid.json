@@ -1,1 +1,0 @@
-{"port": "8080", "env": {"VAPID_PUBLIC_KEY": "x"}, "routes": [{"path": "/", "kind": "page"}], "not_served_prefixes": [], "user": "node"}

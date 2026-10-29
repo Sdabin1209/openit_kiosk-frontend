@@ -1,5 +1,8 @@
 # STATUS
 
+## U49: 승격된 스키마 사본 정리 (2026-10-30, 브랜치 wo-49)
+- `docs/change-requests/schemas/`, `contract-ready/` 삭제(파일 45개). 분류 표는 CR-005 끝. 남긴 스키마 파일 없음.
+
 ## U47: 노출 선언 라벨 (2026-10-30, 브랜치 wo-47, ADR 0029)
 - `deploy-exposure.json`(계약 Exposure)을 `build-image.sh`가 라벨 `io.openit.exposure`로 단다. StaticImageInterface와의 겹침·차이는 ADR 0029에 정리했다(헤드 결정 대기).
 
