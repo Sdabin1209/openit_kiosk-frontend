@@ -104,8 +104,7 @@ function render(v: KioskView) {
       break;
     case "CALL_STAFF":
       title.textContent = MSG.TITLE_CALL_STAFF.text;
-      text.textContent = v.callStaffReason === "NO_DEVICE_TOKEN" ? MSG.BODY_NO_DEVICE_TOKEN.text
-        : v.callStaffReason === "AUTH" ? MSG.BODY_AUTH_DENIED.text
+      text.textContent = v.callStaffReason === "AUTH" ? MSG.BODY_AUTH_DENIED.text
         : v.callStaffReason === "BAD_SUBJECT_REF" ? MSG.BODY_BAD_SUBJECT_REF.text
         : v.callStaffReason === "REPEAT_LIMIT" ? MSG.BODY_REPEAT_LIMIT.text
         : MSG.BODY_CALL_STAFF_DEFAULT.text; action.hidden = false; action.textContent = MSG.BTN_HOME.text;

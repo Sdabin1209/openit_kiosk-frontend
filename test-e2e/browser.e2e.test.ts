@@ -25,11 +25,12 @@ const web: Server = createServer((req, res) => {
   if (!["GET", "HEAD", "OPTIONS"].includes(req.method ?? "") && req.headers["sec-fetch-site"]) {
     mutations.push({ method: req.method ?? "", path: p.split("?")[0], site: req.headers["sec-fetch-site"] as string | undefined, origin: req.headers.origin as string | undefined });
   }
+  if (gatewayDeviceId) req.headers["x-openit-device"] = gatewayDeviceId; // 게이트웨이 흉내(mTLS, 계약 2.3.0)
   if (p.startsWith("/v1/") || p.startsWith("/__mock/")) api(req, res);
   else if (staticDown) { res.writeHead(503, { "retry-after": "1" }); res.end("static down"); } // 정적 화면 서버 장애 모의(A3)
   else st(req, res);
 });
-let base = "", browser: Browser, staticDown = false;
+let base = "", browser: Browser, staticDown = false, gatewayDeviceId: string | null = null;
 const vapid = (() => { const e = createECDH("prime256v1"); e.generateKeys(); return e.getPublicKey().toString("base64url"); })();
 
 test.before(async () => {
@@ -654,25 +655,32 @@ test("D85: subject_ref 전송 · 기기 토큰 헤더 · 주소창 조각 제거
   await staff.ctx.close(); await kiosk.ctx.close();
 });
 
-test("D85: 기기 토큰이 없으면 설정 필요 화면(요청 없음), 틀리면 인증 거부 화면, subject_ref 형식 오류면 직원 호출", async () => {
-  await scenario("normal", { deviceToken: DEV });
-  const seen: string[] = [];
+test("D85·2.3.0: 토큰 없이 게이트웨이(mTLS)를 거치면 시작되고 자격을 보내지 않는다, 2.x 호환 토큰이 틀리면 인증 거부 화면, subject_ref 형식 오류면 직원 호출", async () => {
+  // (1) mTLS: 앱은 기기 자격을 보내지 않는다. 게이트웨이(이 시험의 web 라우터)가 기기 ID를 붙인다.
+  gatewayDeviceId = "kiosk-e2e";
+  await scenario("normal", { gatewayDevice: true });
+  const auths: Array<string | undefined> = [];
+  const k = await open("none");
+  k.page.on("request", (r) => { if (r.url().includes("/v1/sessions")) auths.push(r.headers()["authorization"]); });
+  await k.page.goto(kioskUrl("x=1"));
+  await k.page.getByRole("button", { name: "시작하기" }).click();
+  await k.page.locator("#chat li.system").first().waitFor();
+  assert.ok(auths.length > 0 && auths.every((a) => a === undefined), "Authorization을 보내지 않는다");
+  await k.ctx.close();
+  gatewayDeviceId = null;
+  // (2) 2.x 호환: 토큰 방식 서버에 틀린 토큰이면 인증 거부
+  await scenario("normal", { deviceToken: DEV, gatewayDevice: false });
   const run = async (frag: string) => {
-    const k = await open("none");
-    k.page.on("request", (r) => { if (r.url().includes("/v1/sessions")) seen.push(r.url()); });
-    await k.page.goto(kioskUrl(frag));
-    await k.page.getByRole("button", { name: "시작하기" }).click();
-    await k.page.getByText("직원을 불러 주세요").waitFor();
-    const t = (await k.page.locator("#text").textContent()) ?? "";
-    await k.ctx.close();
+    const k2 = await open("none");
+    await k2.page.goto(kioskUrl(frag));
+    await k2.page.getByRole("button", { name: "시작하기" }).click();
+    await k2.page.getByText("직원을 불러 주세요").waitFor();
+    const t = (await k2.page.locator("#text").textContent()) ?? "";
+    await k2.ctx.close();
     return t;
   };
-  assert.match(await run("x=1"), /설정이 필요합니다/);
-  assert.equal(seen.length, 0, "토큰이 없으면 서버로 보내지 않는다");
   assert.match(await run("device=wrong-token"), /인증이 거부/);
-  assert.equal(seen.length, 1);
   assert.match(await run(`device=${DEV}&subject_ref=${encodeURIComponent("공백 있음")}`), /접수 정보/);
-  assert.equal(seen.length, 1, "형식 오류면 보내지 않는다");
 });
 
 // 마지막 시험(앞선 시험들이 만든 요청을 모아 확인한다): 브라우저의 모든 상태 변경 요청이 fetch 기본 모드(cors)로 나가

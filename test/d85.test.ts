@@ -105,11 +105,12 @@ test("키오스크 흐름: 정상이면 subject_ref와 토큰이 시작 요청�
   assert.equal(calls[0].auth, `Bearer ${TOKEN}`);
 });
 
-test("키오스크 흐름: 기기 토큰이 없으면 요청 없이 설정 필요 화면(직원 호출)", async () => {
+test("키오스크 흐름: 기기 토큰이 없어도 세션이 시작된다(2.3.0: 기기 인증은 게이트웨이 mTLS, 자격을 보내지 않는다)", async () => {
   const { flow, calls } = flowWith({ deviceToken: null, subjectRef: null, subjectInvalid: false });
   await flow.start();
-  assert.deepEqual([flow.current.state, flow.current.callStaffReason], ["CALL_STAFF", "NO_DEVICE_TOKEN"]);
-  assert.equal(calls.length, 0);
+  assert.equal(flow.current.state, "LISTENING");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].auth, undefined, "토큰이 없으면 Authorization을 보내지 않는다");
 });
 
 test("키오스크 흐름: subject_ref 형식 오류면 보내지 않고 직원 호출", async () => {

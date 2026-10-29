@@ -91,7 +91,7 @@
 | SSE 끊김 복구(FAULT_POLICY 원칙 7·12) | 재연결은 EventSource 자동 재연결에 맡기지 않고 `api/staff.ts` `stream()`이 한다(HTTP 오류를 받으면 브라우저는 재연결 없이 CLOSED로 끝내고, 간격에 지터가 없기 때문). 지수 백오프 1초 x2, 상한 15초, 지터 50~100%, 예산 없음(`api/retry.ts` `STAFF_STREAM_RETRY`). 새 EventSource는 `Last-Event-ID`를 보내지 않으므로 붙을 때마다 `apps/staff/sync.ts`가 알림 목록을 다시 읽어 놓친 알림을 보충한다(커서 따라 최대 20쪽). 목록도 15초마다 다시 읽는다(스트림이 소리 없이 죽은 경우의 안전망 겸 목록 읽기 실패 복구) |
 | 푸시 구독 등록(멱등)·해지. 구독 실패는 알림 배너와 분리된 `#push-status`에 "실시간 알림은 그대로 동작합니다"와 함께 표시 | `api/staff.ts`, `apps/staff/push.ts`, `apps/staff/main.ts`, `sw.js` |
 | 모르는 `kind`·열거값은 그대로 표시, 죽지 않음 | `api/types.ts` 관대한 읽기 |
-| 기기 토큰 헤더는 `/sessions*`에만, 직원 경로에는 붙이지 않음 | `api/client.ts`(`deviceToken` 옵션), `test/d85.test.ts` |
+| 기기 인증은 게이트웨이 mTLS(2.3.0)이고 앱은 자격을 보내지 않는다. 2.x 호환 토큰이 있으면 헤더는 `/sessions*`에만, 직원 경로에는 붙이지 않음 | `api/client.ts`(`deviceToken` 옵션), `test/d85.test.ts` |
 
 ## 5. 모의 서버 시나리오 (`mock-server/`)
 계약의 모든 호출(세션·턴·종료·healthz/readyz·알림 목록·SSE·푸시 구독 등록/해지·개입)을 구현하고 `FrontendInput`을 스키마로 검증하는 시험을 둔다.

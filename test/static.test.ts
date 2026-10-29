@@ -7,7 +7,7 @@ function walk(dir: string, out: string[] = []): string[] {
   for (const n of readdirSync(dir)) { const p = join(dir, n); statSync(p).isDirectory() ? walk(p, out) : out.push(p); }
   return out;
 }
-const SRC = ["api", "apps", "assets"].flatMap((d) => walk(d)).filter((f) => /\.(ts|html|css)$/.test(f));
+const SRC = ["api", "apps", "assets"].flatMap((d) => walk(d)).filter((f) => /\.(ts|html|css)$/.test(f)); // 생성 검증기(.cjs)는 계약 스키마의 설명 글을 담으므로 제외한다(ADR 0021)
 
 test("소스에 저장소·쿠키·콘솔·CDN이 없고, 기기 토큰 헤더(Authorization/Bearer)는 api/client.ts에만 있다", () => {
   const bad = /localStorage|sessionStorage|document\.cookie|indexedDB|console\.|https?:\/\/(?!www\.w3\.org)/;

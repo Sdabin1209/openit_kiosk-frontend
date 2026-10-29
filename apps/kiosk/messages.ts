@@ -34,7 +34,6 @@ export const MSG = {
   BODY_STATE_UNREACHABLE: m("상태를 확인하지 못하고 있어요. 가까이 있는 직원에게 알려 주세요."),
   BODY_LONG_WAIT_SUFFIX: m("오래 걸리면 가까이 있는 직원에게 알려 주세요."),
   BODY_CALL_STAFF_DEFAULT: m("가까이 있는 직원에게 알려 주세요."),
-  BODY_NO_DEVICE_TOKEN: m("이 기기는 설정이 필요합니다. 가까이 있는 직원에게 알려 주세요."),
   BODY_AUTH_DENIED: m("이 기기의 인증이 거부되었습니다. 가까이 있는 직원에게 알려 주세요."),
   BODY_BAD_SUBJECT_REF: m("접수 정보를 확인할 수 없습니다. 가까이 있는 직원에게 알려 주세요."),
   BODY_REPEAT_LIMIT: m("여러 번 알아듣지 못했어요. 가까이 있는 직원에게 알려 주세요."),

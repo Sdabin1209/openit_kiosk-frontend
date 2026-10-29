@@ -19,15 +19,16 @@ try { ({ JSDOM } = await import(mod)); } catch { /* 호스트에 없음 */ }
 const opt = { skip: JSDOM ? false : "jsdom 없음" };
 const TOKEN = "tok-FAKE-for-test";
 
-async function rig(configFile: string | null) {
+async function rig(configFile: string | null, gateway = false) {
   assert.ok(existsSync("dist/kiosk.js"), "dist 없음: npm run build 먼저");
-  const mock = createMock({ deviceToken: TOKEN });
+  const mock = createMock(gateway ? { gatewayDevice: true } : { deviceToken: TOKEN });
   const api = mock.server.listeners("request")[0] as (...a: any[]) => void;
   const st = makeDevStatic({ dir: "dist", configFile });
   const seen: Array<{ method: string; path: string; auth: string | undefined }> = [];
   const front: Server = createServer((req, res) => {
     const path = (req.url ?? "").split("?")[0];
     seen.push({ method: req.method ?? "", path, auth: req.headers.authorization });
+    if (gateway) req.headers["x-openit-device"] = "kiosk-01"; // 게이트웨이 흉내(mTLS): 인증된 기기 ID를 붙인다
     if (path.startsWith("/v1/")) api(req, res); else st(req, res);
   });
   await new Promise<void>((r) => front.listen(0, "127.0.0.1", r));
@@ -77,16 +78,20 @@ test("조각 없이 /config.json의 기기 토큰으로 /v1/sessions를 부르�
   } finally { await t.close(); cfg.done(); }
 });
 
-test("기기 설정이 없으면(조각도 없음) 서버로 세션을 부르지 않고 직원 호출 화면", opt, async () => {
-  const t = await rig(null);
+test("기기 설정도 토큰도 없이(2.3.0 mTLS) 게이트웨이를 거치면 세션이 시작되고 요청에 Authorization이 없다", opt, async () => {
+  const t = await rig(null, true);
   try {
     t.$("action").click();
-    await waitFor(() => t.$("title").textContent === "직원을 불러 주세요", "직원 호출 화면");
-    assert.equal(t.seen.some((s) => s.path.startsWith("/v1/")), false);
-    assert.deepEqual(t.bubbles(), []); // 대화 기록은 없다
-    // 안내는 스레드의 시스템 말풍선(상태)으로 보인다(ADR 0023)
-    assert.match(t.doc.querySelector("#chat li.status .msg")!.textContent!, /설정이 필요합니다/);
-    assert.equal(t.$("text").closest("li")?.className.includes("status"), true);
+    await waitFor(() => t.bubbles().length === 1, "시작 응답 말풍선");
+    assert.equal(t.$("title").textContent, "말씀해 주세요");
+    const reqs = t.seen.filter((s) => s.path.startsWith("/v1/sessions"));
+    assert.ok(reqs.length > 0 && reqs.every((s) => s.auth === undefined), "기기 자격을 보내지 않는다");
+    (t.$("manual-input") as HTMLInputElement).value = "머리가 아파요";
+    t.$("action").click();
+    await waitFor(() => t.bubbles().length === 3, "발화와 응답");
+    await waitFor(() => t.$("title").textContent === "말씀해 주세요", "응답 뒤 다시 듣기 화면");
+    t.$("secondary").click();
+    await waitFor(() => t.$("title").textContent === "수고하셨습니다", "종료 화면");
   } finally { await t.close(); }
 });
 

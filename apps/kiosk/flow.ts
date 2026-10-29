@@ -13,7 +13,7 @@ export type KioskState =
   | "IDLE" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING"
   | "WAITING_STAFF" | "CALL_STAFF" | "ENDING" | "ENDED";
 
-export type CallStaffReason = "RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "NO_DEVICE_TOKEN" | "STAFF_REQUESTED" | "BAD_SUBJECT_REF" | "REPEAT_LIMIT";
+export type CallStaffReason = "RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "STAFF_REQUESTED" | "BAD_SUBJECT_REF" | "REPEAT_LIMIT";
 export type RepeatReason = "EMPTY_STT" | "NOT_COMMITTED";
 
 export interface KioskView {
@@ -149,7 +149,7 @@ export class KioskFlow {
       let confirm: (() => void) | undefined;
       if (this.startValues) {
         const v = await this.startValues();
-        if (!v.deviceToken) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "NO_DEVICE_TOKEN" }); // 서버로 보내지 않는다
+        // 기기 인증은 게이트웨이 mTLS다(계약 2.3.0). 기기 토큰이 없어도 시작한다: 있으면 2.x 호환으로 client.ts가 요청에 싣는다.
         if (v.subjectInvalid) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "BAD_SUBJECT_REF" });
         subjectRef = v.subjectRef; confirm = v.confirm;
         if (subjectRef === null) this.notice = "NO_SUBJECT_REF"; // 참조 없이 시작한다(이전 환자 값을 쓰지 않는다)
