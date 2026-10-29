@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { createRequire } from "node:module";
 
 const gen = createRequire(import.meta.url)("../scripts/build-validators.gen.cjs");
+const PIN_BOUNDARY = readFileSync("Dockerfile", "utf8").match(/^ARG BOUNDARY_CONTRACT=(\S+)/m)![1]; // 이 영역이 고정한 계약 버전(U50: 요청이 이것과 다르면 진입점이 실패한다)
 const REV = spawnSync("git", ["rev-parse", "--short=7", "HEAD"], { encoding: "utf8" }).stdout.trim();
 const TAG = `kiosk-frontend-buildimg-test/kiosk-frontend:${REV}-${process.pid}`;
 const dir = mkdtempSync(join(tmpdir(), "kf-buildimg-real-"));
@@ -16,7 +17,7 @@ after(() => { spawnSync("docker", ["rmi", "-f", TAG]); rmSync(dir, { recursive: 
 
 function build() {
   const f = join(dir, "req.json");
-  writeFileSync(f, JSON.stringify({ source_dir: process.cwd(), revision: REV, versions: { boundary: "v2.5.1", survey_schema: "v1.2.0" }, image_tag: TAG }));
+  writeFileSync(f, JSON.stringify({ source_dir: process.cwd(), revision: REV, versions: { boundary: PIN_BOUNDARY, survey_schema: "v1.2.0" }, image_tag: TAG }));
   return spawnSync("bash", ["scripts/build-image.sh", f], { encoding: "utf8" });
 }
 
@@ -28,7 +29,7 @@ test("실제 docker 빌드: 결과 마지막 줄이 BuildImageResult이고 라�
   assert.equal(result.image, TAG);
   assert.equal(result.labels["io.openit.service"], "kiosk-frontend");
   assert.equal(result.labels["io.openit.revision"], REV);
-  assert.equal(result.labels["io.openit.contracts.boundary"], "v2.5.1");
+  assert.equal(result.labels["io.openit.contracts.boundary"], PIN_BOUNDARY);
   assert.equal(result.labels["io.openit.contracts.survey-schema"], "1");
   const label = result.labels["io.openit.exposure"];
   assert.equal(label, JSON.stringify(JSON.parse(readFileSync("deploy-exposure.json", "utf8"))), "라벨은 정본 파일의 한 줄 JSON");

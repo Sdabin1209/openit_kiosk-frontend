@@ -1,5 +1,8 @@
 # STATUS
 
+## 계약 3.0.0 전환 (2026-10-30, 브랜치 wo-300, ADR 0030)
+- 계약 핀 v3.0.0(Dockerfile ARG, 생성 검증기, 모의 서버 pipeline_schema_version "3.0"). `StaticImageInterface` 선언서와 시험 삭제(EXPOSE·USER·ENV가 정본). U50: `build-image.sh` 라벨은 요청 값이 아니라 고정 버전, 불일치면 실패.
+
 ## U49: 승격된 스키마 사본 정리 (2026-10-30, 브랜치 wo-49)
 - `docs/change-requests/schemas/`, `contract-ready/` 삭제(파일 45개). 분류 표는 CR-005 끝. 남긴 스키마 파일 없음.
 

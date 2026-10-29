@@ -14,7 +14,7 @@ const version = contractVersion();
 if (`v${version}` !== pinnedTag()) { console.error(`gen-validators: 계약 패키지 버전 v${version} 이 고정 태그 ${pinnedTag()} 와 다릅니다`); process.exit(1); }
 const load = (n) => contractJson(`schemas/${n}.schema.json`);
 
-// USED: 내보내는 검증기. DEPS: 참조를 풀기 위해 등록만 하는 스키마. StaticImageInterface는 이 영역이 내는 쪽이라 시험이 검사한다.
+// USED: 내보내는 검증기. DEPS: 참조를 풀기 위해 등록만 하는 스키마.
 const TARGETS = [
   { out: new URL("../api/contract-validators.gen.cjs", import.meta.url), rel: "api/contract-validators.gen.cjs", used: ["DeviceConfig", "KioskStartFragment", "StaffPushPayload"], deps: [] },
   { out: new URL("./build-validators.gen.cjs", import.meta.url), rel: "scripts/build-validators.gen.cjs", used: ["BuildImageRequest", "BuildImageResult", "SetupEnvReport", "Exposure"], deps: ["ImageLabels", "_common", "JobsDeclaration"], unicode: false },

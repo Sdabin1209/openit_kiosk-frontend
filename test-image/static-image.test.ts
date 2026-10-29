@@ -160,13 +160,6 @@ test("root가 아닌 사용자로 실행한다", () => {
   assert.notEqual(docker("exec", plain.name, "id", "-u").stdout.trim(), "0");
 });
 
-test("선언서 docs/image-interface.json의 경로가 실제 응답과 같다(/v1/은 처리하지 않음)", async () => {
-  const { readFileSync } = await import("node:fs");
-  const decl = JSON.parse(readFileSync("docs/image-interface.json", "utf8"));
-  for (const r of decl.routes) assert.equal((await fetch(withCfg.base + r.path)).status, 200, r.path);
-  for (const p of decl.not_served_prefixes) assert.equal((await fetch(withCfg.base + p + "sessions")).status, 404, p);
-});
-
 // 노출 선언(deploy-exposure.json, 계약 Exposure)이 이 이미지의 실제 응답과 맞는지: 인증 없음·계정 인증 경로는 GET이 열려 있고(계정 인증 자체는 게이트웨이 몫),
 // 선언한 메서드 밖(POST)은 405이며, 게이트웨이 밖으로 내지 않는다고 선언한 /config.json은 설정 파일이 없으면 404다.
 test("노출 선언과 실제 응답: 열린 경로 GET 200, 선언 밖 메서드 405, 닫은 /config.json은 설정 없이 404", async () => {

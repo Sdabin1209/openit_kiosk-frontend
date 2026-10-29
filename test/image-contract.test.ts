@@ -1,5 +1,5 @@
-// 이미지가 계약에 약속하는 것: 배포 인터페이스 선언(StaticImageInterface)과 이미지 라벨(ImageLabels).
-// 두 스키마는 ../boundary-contracts/schemas를 읽어 쓴다(복사본 없음). 선언서 docs/image-interface.json은 이미지에 싣지 않는다(deploy가 읽는 방법은 정해지지 않음).
+// 이미지가 계약에 약속하는 것: 이미지 라벨(ImageLabels)과 이미지 설정(EXPOSE·USER·ENV).
+// 두 스키마는 고정 계약 태그에서 읽는다(복사본 없음, ADR 0027).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -14,22 +14,15 @@ for (const f of contractList("schemas")) {
 }
 const validator = (name: string) => ajv.getSchema(`${name}.schema.json`)!;
 const dockerfile = readFileSync("Dockerfile", "utf8");
-const decl = JSON.parse(readFileSync("docs/image-interface.json", "utf8"));
 const ex = (dir: string, n: string) => contractJson(`${dir}/${n}.json`);
 
-test("StaticImageInterface: 계약 예시는 통과하고 거부 예시는 거부한다", () => {
-  const v = validator("StaticImageInterface");
-  assert.equal(v(ex("examples", "StaticImageInterface.default")), true);
-  for (const n of ["no-readyz", "port-string", "root-user", "secret-env", "serves-v1"]) assert.equal(v(ex("conformance/examples_invalid", `StaticImageInterface.${n}`)), false, n);
-});
-
-test("선언서 docs/image-interface.json이 계약을 지키고 Dockerfile과 같다(포트, 사용자, 환경 변수 기본값). 경로는 test-image/가 실제 이미지로 확인한다", () => {
-  const v = validator("StaticImageInterface");
-  assert.equal(v(decl), true, JSON.stringify(v.errors));
-  assert.equal(decl.port, Number(dockerfile.match(/^EXPOSE (\d+)/m)![1]));
-  assert.equal(decl.user, dockerfile.match(/^USER (\S+)/m)![1]);
-  const env = dockerfile.match(/^ENV (.+)$/m)![1].split(/\s+/).map((kv) => kv.split("=") as [string, string]);
-  assert.deepEqual(Object.fromEntries(env.filter(([k]) => k === "PORT" || k === "STATIC_DIR")), decl.env);
+// StaticImageInterface는 계약 3.0.0에서 없어졌다(포트·사용자·환경 변수는 OCI 이미지 설정 EXPOSE·USER·ENV가 표준이고 경로는 Exposure 라벨이 담는다, ADR 0030).
+test("이미지 설정이 정본이다: EXPOSE 8080, root가 아닌 USER, PORT·STATIC_DIR 기본값", () => {
+  assert.equal(dockerfile.match(/^EXPOSE (\d+)/m)![1], "8080");
+  assert.doesNotMatch(dockerfile.match(/^USER (\S+)/m)![1], /^(root|0)$/);
+  const env = Object.fromEntries(dockerfile.match(/^ENV (.+)$/m)![1].split(/\s+/).map((kv) => kv.split("=") as [string, string]));
+  assert.equal(env.PORT, "8080");
+  assert.equal(env.STATIC_DIR, "/app/dist");
 });
 
 test("Dockerfile ARG 기본값에 none/unknown/unset이 없다(값 없음은 n/a 하나)", () => {

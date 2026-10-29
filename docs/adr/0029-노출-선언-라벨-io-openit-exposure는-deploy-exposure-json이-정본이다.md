@@ -1,7 +1,7 @@
 # ADR 0029: 노출 선언 라벨 `io.openit.exposure`는 `deploy-exposure.json`이 정본이다
 
 ## 상태
-채택됨 (2026-10-30, OPEN_GAPS U47, 계약 v2.6.0 `Exposure`와 ImageLabels의 `io.openit.exposure`).
+**일부 대체됨: ADR 0030(StaticImageInterface는 계약 3.0.0에서 없어졌다. 아래 "StaticImageInterface와의 관계" 절은 당시 기록).** 채택됨 (2026-10-30, OPEN_GAPS U47, 계약 v2.6.0 `Exposure`와 ImageLabels의 `io.openit.exposure`).
 
 ## 맥락
 deploy의 `config/Caddyfile`이 이 영역 경로의 인증·메서드·역할을 직접 안다(구조 규칙 1 위반). 계약은 영역이 이미지 라벨로 노출 표를 선언하고 deploy가 그 선언으로 Caddyfile을 만들거나 대조하도록 정했다. deploy 쪽 변경은 나중이다.

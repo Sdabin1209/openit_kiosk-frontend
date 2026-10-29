@@ -1,7 +1,7 @@
 # ADR 0026: 영역 빌드 진입점은 `scripts/build-image.sh`이고 deploy는 이 영역의 빌드 내부를 모른다
 
 ## 상태
-채택됨 (2026-10-30, OPEN_GAPS U42, 계약 v2.5.0 BuildImageRequest/BuildImageResult).
+**일부 대체됨: ADR 0030(U50: 라벨은 요청 값이 아니라 고정 버전에서 찍는다, turn_engine 키는 3.0.0에서 없어짐).** 채택됨 (2026-10-30, OPEN_GAPS U42, 계약 v2.5.0 BuildImageRequest/BuildImageResult).
 
 ## 맥락
 deploy의 `build-images.sh`가 이 영역의 Dockerfile 인자 이름(`REVISION`, `BOUNDARY_CONTRACT`, `SURVEY_SCHEMA`)을 직접 알고 있었다(구조 규칙 1 위반, U23 감사). 계약 2.5.0이 영역 빌드 진입점을 정했다: `bash scripts/build-image.sh <요청 JSON 파일>`, 결과는 표준 출력 마지막 줄의 JSON 한 줄이다.

@@ -61,7 +61,7 @@ test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async ()
   const vErr = bs("BoundaryError.schema.json");
   const okErr: boolean = vErr(body);
   assert.ok(okErr, JSON.stringify(vErr.errors));
-  assert.match(String(body.pipeline_schema_version), /^2\./);
+  assert.match(String(body.pipeline_schema_version), /^3\./);
 });
 
 test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨다", async () => {
