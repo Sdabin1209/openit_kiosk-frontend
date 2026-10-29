@@ -30,3 +30,4 @@
 - [0026 영역 빌드 진입점은 scripts/build-image.sh이다](0026-영역-빌드-진입점은-scripts-build-image-sh-이다.md)
 - [0027 시험과 생성물은 계약을 옆 폴더 작업 트리가 아니라 고정한 태그에서 읽는다](0027-계약은-고정-태그에서-읽는다.md)
 - [0028 setup-env.sh는 표준 출력 마지막 줄에 SetupEnvReport를 낸다](0028-setup-env-sh는-표준-출력-마지막-줄에-SetupEnvReport를-낸다.md)
+- [0029 노출 선언 라벨 io.openit.exposure는 deploy-exposure.json이 정본이다](0029-노출-선언-라벨-io-openit-exposure는-deploy-exposure-json이-정본이다.md)

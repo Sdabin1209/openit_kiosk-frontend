@@ -24,6 +24,7 @@
 | `apps/staff/` | 직원 콘솔. `decide.ts` 개입 결정(확인 후 전송), `push.ts` 푸시 구독, `sw.ts` 서비스 워커 |
 | `mock-server/` | 공개 API 모의 서버(시나리오: normal, risk_stop, delivery_failed, not_committed, delay, hang, error 등). 서버 없이 혼자 시험·시연하는 대역 |
 | `Caddyfile` | 정적 서빙 설정(Caddy file_server: 보안 헤더, `/healthz`, `/readyz`, `/config.json`, ADR 0022). `mock-server/devstatic.ts`는 시험·시연용 대역(이미지에 없음) |
+| `deploy-exposure.json` | 게이트웨이 노출 선언의 정본(계약 Exposure, 라벨 `io.openit.exposure`, ADR 0029) |
 | `scripts/` | `build-image.sh`(영역 빌드 진입점, ADR 0026), `build.mjs`, `check-schema.mjs`(스키마 열거값 대조), `gen-validators.mjs`(계약 경계 스키마에서 검증기 생성, ADR 0021), `doctor.mjs`(전제 점검), `smoke.sh`, `e2e-docker.sh` |
 | `test/`, `test-e2e/` | 단위·계약 시험(`node:test`), 브라우저 시험(Playwright 컨테이너) |
 | `Dockerfile` | 정적 빌드 이미지(non-root, 라벨 `io.openit.*`) |

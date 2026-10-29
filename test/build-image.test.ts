@@ -14,12 +14,14 @@ const ex = (dir: string, n: string) => contractJson(`${dir}/${n}.json`); // 고�
 const gen = createRequire(import.meta.url)("../scripts/build-validators.gen.cjs");
 const REPO = process.cwd();
 
+// 노출 선언 라벨의 기대값: 정본 파일(deploy-exposure.json)을 한 줄로 줄인 JSON(ADR 0029).
+const EXPOSURE_LABEL = JSON.stringify(JSON.parse(readFileSync("deploy-exposure.json", "utf8")));
 const REQ = { source_dir: REPO, revision: "bad876c", versions: { boundary: "v2.5.1", survey_schema: "v1.2.0" }, image_tag: "kiosk-frontend-test/kiosk-frontend:bad876c" };
 
 /** 가짜 docker: build 인자를 기록하고, inspect는 요청과 같은 라벨을 돌려준다(labelsOverride로 어긋난 이미지를 흉내 낸다). */
 function fakeDocker(dir: string, labelsOverride?: Record<string, string>) {
   const log = join(dir, "docker.log"), bin = join(dir, "docker");
-  const labels = JSON.stringify({ "io.openit.service": "kiosk-frontend", "io.openit.revision": REQ.revision, "io.openit.contracts.boundary": REQ.versions.boundary, "io.openit.contracts.survey-schema": "1", "io.openit.app-version": "0.1.0", "org.opencontainers.image.base.name": "x", ...labelsOverride });
+  const labels = JSON.stringify({ "io.openit.service": "kiosk-frontend", "io.openit.revision": REQ.revision, "io.openit.contracts.boundary": REQ.versions.boundary, "io.openit.contracts.survey-schema": "1", "io.openit.app-version": "0.1.0", "io.openit.exposure": EXPOSURE_LABEL, "org.opencontainers.image.base.name": "x", ...labelsOverride });
   writeFileSync(bin, `#!/usr/bin/env bash
 echo "$@" >> '${log}'
 case "$1" in
@@ -51,9 +53,12 @@ test("진입점: 계약 예시 요청 모양을 받아 가짜 docker로 빌드�
     assert.equal(result.labels["io.openit.contracts.boundary"], "v2.5.1");
     assert.equal(result.labels["io.openit.contracts.survey-schema"], "1"); // 요청의 v1.2.0에서 주 버전
     assert.equal(result.labels["org.opencontainers.image.base.name"], undefined, "io.openit.* 라벨만 낸다");
+    assert.equal(result.labels["io.openit.exposure"], EXPOSURE_LABEL, "노출 선언 라벨이 결과에 나온다");
+    assert.equal(gen.Exposure(JSON.parse(result.labels["io.openit.exposure"])), true, "라벨 값은 계약 Exposure를 통과한다");
     assert.ok(r.stderr.includes("가짜 빌드 진행 기록"), "진행 기록은 표준 오류");
     assert.doesNotMatch(r.stdout.trimEnd().split("\n").slice(0, -1).join("\n"), /가짜 빌드/, "표준 출력에는 결과 한 줄뿐");
     const build = readFileSync(log, "utf8").split("\n").find((l) => l.startsWith("build"))!;
+    assert.ok(build.includes(`--label io.openit.exposure=${EXPOSURE_LABEL}`), "빌드에 노출 선언 라벨을 단다");
     for (const a of ["REVISION=bad876c", "BOUNDARY_CONTRACT=v2.5.1", "SURVEY_SCHEMA=1", `-t ${REQ.image_tag}`]) assert.ok(build.includes(a), `${a} in ${build}`);
     assert.ok(build.trimEnd().endsWith(REPO), "source_dir만 빌드 컨텍스트");
   } finally { rmSync(d, { recursive: true, force: true }); }
@@ -112,4 +117,13 @@ test("진입점: 계약 BuildImageResult 예시는 통과, 거부 예시는 거�
   assert.equal(gen.BuildImageResult(ex("conformance/examples_invalid", "BuildImageResult")), false);
   assert.equal(gen.BuildImageRequest(ex("examples", "BuildImageRequest")), true);
   assert.equal(gen.BuildImageRequest(ex("conformance/examples_invalid", "BuildImageRequest")), false);
+});
+
+test("진입점: 이미지에 노출 선언 라벨이 없으면(붙이지 못한 경우) 실패한다", () => {
+  const d = tmp(); try {
+    const { bin } = fakeDocker(d, { "io.openit.exposure": "" });
+    const r = run(REQ, bin, d);
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /exposure/);
+  } finally { rmSync(d, { recursive: true, force: true }); }
 });

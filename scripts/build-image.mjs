@@ -19,7 +19,14 @@ if (!req.versions.survey_schema) fail("versions.survey_schema가 없습니다(�
 // 라벨 survey-schema는 주 버전 하나다(ImageLabels): 태그 vX.Y.Z의 X.
 const surveyMajor = req.versions.survey_schema.slice(1).split(".")[0];
 
+// 노출 선언(계약 Exposure): 정본은 영역 소스의 deploy-exposure.json이다. 계약 검증기로 검사하고 한 줄 JSON으로 줄여 라벨 io.openit.exposure로 단다(ADR 0029).
+let exposure;
+try { exposure = JSON.parse(readFileSync(join(req.source_dir, "deploy-exposure.json"), "utf8")); } catch (e) { fail(`deploy-exposure.json을 읽지 못했습니다: ${e.message}`); }
+if (!gen.Exposure(exposure)) fail(`deploy-exposure.json이 계약 Exposure를 어깁니다: ${JSON.stringify(gen.Exposure.errors)}`);
+const exposureLabel = JSON.stringify(exposure);
+
 const expected = {
+  "io.openit.exposure": exposureLabel,
   "io.openit.service": "kiosk-frontend",
   "io.openit.revision": req.revision,
   "io.openit.contracts.boundary": req.versions.boundary,
@@ -29,7 +36,7 @@ const run = (args, opts = {}) => spawnSync(DOCKER, args, { encoding: "utf8", ...
 
 console.error(`build-image: ${DOCKER} build ${req.image_tag} (source ${req.source_dir})`);
 // 빌드 출력은 표준 오류로 보낸다(표준 출력은 결과 한 줄 전용). app-version 라벨은 Dockerfile 기본값이다(ADR 0025).
-const b = run(["build", "-t", req.image_tag, "--build-arg", `REVISION=${req.revision}`, "--build-arg", `BOUNDARY_CONTRACT=${req.versions.boundary}`, "--build-arg", `SURVEY_SCHEMA=${surveyMajor}`, req.source_dir], { stdio: ["ignore", 2, 2], encoding: undefined });
+const b = run(["build", "-t", req.image_tag, "--build-arg", `REVISION=${req.revision}`, "--build-arg", `BOUNDARY_CONTRACT=${req.versions.boundary}`, "--build-arg", `SURVEY_SCHEMA=${surveyMajor}`, "--label", `io.openit.exposure=${exposureLabel}`, req.source_dir], { stdio: ["ignore", 2, 2], encoding: undefined });
 if (b.status !== 0) fail(`docker build 실패(종료 ${b.status})`);
 
 const id = run(["inspect", "-f", "{{.Id}}", req.image_tag]);

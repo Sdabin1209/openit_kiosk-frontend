@@ -1,5 +1,8 @@
 # STATUS
 
+## U47: 노출 선언 라벨 (2026-10-30, 브랜치 wo-47, ADR 0029)
+- `deploy-exposure.json`(계약 Exposure)을 `build-image.sh`가 라벨 `io.openit.exposure`로 단다. StaticImageInterface와의 겹침·차이는 ADR 0029에 정리했다(헤드 결정 대기).
+
 ## U43: setup-env 보고 + 계약 v2.6.0 (2026-10-30, 브랜치 wo-43, ADR 0028)
 - `scripts/setup-env.sh`가 마지막 줄에 SetupEnvReport를 낸다(진행 기록은 표준 오류). 이미 준비돼 있으면 설치를 건너뛴다. 계약 핀 v2.6.0(Dockerfile ARG, 생성 검증기, 모의 서버 pipeline_schema_version 2.6).
 

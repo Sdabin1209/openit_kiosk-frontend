@@ -3,7 +3,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
@@ -30,6 +30,9 @@ test("실제 docker 빌드: 결과 마지막 줄이 BuildImageResult이고 라�
   assert.equal(result.labels["io.openit.revision"], REV);
   assert.equal(result.labels["io.openit.contracts.boundary"], "v2.5.1");
   assert.equal(result.labels["io.openit.contracts.survey-schema"], "1");
+  const label = result.labels["io.openit.exposure"];
+  assert.equal(label, JSON.stringify(JSON.parse(readFileSync("deploy-exposure.json", "utf8"))), "라벨은 정본 파일의 한 줄 JSON");
+  assert.equal(gen.Exposure(JSON.parse(label)), true, "라벨 값은 계약 Exposure를 통과한다");
   console.error("BuildImageResult:", JSON.stringify(result)); // 보고용
   const again = JSON.parse(build().stdout.trimEnd().split("\n").pop()!);
   assert.deepEqual([again.image, again.labels], [result.image, result.labels], "같은 요청은 같은 이미지 이름과 라벨");

@@ -166,3 +166,16 @@ test("선언서 docs/image-interface.json의 경로가 실제 응답과 같다(/
   for (const r of decl.routes) assert.equal((await fetch(withCfg.base + r.path)).status, 200, r.path);
   for (const p of decl.not_served_prefixes) assert.equal((await fetch(withCfg.base + p + "sessions")).status, 404, p);
 });
+
+// 노출 선언(deploy-exposure.json, 계약 Exposure)이 이 이미지의 실제 응답과 맞는지: 인증 없음·계정 인증 경로는 GET이 열려 있고(계정 인증 자체는 게이트웨이 몫),
+// 선언한 메서드 밖(POST)은 405이며, 게이트웨이 밖으로 내지 않는다고 선언한 /config.json은 설정 파일이 없으면 404다.
+test("노출 선언과 실제 응답: 열린 경로 GET 200, 선언 밖 메서드 405, 닫은 /config.json은 설정 없이 404", async () => {
+  const { readFileSync } = await import("node:fs");
+  const ex = JSON.parse(readFileSync("deploy-exposure.json", "utf8"));
+  for (const r of ex.routes.filter((r: any) => r.auth.kind !== "denied")) {
+    const sample = r.paths[0].replace("/*", "/") ; // "/*" -> "/", "/staff/*" -> "/staff/"
+    assert.equal((await fetch(plain.base + sample)).status, 200, `GET ${sample}`);
+    for (const m of ["POST", "PUT", "PATCH", "DELETE"].filter((m) => !r.methods.includes(m))) assert.equal((await fetch(plain.base + sample, { method: m })).status, 405, `${m} ${sample}`);
+  }
+  assert.equal((await fetch(plain.base + "/config.json")).status, 404);
+});

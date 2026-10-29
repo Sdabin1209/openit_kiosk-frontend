@@ -1,0 +1,23 @@
+{
+  "service": "kiosk-frontend",
+  "routes": [
+    {
+      "paths": ["/config.json", "/healthz", "/readyz"],
+      "auth": { "kind": "denied" }
+    },
+    {
+      "paths": ["/staff/*"],
+      "methods": ["GET"],
+      "auth": { "kind": "account", "roles": ["staff"] },
+      "user_header": "strip",
+      "timeouts_ms": { "dial": 2000, "response_header": 10000 }
+    },
+    {
+      "paths": ["/*"],
+      "methods": ["GET"],
+      "auth": { "kind": "none" },
+      "user_header": "strip",
+      "timeouts_ms": { "dial": 2000, "response_header": 10000 }
+    }
+  ]
+}
