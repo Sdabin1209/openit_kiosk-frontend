@@ -24,7 +24,7 @@
 | `apps/staff/` | 직원 콘솔. `decide.ts` 개입 결정(확인 후 전송), `push.ts` 푸시 구독, `sw.ts` 서비스 워커 |
 | `mock-server/` | 공개 API 모의 서버(시나리오: normal, risk_stop, delivery_failed, not_committed, delay, hang, error 등). 서버 없이 혼자 시험·시연하는 대역 |
 | `Caddyfile` | 정적 서빙 설정(Caddy file_server: 보안 헤더, `/healthz`, `/readyz`, `/config.json`, ADR 0022). `mock-server/devstatic.ts`는 시험·시연용 대역(이미지에 없음) |
-| `scripts/` | `build.mjs`, `check-schema.mjs`(스키마 열거값 대조), `gen-validators.mjs`(계약 경계 스키마에서 검증기 생성, ADR 0021), `doctor.mjs`(전제 점검), `smoke.sh`, `e2e-docker.sh` |
+| `scripts/` | `build-image.sh`(영역 빌드 진입점, ADR 0026), `build.mjs`, `check-schema.mjs`(스키마 열거값 대조), `gen-validators.mjs`(계약 경계 스키마에서 검증기 생성, ADR 0021), `doctor.mjs`(전제 점검), `smoke.sh`, `e2e-docker.sh` |
 | `test/`, `test-e2e/` | 단위·계약 시험(`node:test`), 브라우저 시험(Playwright 컨테이너) |
 | `Dockerfile` | 정적 빌드 이미지(non-root, 라벨 `io.openit.*`) |
 | `docs/` | 아래 "더 자세한 문서" 참고 |
@@ -48,6 +48,7 @@ npm run typecheck && npm run check-schema
 npm test                # 단위·계약 시험(pretest가 먼저 build를 돌린다, ADR 0013)
 npm run build && STATIC_DIR=dist MOCK_SCENARIO=risk_stop node mock-server/main.ts   # 모의 서버로 시연(PORT를 비우면 빈 포트)
 npm run smoke           # 이미지 빌드, /healthz, 라벨, non-root (Docker)
+bash scripts/build-image.sh <요청 JSON>   # 영역 빌드 진입점(계약 2.5.0 BuildImageRequest, 결과는 표준 출력 마지막 줄, ADR 0026)
 npm run test:image      # 실제 이미지를 띄워 정적 서빙 성질 확인 (Docker)
 npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식 이미지 안에서 실행 (Docker)
 ```
@@ -102,4 +103,4 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 
 
 ## 설계 결정 기록 (ADR)
-구조 선택의 이유는 [docs/adr/](docs/adr/README.md)에 있다: [0001](docs/adr/0001-프레임워크-없는-TypeScript와-esbuild-번들.md), [0002](docs/adr/0002-키오스크와-직원-콘솔을-한-리포에-둔다.md), [0003](docs/adr/0003-직원-알림은-SSEEventSource-재연결·heartbeat는-직접-처리.md), [0004](docs/adr/0004-재시도·백오프·총-예산-20초.md), [0005](docs/adr/0005-응답-검증을-손으로-쓴다.md), [0006](docs/adr/0006-기기-토큰-보관-메모리-+-설정-파일-영구-브라우저-저장소-없음.md), [0007](docs/adr/0007-음성-인식은-기기-안-처리가-기본D88-U3.md), [0008](docs/adr/0008-유휴-초기화·다시-말하기-상한-등-임상-판단-값은-한-곳에-둔다.md), [0009](docs/adr/0009-서비스-워커는-직원-콘솔에만-둔다.md), [0010](docs/adr/0010-정적-파일은-의존-없는-작은-Node-서버로-낸다.md), [0011](docs/adr/0011-브라우저-시험은-컨테이너-안-Playwright-Chromium과-모의-서버.md), [0012](docs/adr/0012-devDependency-취약점-3건-최소-범위-상향.md), [0013](docs/adr/0013-npm-test는-pretest로-빌드하고-dist-없으면-실패한다.md), [0015](docs/adr/0015-대화-목록은-메모리-전용-별도-컴포넌트.md), [0016](docs/adr/0016-환자-노출-문구는-한-모듈에-모으고-검토-표식을-둔다.md), [0017](docs/adr/0017-유휴-초기화에-만료-전-경고와-연장을-둔다.md), [0018](docs/adr/0018-오프라인-글꼴은-Noto-Sans-KR-가변-글꼴-OFL을-포함한다.md), [0019](docs/adr/0019-임의로-정한-값의-출처-분류와-측정하지-않았다는-기록.md), [0020](docs/adr/0020-세션-ID는-서버가-발급하고-응답에서-받는다.md), [0021](docs/adr/0021-경계-스키마-검증기는-계약-스키마에서-생성한다.md), [0022](docs/adr/0022-정적-서빙은-Caddy-file_server-이미지로-한다.md), [0023](docs/adr/0023-키오스크-화면은-대화-스레드가-중심이다.md), [0024](docs/adr/0024-기기-인증은-게이트웨이-mTLS이고-앱은-자격을-보내지-않는다.md).
+구조 선택의 이유는 [docs/adr/](docs/adr/README.md)에 있다: [0001](docs/adr/0001-프레임워크-없는-TypeScript와-esbuild-번들.md), [0002](docs/adr/0002-키오스크와-직원-콘솔을-한-리포에-둔다.md), [0003](docs/adr/0003-직원-알림은-SSEEventSource-재연결·heartbeat는-직접-처리.md), [0004](docs/adr/0004-재시도·백오프·총-예산-20초.md), [0005](docs/adr/0005-응답-검증을-손으로-쓴다.md), [0006](docs/adr/0006-기기-토큰-보관-메모리-+-설정-파일-영구-브라우저-저장소-없음.md), [0007](docs/adr/0007-음성-인식은-기기-안-처리가-기본D88-U3.md), [0008](docs/adr/0008-유휴-초기화·다시-말하기-상한-등-임상-판단-값은-한-곳에-둔다.md), [0009](docs/adr/0009-서비스-워커는-직원-콘솔에만-둔다.md), [0010](docs/adr/0010-정적-파일은-의존-없는-작은-Node-서버로-낸다.md), [0011](docs/adr/0011-브라우저-시험은-컨테이너-안-Playwright-Chromium과-모의-서버.md), [0012](docs/adr/0012-devDependency-취약점-3건-최소-범위-상향.md), [0013](docs/adr/0013-npm-test는-pretest로-빌드하고-dist-없으면-실패한다.md), [0015](docs/adr/0015-대화-목록은-메모리-전용-별도-컴포넌트.md), [0016](docs/adr/0016-환자-노출-문구는-한-모듈에-모으고-검토-표식을-둔다.md), [0017](docs/adr/0017-유휴-초기화에-만료-전-경고와-연장을-둔다.md), [0018](docs/adr/0018-오프라인-글꼴은-Noto-Sans-KR-가변-글꼴-OFL을-포함한다.md), [0019](docs/adr/0019-임의로-정한-값의-출처-분류와-측정하지-않았다는-기록.md), [0020](docs/adr/0020-세션-ID는-서버가-발급하고-응답에서-받는다.md), [0021](docs/adr/0021-경계-스키마-검증기는-계약-스키마에서-생성한다.md), [0022](docs/adr/0022-정적-서빙은-Caddy-file_server-이미지로-한다.md), [0023](docs/adr/0023-키오스크-화면은-대화-스레드가-중심이다.md), [0024](docs/adr/0024-기기-인증은-게이트웨이-mTLS이고-앱은-자격을-보내지-않는다.md), [0025](docs/adr/0025-이미지-app-version-라벨은-package-json과-시험으로-맞춘다.md), [0026](docs/adr/0026-영역-빌드-진입점은-scripts-build-image-sh-이다.md).
