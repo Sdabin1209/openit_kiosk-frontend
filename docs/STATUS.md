@@ -1,5 +1,8 @@
 # STATUS
 
+## U43: setup-env 보고 + 계약 v2.6.0 (2026-10-30, 브랜치 wo-43, ADR 0028)
+- `scripts/setup-env.sh`가 마지막 줄에 SetupEnvReport를 낸다(진행 기록은 표준 오류). 이미 준비돼 있으면 설치를 건너뛴다. 계약 핀 v2.6.0(Dockerfile ARG, 생성 검증기, 모의 서버 pipeline_schema_version 2.6).
+
 ## 계약을 고정 태그에서 읽는다 (2026-10-30, ADR 0027)
 - 시험과 `check-schema`, `gen-validators`가 옆 폴더 `../boundary-contracts`의 작업 트리가 아니라 Dockerfile이 고정한 태그의 내용을 `git show`로 읽는다. 옆 폴더가 앞서 가도 통과한다. 남은 것: 문진 스키마(`../survey-service/schema`)는 아직 옆 폴더의 현재 내용을 읽는다(정확한 고정 태그가 없다).
 
