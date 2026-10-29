@@ -12,7 +12,7 @@ RUN node scripts/build.mjs
 # 왜 Caddy: 정적 서빙·보안 헤더·로그·종료 처리를 직접 만들지 않고 표준 도구로 한다(D111, ADR 0022). 태그 고정, 2.11.7-alpine의 digest는 ADR 0022에 적었다.
 FROM caddy:2.11.7-alpine
 ARG REVISION=n/a
-ARG BOUNDARY_CONTRACT=v2.7.0
+ARG BOUNDARY_CONTRACT=v2.8.0
 ARG SURVEY_SCHEMA=1
 ARG APP_VERSION=0.1.0
 # 이 영역은 turn-engine, model-runtime을 쓰지 않는다(해당 없음).
