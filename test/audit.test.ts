@@ -1,5 +1,6 @@
 // 전수 점검(head/docs/audit/kiosk-frontend.md) 지적 수정 시험: P1 참조 재사용, P3 유휴 초기화, P4 마이크/반복 상한,
 // P5 위험 정지 대기 안내, H-2 정지 상태 확인, P16 종료 실패, 임상 값 위치.
+import { contractJson } from "../scripts/contract-source.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -131,7 +132,7 @@ test("P5: 위험 정지 대기 중 상태 조회가 실패하면 환자에게 �
 });
 
 // ---- H-2 ----
-const sessionState = new Ajv2020({ strict: false }).compile(JSON.parse(readFileSync(new URL("../../boundary-contracts/schemas/SessionState.schema.json", import.meta.url), "utf8")));
+const sessionState = new Ajv2020({ strict: false }).compile(contractJson("schemas/SessionState.schema.json"));
 
 test("H-2: 실서버 응답 모양(신호 null + 상태 PAUSED_RISK)이면 대기 화면으로 간다", async () => {
   // 계약 예시를 고정한다: 위험 정지 성공 때 survey는 turn_failure_signal=null을 주고 정지는 SessionState로만 보인다.

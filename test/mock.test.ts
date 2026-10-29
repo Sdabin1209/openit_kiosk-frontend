@@ -1,3 +1,4 @@
+import { contractJson } from "../scripts/contract-source.mjs";
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -30,9 +31,8 @@ test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진
 });
 
 const validateDecision = ajv.compile(JSON.parse(readFileSync(new URL("InterventionDecision.json", SCHEMA_DIR), "utf8")));
-const BSCHEMAS = new URL("../../boundary-contracts/schemas/", import.meta.url);
-const bs = (n: string) => ajv.compile(JSON.parse(readFileSync(new URL(n, BSCHEMAS), "utf8")));
-ajv.addSchema(JSON.parse(readFileSync(new URL("StaffAlert.schema.json", BSCHEMAS), "utf8")), "StaffAlert.schema.json"); // StaffAlertPage가 $ref로 참조(계약 2ec2849)
+const bs = (n: string) => ajv.compile(contractJson(`schemas/${n}`)); // 고정 태그의 계약(ADR 0027)
+ajv.addSchema(contractJson("schemas/StaffAlert.schema.json"), "StaffAlert.schema.json"); // StaffAlertPage가 $ref로 참조(계약 2ec2849)
 const vAlert = ajv.getSchema("StaffAlert.schema.json")!, vPage = bs("StaffAlertPage.schema.json"), vState = bs("SessionState.schema.json"), vPush = bs("PushConfig.schema.json");
 
 test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDecision을 지킨다(D66)", async () => {
@@ -57,7 +57,7 @@ test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async ()
   const body: any = await bad.json();
   assert.equal(body.code, "INVALID_RECORD");
   // 오류 본문은 계약의 BoundaryError 스키마(pipeline_schema_version 포함)를 지킨다.
-  ajv.addSchema(JSON.parse(readFileSync(new URL("_common.schema.json", BSCHEMAS), "utf8")), "_common.schema.json");
+  ajv.addSchema(contractJson("schemas/_common.schema.json"), "_common.schema.json");
   const vErr = bs("BoundaryError.schema.json");
   const okErr: boolean = vErr(body);
   assert.ok(okErr, JSON.stringify(vErr.errors));

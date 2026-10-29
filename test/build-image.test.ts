@@ -8,9 +8,9 @@ import { chmodSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
+import { contractJson, contractList } from "../scripts/contract-source.mjs";
 
-const BC = new URL("../../boundary-contracts/", import.meta.url);
-const ex = (dir: string, n: string) => JSON.parse(readFileSync(new URL(`${dir}/${n}.json`, BC), "utf8"));
+const ex = (dir: string, n: string) => contractJson(`${dir}/${n}.json`); // 고정 태그의 내용(옆 폴더 작업 트리가 아님, ADR 0027)
 const gen = createRequire(import.meta.url)("../scripts/build-validators.gen.cjs");
 const REPO = process.cwd();
 

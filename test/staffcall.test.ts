@@ -1,4 +1,5 @@
 // CR-H001(직원 호출 재알림·실패 기록)과 CR-H002(pause_reason)의 키오스크 쪽 시험. 가짜 fetch + 가짜 시계, 모의 서버 계약 시험.
+import { contractJson } from "../scripts/contract-source.mjs";
 import { PIPELINE_SCHEMA_VERSION } from "../mock-server/app.ts";
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
@@ -166,8 +167,7 @@ test("직원 콘솔 보조 표시: 정지 사유는 글자로 구분, 필드 없
 
 // ---- 모의 서버 계약 시험: 응답이 설치된 계약 스키마를 지킨다 ----
 const ajv = new Ajv2020({ strict: false });
-const B = new URL("../../boundary-contracts/schemas/", import.meta.url);
-const bs = (n: string) => ajv.compile(JSON.parse(readFileSync(new URL(n, B), "utf8")));
+const bs = (n: string) => ajv.compile(contractJson(`schemas/${n}`)); // 고정 태그의 계약(ADR 0027)
 const vRetryReq = bs("StaffCallRetryRequest.schema.json"), vRetry = bs("StaffCallRetryResult.schema.json"), vReport = bs("StaffCallReport.schema.json"), vAlert = bs("StaffAlert.schema.json"), vState = bs("SessionState.schema.json");
 const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });

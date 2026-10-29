@@ -3,19 +3,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
+import { contractJson, contractList } from "../scripts/contract-source.mjs";
 import Ajv2020 from "ajv/dist/2020.js";
 
-const BC = new URL("../../boundary-contracts/", import.meta.url);
 const ajv = new Ajv2020({ allErrors: true, strict: false });
-for (const f of readdirSync(new URL("schemas/", BC))) {
+for (const f of contractList("schemas")) {
   if (!f.endsWith(".schema.json")) continue;
-  const s = JSON.parse(readFileSync(new URL(`schemas/${f}`, BC), "utf8"));
+  const s = contractJson(`schemas/${f}`);
   if (s.$id) ajv.addSchema(s); // $id가 없는 스키마는 이 시험이 쓰지 않는다
 }
 const validator = (name: string) => ajv.getSchema(`${name}.schema.json`)!;
 const dockerfile = readFileSync("Dockerfile", "utf8");
 const decl = JSON.parse(readFileSync("docs/image-interface.json", "utf8"));
-const ex = (dir: string, n: string) => JSON.parse(readFileSync(new URL(`${dir}/${n}.json`, BC), "utf8"));
+const ex = (dir: string, n: string) => contractJson(`${dir}/${n}.json`);
 
 test("StaticImageInterface: 계약 예시는 통과하고 거부 예시는 거부한다", () => {
   const v = validator("StaticImageInterface");

@@ -4,13 +4,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
+import { contractJson, contractList } from "../scripts/contract-source.mjs";
 import { loadKioskStart } from "../api/device.ts";
 import { pushNotification } from "../apps/staff/pushbody.ts";
 import { validateDeviceConfig, validateKioskStartFragment, validateStaffPushPayload } from "../api/contract.ts";
 
-const BC = new URL("../../boundary-contracts/", import.meta.url);
-const ex = (dir: string, name: string) => JSON.parse(readFileSync(new URL(`${dir}/${name}.json`, BC), "utf8"));
-const names = (dir: string, prefix: string) => readdirSync(new URL(`${dir}/`, BC)).filter((f) => f.startsWith(prefix + ".")).map((f) => f.replace(/\.json$/, ""));
+const ex = (dir: string, name: string) => contractJson(`${dir}/${name}.json`); // 고정 태그의 내용(ADR 0027)
+const names = (dir: string, prefix: string) => contractList(dir).filter((f) => f.startsWith(prefix + ".")).map((f) => f.replace(/\.json$/, ""));
 const win = (hash = "") => ({ location: { hash, pathname: "/", search: "" }, history: { replaceState() {} } });
 const cfg = (obj: unknown) => (async () => new Response(JSON.stringify(obj), { status: 200 })) as any;
 
@@ -61,4 +61,10 @@ test("푸시 본문: 계약을 지키면 세션·종류·alert_id를 쓰고, 어
     assert.deepEqual(pushNotification(ex("conformance/examples_invalid", n)), { body: "새 알림이 있습니다", tag: "staff-alert" }, n);
   }
   assert.deepEqual(pushNotification(null), { body: "새 알림이 있습니다", tag: "staff-alert" });
+});
+
+// 옆 폴더 ../boundary-contracts의 작업 트리가 고정 태그보다 앞서 있어도(다른 영역이 새 태그로 올라간 경우) 이 영역의 시험은 고정 태그의 내용과 비교한다(ADR 0027).
+import { contractVersion, pinnedTag } from "../scripts/contract-source.mjs";
+test("계약은 고정 태그에서 읽는다: 읽은 패키지 버전이 Dockerfile 고정 태그와 같다(옆 폴더 작업 트리의 버전이 아니다)", () => {
+  assert.equal(`v${contractVersion()}`, pinnedTag());
 });

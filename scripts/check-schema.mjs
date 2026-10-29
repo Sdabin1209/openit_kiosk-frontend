@@ -1,19 +1,19 @@
 // ../survey-service/schema/schemas(읽기 전용)의 열거값이 api/types.ts와 같은지 대조한다. 스키마 복사본은 두지 않는다.
 import { existsSync, readFileSync } from "node:fs";
+import { contractFile, contractJson } from "./contract-source.mjs";
 // 왜: 이 대조는 이웃 폴더(문진 스키마, 계약)를 읽기 전용으로 읽는다. 없을 때 ENOENT 스택 대신 이유와 해결을 내고 비0으로 끝낸다.
-for (const rel of ["../../survey-service/schema/schemas/", "../../boundary-contracts/schemas/"]) {
+for (const rel of ["../../survey-service/schema/schemas/", "../../boundary-contracts/schemas/"]) { // 계약은 git 태그에서 읽고 폴더는 그 저장소가 있는지 보려는 것이다
   if (!existsSync(new URL(rel, import.meta.url))) {
     console.error(`check-schema: 필요한 이웃 폴더가 없습니다 (이 리포 기준 ${rel.slice(3)}). 워크스페이스 구조(survey-service, boundary-contracts가 이 리포와 같은 상위 폴더에 있음)에서 실행하세요.`);
     process.exit(1);
   }
 }
 const dir = new URL("../../survey-service/schema/schemas/", import.meta.url);
-const bdir = new URL("../../boundary-contracts/schemas/", import.meta.url);
 const read = (n) => JSON.parse(readFileSync(new URL(n, dir), "utf8"));
 const consts = (o) => (o.oneOf ?? []).map((x) => x.const);
 const fi = read("FrontendInput.json").$defs.TurnFailureSignal.properties;
 const iv = read("InterventionDecision.json").$defs.Decision;
-const bread = (n) => JSON.parse(readFileSync(new URL(n, bdir), "utf8"));
+const bread = (n) => contractJson(`schemas/${n}`); // 고정 태그의 계약(옆 폴더 작업 트리가 아님, ADR 0027)
 const ss = bread("SessionState.schema.json");
 const st = bread("StaffAlert.schema.json");
 const src = readFileSync(new URL("../api/types.ts", import.meta.url), "utf8");
@@ -24,7 +24,7 @@ for (const [name, want] of [["WRITE_COMMITTED", consts(fi.write_committed)], ["S
   if (!eq(arr(name), want)) { console.error(`불일치 ${name}: types.ts=${arr(name)} schema=${want}`); bad++; }
 }
 // 계약 버전 대조: 기준 계약(../boundary-contracts)의 패키지 버전과 pipeline_schema_version이 이 영역의 표기와 같아야 한다.
-const bc = (n) => readFileSync(new URL(`../../boundary-contracts/${n}`, import.meta.url), "utf8");
+const bc = (n) => contractFile(n);
 const ver = bc("pyproject.toml").match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 const pipe = bc("boundary_contracts/schemas_api.py").match(/PIPELINE_SCHEMA_VERSION\s*=\s*"([^"]+)"/)?.[1];
 const docker = readFileSync(new URL("../Dockerfile", import.meta.url), "utf8").match(/ARG BOUNDARY_CONTRACT=(\S+)/)?.[1];

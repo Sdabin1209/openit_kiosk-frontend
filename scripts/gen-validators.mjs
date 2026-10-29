@@ -7,11 +7,12 @@
 import Ajv2020 from "ajv/dist/2020.js";
 import standaloneCode from "ajv/dist/standalone/index.js";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { contractJson, contractVersion, pinnedTag } from "./contract-source.mjs";
 
-const SCHEMAS = new URL("../../boundary-contracts/schemas/", import.meta.url);
-if (!existsSync(SCHEMAS)) { console.error("gen-validators: ../boundary-contracts/schemas 가 없습니다. 워크스페이스 구조에서 실행하세요."); process.exit(1); }
-const version = readFileSync(new URL("../../boundary-contracts/pyproject.toml", import.meta.url), "utf8").match(/^version\s*=\s*"([^"]+)"/m)?.[1] ?? "n/a";
-const load = (n) => JSON.parse(readFileSync(new URL(`${n}.schema.json`, SCHEMAS), "utf8"));
+// 계약은 옆 폴더의 현재 작업 트리가 아니라 고정한 태그(Dockerfile ARG)에서 읽는다(scripts/contract-source.mjs, ADR 0027).
+const version = contractVersion();
+if (`v${version}` !== pinnedTag()) { console.error(`gen-validators: 계약 패키지 버전 v${version} 이 고정 태그 ${pinnedTag()} 와 다릅니다`); process.exit(1); }
+const load = (n) => contractJson(`schemas/${n}.schema.json`);
 
 // USED: 내보내는 검증기. DEPS: 참조를 풀기 위해 등록만 하는 스키마. StaticImageInterface는 이 영역이 내는 쪽이라 시험이 검사한다.
 const TARGETS = [
