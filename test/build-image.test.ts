@@ -19,13 +19,12 @@ const EXPOSURE_LABEL = JSON.stringify(JSON.parse(readFileSync("deploy-exposure.j
 // 이 영역이 실제로 쓰는(고정한) 버전: Dockerfile의 ARG 기본값이다. 요청 버전이 이것과 다르면 진입점은 라벨을 찍지 않고 실패한다(U50, 라벨이 거짓이 되지 않게).
 const DOCKERFILE = readFileSync("Dockerfile", "utf8");
 const PIN_BOUNDARY = DOCKERFILE.match(/^ARG BOUNDARY_CONTRACT=(\S+)/m)![1];
-const PIN_SURVEY = DOCKERFILE.match(/^ARG SURVEY_SCHEMA=(\S+)/m)![1];
-const REQ = { source_dir: REPO, revision: "bad876c", versions: { boundary: PIN_BOUNDARY, survey_schema: `v${PIN_SURVEY}.2.0` }, image_tag: "kiosk-frontend-test/kiosk-frontend:bad876c" };
+const REQ = { source_dir: REPO, revision: "bad876c", versions: { boundary: PIN_BOUNDARY, survey_schema: "v2.0.0" }, image_tag: "kiosk-frontend-test/kiosk-frontend:bad876c" };
 
 /** 가짜 docker: build 인자를 기록하고, inspect는 요청과 같은 라벨을 돌려준다(labelsOverride로 어긋난 이미지를 흉내 낸다). */
 function fakeDocker(dir: string, labelsOverride?: Record<string, string>) {
   const log = join(dir, "docker.log"), bin = join(dir, "docker");
-  const labels = JSON.stringify({ "io.openit.service": "kiosk-frontend", "io.openit.revision": REQ.revision, "io.openit.contracts.boundary": PIN_BOUNDARY, "io.openit.contracts.survey-schema": PIN_SURVEY, "io.openit.app-version": "0.1.0", "io.openit.exposure": EXPOSURE_LABEL, "org.opencontainers.image.base.name": "x", ...labelsOverride });
+  const labels = JSON.stringify({ "io.openit.service": "kiosk-frontend", "io.openit.revision": REQ.revision, "io.openit.contracts.boundary": PIN_BOUNDARY, "io.openit.contracts.survey-schema": "n/a", "io.openit.app-version": "0.1.0", "io.openit.exposure": EXPOSURE_LABEL, "org.opencontainers.image.base.name": "x", ...labelsOverride });
   writeFileSync(bin, `#!/usr/bin/env bash
 echo "$@" >> '${log}'
 case "$1" in
@@ -55,7 +54,8 @@ test("진입점: 계약 예시 요청 모양을 받아 가짜 docker로 빌드�
     assert.match(result.image_id, /^sha256:[0-9a-f]{64}$/);
     assert.equal(result.labels["io.openit.revision"], REQ.revision);
     assert.equal(result.labels["io.openit.contracts.boundary"], PIN_BOUNDARY);
-    assert.equal(result.labels["io.openit.contracts.survey-schema"], PIN_SURVEY); // 고정한 문진 스키마 주 버전
+    // 계약 3.0.1: 라벨은 이미지에 실제로 들어간 문진 스키마 패키지 버전의 주 번호다. 이 이미지는 문진 스키마를 담지 않으므로 요청이 survey_schema를 줘도 n/a다.
+    assert.equal(result.labels["io.openit.contracts.survey-schema"], "n/a");
     assert.equal(result.labels["org.opencontainers.image.base.name"], undefined, "io.openit.* 라벨만 낸다");
     assert.equal(result.labels["io.openit.exposure"], EXPOSURE_LABEL, "노출 선언 라벨이 결과에 나온다");
     assert.equal(gen.Exposure(JSON.parse(result.labels["io.openit.exposure"])), true, "라벨 값은 계약 Exposure를 통과한다");
@@ -65,7 +65,7 @@ test("진입점: 계약 예시 요청 모양을 받아 가짜 docker로 빌드�
     assert.ok(build.includes(`--label io.openit.exposure=${EXPOSURE_LABEL}`), "빌드에 노출 선언 라벨을 단다");
     for (const a of ["REVISION=bad876c", `-t ${REQ.image_tag}`]) assert.ok(build.includes(a), `${a} in ${build}`);
     // U50: 계약·문진 스키마 버전은 요청 값을 빌드 인자로 넘기지 않는다. Dockerfile에 고정한 값이 이미지와 라벨에 들어간다.
-    for (const a of ["BOUNDARY_CONTRACT", "SURVEY_SCHEMA"]) assert.ok(!build.includes(a), `${a}를 빌드 인자로 넘기지 않는다: ${build}`);
+    for (const a of ["BOUNDARY_CONTRACT", "SURVEY_SCHEMA", "survey"]) assert.ok(!build.includes(a), `${a}를 빌드 인자로 넘기지 않는다: ${build}`);
     assert.ok(build.trimEnd().endsWith(REPO), "source_dir만 빌드 컨텍스트");
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
@@ -90,11 +90,12 @@ test("진입점: 계약이 거부하는 요청(모르는 키, 필수 키 없음,
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
 
-test("진입점: 이 영역이 쓰는 versions 키(survey_schema)가 없으면 기본값을 두지 않고 실패하고, 모르는 variant도 실패한다", () => {
+test("진입점: 문진 스키마를 쓰지 않으므로 versions.survey_schema가 없어도 성공하고(라벨 n/a), 모르는 variant는 실패한다", () => {
   const d = tmp(); try {
     const { bin } = fakeDocker(d);
-    const noSs = run({ ...REQ, versions: { boundary: "v2.5.1" } }, bin, d);
-    assert.notEqual(noSs.status, 0); assert.match(noSs.stderr, /survey_schema/);
+    const noSs = run({ ...REQ, versions: { boundary: PIN_BOUNDARY } }, bin, d);
+    assert.equal(noSs.status, 0, noSs.stderr);
+    assert.equal(JSON.parse(lastLine(noSs.stdout)).labels["io.openit.contracts.survey-schema"], "n/a");
     const v = run({ ...REQ, variant: "gpu" }, bin, d);
     assert.notEqual(v.status, 0); assert.match(v.stderr, /variant/);
   } finally { rmSync(d, { recursive: true, force: true }); }
@@ -148,12 +149,18 @@ test("진입점: 요청의 boundary 버전이 고정 버전과 다르면 docker�
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
 
-test("진입점: 요청의 survey_schema 주 버전이 고정 값과 다르면 실패한다", () => {
+test("진입점: 요청이 어떤 survey_schema를 주어도 라벨은 거짓이 되지 않는다(이 이미지에 문진 스키마가 없으므로 n/a)", () => {
   const d = tmp(); try {
-    const { bin, log } = fakeDocker(d);
+    const { bin } = fakeDocker(d);
     const r = run({ ...REQ, versions: { ...REQ.versions, survey_schema: "v7.0.0" } }, bin, d);
-    assert.notEqual(r.status, 0);
-    assert.match(r.stderr, /survey_schema/);
-    assert.throws(() => readFileSync(log));
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(JSON.parse(lastLine(r.stdout)).labels["io.openit.contracts.survey-schema"], "n/a");
   } finally { rmSync(d, { recursive: true, force: true }); }
+});
+
+test("이 이미지에는 문진 스키마가 들어가지 않는다(최종 단계는 dist와 Caddyfile만 담고, 화면 소스에 문진 스키마 파일이 없다)", () => {
+  const final = DOCKERFILE.slice(DOCKERFILE.lastIndexOf("\nFROM "));
+  const copies = [...final.matchAll(/^COPY\s+(?:--\S+\s+)*(\S+)\s+(\S+)/gm)].map((m) => m[1]);
+  assert.deepEqual(copies.sort(), ["/src/dist", "Caddyfile"].sort());
+  assert.doesNotMatch(DOCKERFILE, /survey-service|openit-survey-schema|SURVEY_SCHEMA/i);
 });

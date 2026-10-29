@@ -13,13 +13,12 @@ RUN node scripts/build.mjs
 FROM caddy:2.11.7-alpine
 ARG REVISION=n/a
 ARG BOUNDARY_CONTRACT=v3.0.0
-ARG SURVEY_SCHEMA=1
 ARG APP_VERSION=0.1.0
-# 이 영역은 model-runtime을 쓰지 않는다(해당 없음).
+# 이 영역은 model-runtime을 쓰지 않는다(해당 없음). 문진 스키마 패키지도 이미지에 넣지 않으므로 survey-schema 라벨은 n/a다(계약 3.0.1: 이미지에 실제로 들어간 패키지의 주 번호).
 LABEL io.openit.service="kiosk-frontend" \
       io.openit.revision="${REVISION}" \
       io.openit.contracts.boundary="${BOUNDARY_CONTRACT}" \
-      io.openit.contracts.survey-schema="${SURVEY_SCHEMA}" \
+      io.openit.contracts.survey-schema="n/a" \
       io.openit.app-version="${APP_VERSION}"
 # 왜 /tmp: Caddy가 쓰는 설정·데이터 디렉터리(XDG)를 쓰기 가능한 곳으로 둔다. 비root 사용자라 /data, /config를 쓰지 못한다.
 ENV PORT=8080 STATIC_DIR=/app/dist XDG_DATA_HOME=/tmp/caddy-data XDG_CONFIG_HOME=/tmp/caddy-config

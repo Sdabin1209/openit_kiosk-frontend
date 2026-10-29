@@ -32,3 +32,4 @@
 - [0028 setup-env.sh는 표준 출력 마지막 줄에 SetupEnvReport를 낸다](0028-setup-env-sh는-표준-출력-마지막-줄에-SetupEnvReport를-낸다.md)
 - [0029 노출 선언 라벨 io.openit.exposure는 deploy-exposure.json이 정본이다](0029-노출-선언-라벨-io-openit-exposure는-deploy-exposure-json이-정본이다.md)
 - [0030 계약 3.0.0 전환, 이미지 설정이 정본, 라벨은 실제 고정 버전에서 찍는다 (0026·0029 일부 대체)](0030-계약-3-0-0-전환과-라벨은-실제-고정-버전에서-찍는다.md)
+- [0031 survey-schema 라벨은 이미지에 들어간 문진 스키마 패키지의 주 번호이고 이 이미지는 n/a이다 (0030 일부 대체)](0031-survey-schema-라벨은-이미지에-들어간-문진-스키마-패키지의-주-번호이고-이-이미지는-n-a이다.md)

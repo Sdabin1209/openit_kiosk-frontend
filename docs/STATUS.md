@@ -1,5 +1,8 @@
 # STATUS
 
+## survey-schema 라벨 n/a (2026-10-30, 브랜치 wo-301, ADR 0031)
+- 이미지가 문진 스키마를 담지 않으므로 `io.openit.contracts.survey-schema`는 `n/a`(계약 3.0.1). `ARG SURVEY_SCHEMA` 삭제.
+
 ## 계약 3.0.0 전환 (2026-10-30, 브랜치 wo-300, ADR 0030)
 - 계약 핀 v3.0.0(Dockerfile ARG, 생성 검증기, 모의 서버 pipeline_schema_version "3.0"). `StaticImageInterface` 선언서와 시험 삭제(EXPOSE·USER·ENV가 정본). U50: `build-image.sh` 라벨은 요청 값이 아니라 고정 버전, 불일치면 실패.
 

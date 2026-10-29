@@ -13,20 +13,16 @@ let req;
 try { req = JSON.parse(readFileSync(process.argv[2], "utf8")); } catch (e) { fail(`요청 파일을 JSON으로 읽지 못했습니다: ${e.message}`); }
 if (!gen.BuildImageRequest(req)) fail(`요청이 계약 BuildImageRequest를 어깁니다: ${JSON.stringify(gen.BuildImageRequest.errors)}`);
 
-// 이 영역이 쓰는 versions 키: boundary(스키마 필수), survey_schema(라벨). 없으면 기본값을 두지 않고 실패한다(기준표와 어긋나지 않게).
+// 이 영역이 쓰는 versions 키: boundary(스키마 필수)뿐이다. 문진 스키마 패키지는 이미지에 넣지 않으므로 survey_schema는 받아도 쓰지 않고
+// 라벨 io.openit.contracts.survey-schema는 n/a다(계약 3.0.1: 이미지에 실제로 들어간 패키지의 주 번호. 넣지 않았으니 요청 값을 찍으면 거짓이 된다).
 if (req.variant !== undefined) fail(`이 영역은 variant를 모릅니다(이미지가 하나): ${req.variant}`);
-if (!req.versions.survey_schema) fail("versions.survey_schema가 없습니다(라벨 io.openit.contracts.survey-schema에 쓴다)");
-// 라벨 survey-schema는 주 버전 하나다(ImageLabels): 태그 vX.Y.Z의 X.
-const surveyMajor = req.versions.survey_schema.slice(1).split(".")[0];
 
 // U50(라벨 정직성): 라벨은 요청 값이 아니라 이 영역이 실제로 쓴(고정한) 버전이어야 한다. 이 영역은 계약을 Dockerfile의 ARG 기본값으로 고정하고
 // 그 태그에서 만든 검증기를 쓴다(ADR 0021·0027). 요청 버전이 이 고정과 다르면 거짓 라벨이 만들어지므로 빌드 전에 실패한다. 요청 값은 빌드 인자로 넘기지 않는다.
 const dockerfile = readFileSync(join(req.source_dir, "Dockerfile"), "utf8");
-const pin = (name) => dockerfile.match(new RegExp(`^ARG ${name}=(\\S+)`, "m"))?.[1];
-const pinBoundary = pin("BOUNDARY_CONTRACT"), pinSurvey = pin("SURVEY_SCHEMA");
-if (!pinBoundary || !pinSurvey) fail("Dockerfile에 ARG BOUNDARY_CONTRACT·SURVEY_SCHEMA 고정값이 없습니다");
+const pinBoundary = dockerfile.match(/^ARG BOUNDARY_CONTRACT=(\S+)/m)?.[1];
+if (!pinBoundary) fail("Dockerfile에 ARG BOUNDARY_CONTRACT 고정값이 없습니다");
 if (req.versions.boundary !== pinBoundary) fail(`요청의 boundary 버전 ${req.versions.boundary} 이 이 영역이 고정한 ${pinBoundary} 와 다릅니다(Dockerfile ARG BOUNDARY_CONTRACT). 라벨이 거짓이 되므로 빌드하지 않습니다`);
-if (surveyMajor !== pinSurvey) fail(`요청의 versions.survey_schema ${req.versions.survey_schema} 의 주 버전 ${surveyMajor} 이 이 영역이 고정한 ${pinSurvey} 와 다릅니다(Dockerfile ARG SURVEY_SCHEMA). 라벨이 거짓이 되므로 빌드하지 않습니다`);
 
 // 노출 선언(계약 Exposure): 정본은 영역 소스의 deploy-exposure.json이다. 계약 검증기로 검사하고 한 줄 JSON으로 줄여 라벨 io.openit.exposure로 단다(ADR 0029).
 let exposure;
@@ -39,12 +35,12 @@ const expected = {
   "io.openit.service": "kiosk-frontend",
   "io.openit.revision": req.revision,
   "io.openit.contracts.boundary": pinBoundary,
-  "io.openit.contracts.survey-schema": pinSurvey,
+  "io.openit.contracts.survey-schema": "n/a",
 };
 const run = (args, opts = {}) => spawnSync(DOCKER, args, { encoding: "utf8", ...opts });
 
 console.error(`build-image: ${DOCKER} build ${req.image_tag} (source ${req.source_dir})`);
-// 빌드 인자는 REVISION뿐이다(계약·문진 스키마 버전은 Dockerfile 고정값). 빌드 출력은 표준 오류로 보낸다(표준 출력은 결과 한 줄 전용). app-version 라벨은 Dockerfile 기본값이다(ADR 0025).
+// 빌드 인자는 REVISION뿐이다(계약 버전은 Dockerfile 고정값). 빌드 출력은 표준 오류로 보낸다(표준 출력은 결과 한 줄 전용). app-version 라벨은 Dockerfile 기본값이다(ADR 0025).
 const b = run(["build", "-t", req.image_tag, "--build-arg", `REVISION=${req.revision}`, "--label", `io.openit.exposure=${exposureLabel}`, req.source_dir], { stdio: ["ignore", 2, 2], encoding: undefined });
 if (b.status !== 0) fail(`docker build 실패(종료 ${b.status})`);
 
