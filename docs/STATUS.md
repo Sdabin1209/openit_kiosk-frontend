@@ -1,5 +1,8 @@
 # STATUS
 
+## CR-D29 (2026-10-29, 브랜치 wo-cr29, ADR 0025)
+- 이미지 라벨 `io.openit.app-version`은 Dockerfile `ARG APP_VERSION` 기본값이고, `package.json` version과 같음을 `npm test`(`test/image-contract.test.ts`)와 `npm run smoke`(이미지 라벨 대조)가 강제한다. 버전을 올릴 때는 두 곳을 함께 고친다.
+
 ## 단위 4b: 기기 인증 mTLS (계약 v2.3.0, 2026-10-29, 브랜치 wo-u4b, ADR 0024)
 - 기기 토큰이 없어도 앱이 동작한다(설정 필요 화면 `NO_DEVICE_TOKEN` 삭제). 토큰이 있으면 2.x 호환으로 Bearer. 모의 서버에 `gatewayDevice` 모드(`X-Openit-Device`). 생성 검증기와 Dockerfile 핀 v2.3.0, 모의 서버 pipeline_schema_version 2.3.
 - 확인하지 못한 것: 실제 mTLS 게이트웨이, 인증서가 TLS 단계에서 거부될 때의 화면(네트워크 오류로 재시도 뒤 직원 호출 화면일 것으로 추정).

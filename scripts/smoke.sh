@@ -43,5 +43,10 @@ for k in io.openit.service io.openit.revision io.openit.contracts.boundary io.op
   [ -n "$V" ] || fail "라벨 $k 없음"
   echo "label $k=$V"
 done
+# CR-D29: 이미지의 app-version 라벨이 package.json version과 같아야 한다(deploy는 APP_VERSION을 넘기지 않아 Dockerfile 기본값이 라벨이 된다).
+PKG_VER="$(node -p "require('./package.json').version")"
+IMG_VER="$("$DOCKER" inspect -f '{{ index .Config.Labels "io.openit.app-version" }}' "$TAG" | tr -d '\r')"
+[ "$IMG_VER" = "$PKG_VER" ] || fail "라벨 io.openit.app-version=$IMG_VER 이 package.json version=$PKG_VER 과 다르다(Dockerfile ARG APP_VERSION을 맞추세요)"
+echo "label io.openit.app-version=$IMG_VER (package.json과 같음)"
 "$DOCKER" logs "$CTR" 2>&1 | grep -q '"uri"' || fail "표준 출력 로그 없음"
 echo "SMOKE OK (uid=$USER_ID)"
