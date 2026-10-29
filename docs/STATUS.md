@@ -1,5 +1,8 @@
 # STATUS
 
+## 계약 v2.4.1 핀 (2026-10-30, 브랜치 wo-24, D115)
+- Dockerfile ARG, 생성 검증기 헤더, 모의 서버 `pipeline_schema_version` "2.4". 이 영역이 쓰는 세 스키마(DeviceConfig, KioskStartFragment, StaffPushPayload)는 2.3.0과 같아 생성 검증기는 헤더 줄만 바뀌었다. 동작 변화 없음.
+
 ## CR-D29 (2026-10-29, 브랜치 wo-cr29, ADR 0025)
 - 이미지 라벨 `io.openit.app-version`은 Dockerfile `ARG APP_VERSION` 기본값이고, `package.json` version과 같음을 `npm test`(`test/image-contract.test.ts`)와 `npm run smoke`(이미지 라벨 대조)가 강제한다. 버전을 올릴 때는 두 곳을 함께 고친다.
 
