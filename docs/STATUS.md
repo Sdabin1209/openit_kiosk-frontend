@@ -1,5 +1,10 @@
 # STATUS
 
+## U400 영역 구조 개편 (2026-10-30, 브랜치 wo-400, ADR 0032)
+- 한 일: 컴포넌트 분해(`docs/components.md`), `schemas/` 32개와 예시, `src/types/` 생성(`npm run gen-types`), 코드를 `src/components`(링크 `link_*` 3개 포함)·`src/wiring`·`src/ui`로 이동, `test/test_structure.test.ts`. 계약 핀 v3.1.1. 와이어 형식은 바꾸지 않았다.
+- 시험: README 5절 상태 참고. `build`/`smoke`/`test:image`/`test:dom` 통과(로그 `~/openit-logs/kf400-*.log`).
+- 막힌 것/남은 것: 헤드 `structure-check.py`가 `ui/`를 인정하지 않아 3파일이 위반으로 나온다(CR-007). 브라우저 시험(`test:e2e`)은 E2E 금지라 돌리지 않았다.
+
 ## survey-schema 라벨 n/a (2026-10-30, 브랜치 wo-301, ADR 0031)
 - 이미지가 문진 스키마를 담지 않으므로 `io.openit.contracts.survey-schema`는 `n/a`(계약 3.0.1). `ARG SURVEY_SCHEMA` 삭제.
 

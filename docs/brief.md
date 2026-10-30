@@ -13,7 +13,7 @@
 
 ## 2. 소유하는 것
 
-- 소유: 이 리포지토리의 두 웹 앱, 공개 API 클라이언트 모듈(`api/`), 공개 API의 **모의 서버**(`mock-server/`).
+- 소유: 이 리포지토리의 두 웹 앱, 공개 API 클라이언트(`src/components/link_public_api_send.ts`), 공개 API의 **모의 서버**(`mock-server/`).
 - 모의 서버: `../boundary-contracts/PUBLIC_API.md`와 스키마를 읽어 만든다. 다른 영역 코드를 가져오지 않고 혼자 시험·시연할 수 있게 하는 대역이다(이웃 영역의 메모리 구현에 해당). 위험 정지, 전달 실패, 지연, 오류 응답을 시나리오로 낼 수 있어야 한다.
 - 제공하는 서비스 API: 없음. 정적 파일을 내는 컨테이너(`/healthz`)뿐이다.
 - 산출물: 정적 빌드를 담은 이미지(non-root, 로그는 표준 출력, 라벨 `io.openit.*` 필수 6개 중 해당하는 것과 `io.openit.contracts.boundary`, 앱 버전).

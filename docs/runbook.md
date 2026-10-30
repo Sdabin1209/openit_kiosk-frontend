@@ -45,7 +45,7 @@
 - [ ] 실제 survey-service와의 연동(시험은 모의 서버).
 
 ### STT 경계
-`apps/kiosk/stt.ts`의 `SttAdapter`가 경계다. `SpeechRecognition`이 없으면 텍스트 입력으로 대체되고, 시험은 가짜 `SpeechRecognition` 주입(`addInitScript`)으로 어댑터 경로를 지난다. 마이크 입력과 인식 자체는 가짜로 대체된 것이다.
+`src/components/stt_adapter.ts`의 `SttAdapter`가 경계다. `SpeechRecognition`이 없으면 텍스트 입력으로 대체되고, 시험은 가짜 `SpeechRecognition` 주입(`addInitScript`)으로 어댑터 경로를 지난다. 마이크 입력과 인식 자체는 가짜로 대체된 것이다.
 
 ## 키오스크 화면별 대응 (감사 P11)
 | 화면 | 뜻 | 운영자 조치 |

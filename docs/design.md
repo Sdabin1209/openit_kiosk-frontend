@@ -5,14 +5,14 @@
 ## 1. 원칙
 - 의존은 `PUBLIC_API.md`(I10) 하나. 서버 주소는 같은 출처의 `/v1`(상대 경로). 서버 비밀은 어디에도 없다. 키오스크는 기기 토큰(시작 URL 조각 또는 `/config.json`)을 메모리에만 두고 `/v1/sessions*`에 Bearer로 보낸다(D85 F절). 직원 인증은 게이트웨이가 붙인다.
 - 환자 발화와 응답은 메모리에서만 다룬다. 저장소·쿠키·콘솔·분석 서비스에 남기지 않는다. 음성은 기기 안 인식(processLocally)만 쓰고 기기가 지원하지 않으면 음성 입력을 끈다(외부 인식은 기기 설정 `allow_remote_stt`로만 허용, 기본 꺼짐, D88 U3). 이전 문장 "외부 서비스에 남기지 않는다"는 브라우저 STT가 음성을 제공자로 보낼 수 있다는 사실과 어긋나 고쳤다.
-- `api/`는 UI를 모른다. 두 앱은 `api/`만 통해 서버와 말한다. 이 리포지토리를 통째로 바꿔도 나머지 시스템은 그대로다.
+- 링크 컴포넌트(`src/components/link_*.ts`)는 UI를 모른다. 두 앱은 링크만 통해 서버와 말한다(구조: `docs/components.md`, ADR 0032). 이 리포지토리를 통째로 바꿔도 나머지 시스템은 그대로다.
 
 ## 2. 화면 흐름 (키오스크)
 시작 -> 안내 문장 표시 -> 듣기 -> (확인 중) -> 응답 표시 -> 듣기 ... -> 종료.
 예외 화면: 다시 말씀해 주세요 / 직원이 오고 있습니다 / 직원을 불러 주세요 / 연결 끊김.
 한 화면에 행동은 하나(큰 버튼 하나, 음성 우선). STT를 쓸 수 없으면 입력창 폴백.
 
-## 3. 상태 기계 (키오스크, `apps/kiosk/flow.ts`)
+## 3. 상태 기계 (키오스크, `src/components/kiosk_flow.ts`)
 | 상태 | 뜻 | 다음 |
 | --- | --- | --- |
 | IDLE | 시작 화면 | 시작 -> STARTING |
@@ -32,12 +32,12 @@
 - 재시도 예산(20초) 소진, 401/403 -> CALL_STAFF. 500·그 밖의 4xx(429 제외)는 재시도 없이 오류로 처리. 404 -> 세션 만료 안내 후 IDLE. 409 -> 위험 정지 중으로 보고 WAITING_STAFF(폴링으로 확인). 위험 정지 세션은 유휴 만료되지 않는다(계약).
 
 ### 재시도와 대기 화면 (FAULT_POLICY 원칙 2·3·7)
-- 정책 값은 `api/retry.ts` 한 곳(기준 0.5초, 배율 2, 상한 5초, 예산 20초, 지터 하한 50%)에 근거와 함께 둔다. 예산·값이 임상 현장에 맞는지는 FAULT_POLICY의 사용자 결정 대기 항목이며 실측으로 확인하지 못했다. 예산은 타임아웃과 대기를 합산하며 시작한 시도는 끊지 않으므로 최악 약 예산 + 10초(한 번의 타임아웃)까지 길어질 수 있다.
+- 정책 값은 `src/components/retry_policy.ts`와 `src/config.ts` 한 곳(기준 0.5초, 배율 2, 상한 5초, 예산 20초, 지터 하한 50%)에 근거와 함께 둔다. 예산·값이 임상 현장에 맞는지는 FAULT_POLICY의 사용자 결정 대기 항목이며 실측으로 확인하지 못했다. 예산은 타임아웃과 대기를 합산하며 시작한 시도는 끊지 않으므로 최악 약 예산 + 10초(한 번의 타임아웃)까지 길어질 수 있다.
 - 재시도가 시작되면 화면은 "잠시만 기다려 주세요"(기존 STARTING 문구)와 안내 문장, "직원 부르기", "그만하기"를 보인다. 안내 문장은 임상 문구가 아닌 임시 UI 문구다. 직원 부르기는 진행 중 요청을 끊고 CALL_STAFF, 그만하기는 끊고 세션 종료를 요청한다. 이미 서버가 확정한 턴이 있을 수 있으나 같은 `turn_id` 재전송은 멱등이라 안전하다(서버 계약).
 - 409 `details.reason = TURN_IN_PROGRESS`(+`Retry-After`)의 형식은 PUBLIC_API.md 409 행으로 확정되었다. 모의 서버는 시나리오 `turn_in_progress`로 이를 낸다. survey-service가 이 형식을 구현했다고 헤드가 알려 왔고(survey-service 757351e, 이 영역은 그 리포지토리를 읽지 않아 직접 확인하지 못했다) 이 영역은 그 형식에 맞췄다(e69d441). 이 PC의 전체 E2E에서 실제 survey-service와 키오스크를 잇는 시험은 아직 없다. 이 경로는 모의 서버와 가짜 fetch 시험으로만 확인했다. reason이 없거나 다른 409는 기존대로 WAITING_STAFF.
 
 ### 깨진 응답과 정적 서버 장애 (FAULT_POLICY 원칙 10, FAULT_MATRIX A1·A2 F6, A3)
-- 키오스크 클라이언트는 세션 시작·발화·종료·개입 응답을 `FrontendInput` 모양으로, 상태 폴링 응답을 `SessionState` 모양으로 검사한다(`api/validate.ts`). HTML·빈 본문·204·잘린 JSON·배열·`response_text` 누락/숫자/빈 문자열·알 수 없는 신호 값은 `BadBodyError`가 되어 5xx와 같은 재시도 대상이다(같은 `turn_id`, 예산 20초). 계속되면 직원 호출 화면이고 응답 문장을 지어내지 않는다. 이전에는 JSON 파싱 실패만 재시도되고, 빈 본문 200이나 필드가 빠진 JSON은 성공으로 취급되어 흐름에서 예외가 나 재시도 없이 직원 호출로 갔다.
+- 키오스크 클라이언트는 세션 시작·발화·종료·개입 응답을 `FrontendInput` 모양으로, 상태 폴링 응답을 `SessionState` 모양으로 검사한다(`schemas/*Body.json`(생성 검증기)). HTML·빈 본문·204·잘린 JSON·배열·`response_text` 누락/숫자/빈 문자열·알 수 없는 신호 값은 `BadBodyError`가 되어 5xx와 같은 재시도 대상이다(같은 `turn_id`, 예산 20초). 계속되면 직원 호출 화면이고 응답 문장을 지어내지 않는다. 이전에는 JSON 파싱 실패만 재시도되고, 빈 본문 200이나 필드가 빠진 JSON은 성공으로 취급되어 흐름에서 예외가 나 재시도 없이 직원 호출로 갔다.
 - 검사 기준은 `FrontendInput.json`·`TurnFailureSignal.json`(열거값은 `check-schema`가 대조)이다. 스키마 파일을 복사하지 않고 손으로 쓴 검사라, 서버가 새 열거값을 추가하면 이 검사가 거부해 직원 호출이 될 수 있다(의도한 보수적 동작).
 - 직원 콘솔 쪽 목록·세션 기록 응답은 이 검사를 하지 않는다("읽을 때는 관대하게").
 - A3: 키오스크는 정적 파일이 한 번 로드되면 JS를 메모리에 두고 `/v1`만 호출하므로, 정적 화면 서버가 죽어도 진행 중인 세션은 이어진다. 브라우저 시험(정적 경로만 503으로 만든 상태에서 한 턴과 종료)으로 확인했다. 이 시험 구조에서는 정적 서버와 모의 API가 한 프로세스라 컨테이너를 따로 멈추지 못해 정적 경로만 503으로 바꾸는 방식으로 모의했다. 실제 gateway·Caddy가 정적 서버 중단 때 어떻게 응답하는지는 확인하지 못했다. 최초 로드나 새로고침이 정적 서버 장애 중이면 브라우저 기본 오류 화면이 뜬다(키오스크 서비스 워커·오프라인 캐시는 없다. 환자 화면에 낡은 코드를 남길 위험이 있어 만들지 않았다). 보완은 deploy의 gateway 몫이다(CR-004 4항).
@@ -67,31 +67,31 @@
 
 ### 직원 콘솔 연결 상태 (FAULT_POLICY 원칙 7·12)
 - 머리줄 `#conn`: "실시간 연결됨" / "연결 중" / "연결 끊김 - 다시 연결 중 (N초 뒤). 새 알림이 바로 보이지 않을 수 있습니다."(끊김은 붉은 배경, `role=alert`).
-- 목록 읽기에 실패하면 `#list-status`가 "알림 목록을 불러오지 못했습니다. 비어 있는 것이 아닙니다"(처음부터 실패) 또는 "새로 읽지 못했습니다. 화면이 최신이 아닐 수 있습니다"를 보인다. 목록 요청 자체는 키오스크와 같은 재시도 정책(`api/retry.ts`, 502·503·504·429 등, 예산 20초)을 따른다.
+- 목록 읽기에 실패하면 `#list-status`가 "알림 목록을 불러오지 못했습니다. 비어 있는 것이 아닙니다"(처음부터 실패) 또는 "새로 읽지 못했습니다. 화면이 최신이 아닐 수 있습니다"를 보인다. 목록 요청 자체는 키오스크와 같은 재시도 정책(`src/components/retry_policy.ts`와 `src/config.ts`, 502·503·504·429 등, 예산 20초)을 따른다.
 - 이 안내 문구는 임상 문구가 아닌 임시 UI 문구다.
-- 하트비트(PUBLIC_API.md 43행, D87): EventSource는 `: ping` 주석 줄을 보여 주지 않으므로 서버가 보내는 이름 있는 이벤트 `heartbeat`(연결 직후 한 번, 약 15초마다, `id` 없음)를 쓴다. 한 연결에서 첫 `heartbeat`를 받으면 무음 감시를 켜고, 주기의 2배(30초) + 지터 0~5초 안에 다음 `heartbeat`가 없으면 조용히 죽은 연결로 보고 직접 닫아 `#conn`을 "연결 끊김"으로 바꾸며 재연결 백오프 경로로 간다(`api/retry.ts` `STAFF_HEARTBEAT`, 값은 정한 것이고 실측하지 않았다). 새 연결은 첫 `heartbeat`를 받을 때까지 감시하지 않는다. 그래서 `heartbeat`를 보내지 않는 구버전 서버에서는 감시가 켜지지 않고 15초 주기 목록 재읽기가 유일한 안전망으로 남는다.
+- 하트비트(PUBLIC_API.md 43행, D87): EventSource는 `: ping` 주석 줄을 보여 주지 않으므로 서버가 보내는 이름 있는 이벤트 `heartbeat`(연결 직후 한 번, 약 15초마다, `id` 없음)를 쓴다. 한 연결에서 첫 `heartbeat`를 받으면 무음 감시를 켜고, 주기의 2배(30초) + 지터 0~5초 안에 다음 `heartbeat`가 없으면 조용히 죽은 연결로 보고 직접 닫아 `#conn`을 "연결 끊김"으로 바꾸며 재연결 백오프 경로로 간다(`src/components/retry_policy.ts`와 `src/config.ts` `STAFF_HEARTBEAT`, 값은 정한 것이고 실측하지 않았다). 새 연결은 첫 `heartbeat`를 받을 때까지 감시하지 않는다. 그래서 `heartbeat`를 보내지 않는 구버전 서버에서는 감시가 켜지지 않고 15초 주기 목록 재읽기가 유일한 안전망으로 남는다.
 - `resync`(`{"reason": "EVENTS_NOT_RESUMABLE"}`): 받으면 알림 목록을 즉시 다시 읽는다(OPEN·RESOLVED 둘 다 읽는 기존 `load()`를 그대로 쓴다. OPEN만 읽는 최적화는 하지 않았다). 모르는 이벤트 이름은 무시한다.
 - 서버 쪽 구현(survey-service)은 읽지 않았고, 계약 문구와 모의 서버 기준으로 만들었다. 실제 서버와의 E2E는 없다.
 
 ## 4. 공개 API 호출 규칙 대응표
 | 규칙(PUBLIC_API.md) | 구현 위치 |
 | --- | --- |
-| 세션 ID는 **서버가 발급**한다(계약 2.2.0, D106): 시작 본문에 `session_id`를 보내지 않고 응답의 `session_id`(1~64자, 영문·숫자·`-_`)를 이후 호출에 쓴다. 응답에 없거나 형식이 틀리면 시작 실패(재시도 대상) | `api/client.ts` `startSession`, `api/validate.ts` `validateSessionStarted`, `apps/kiosk/flow.ts` `start`. ADR 0020 |
-| 턴마다 고유 `turn_id` | `api/ids.ts` `newTurnId`, 발화 호출 한 번에 하나 |
-| 같은 `turn_id` 재전송은 안전 | `api/client.ts` 재시도는 같은 `turn_id` |
-| 10초 무응답이면 같은 `turn_id`로 재시도, 총 재시도 예산(기본 20초)을 넘으면 직원 호출(FAULT_POLICY 원칙 7; 이전 "3회 실패"를 대체) | `api/client.ts` `AbortController` 타임아웃, 예산 소진 시 `CallStaffError`. 값과 근거는 `api/retry.ts` |
-| 한 세션의 요청은 순서대로 하나씩 | `api/client.ts` 세션별 직렬 큐 |
-| 상태 코드로 분기(D66 표 + FAULT_POLICY). 429·502·503·504·네트워크 오류·무응답은 지수 백오프(0.5초 x2, 상한 5초, 지터 50~100%)로 재시도하고 `Retry-After`가 있으면 그 이상 기다린다(위로만 지터). 409 중 본문 `code = CONFLICT`이면서 `details.reason = TURN_IN_PROGRESS`인 것만 (PUBLIC_API.md 409 행) 같은 `turn_id`로 재시도하고 나머지 409는 기존대로 WAITING_STAFF. 400/401/403/404/500은 재시도 안 함. `Retry-After`가 남은 예산보다 길면 기다리지 않고 직원 호출 | `api/client.ts`, `api/retry.ts` |
+| 세션 ID는 **서버가 발급**한다(계약 2.2.0, D106): 시작 본문에 `session_id`를 보내지 않고 응답의 `session_id`(1~64자, 영문·숫자·`-_`)를 이후 호출에 쓴다. 응답에 없거나 형식이 틀리면 시작 실패(재시도 대상) | `src/components/link_public_api_send.ts` `startSession`, `schemas/*Body.json`(생성 검증기) `validateSessionStarted`, `src/components/kiosk_flow.ts` `start`. ADR 0020 |
+| 턴마다 고유 `turn_id` | `src/wiring/ids.ts` `newTurnId`, 발화 호출 한 번에 하나 |
+| 같은 `turn_id` 재전송은 안전 | `src/components/link_public_api_send.ts` 재시도는 같은 `turn_id` |
+| 10초 무응답이면 같은 `turn_id`로 재시도, 총 재시도 예산(기본 20초)을 넘으면 직원 호출(FAULT_POLICY 원칙 7; 이전 "3회 실패"를 대체) | `src/components/link_public_api_send.ts` `AbortController` 타임아웃, 예산 소진 시 `CallStaffError`. 값과 근거는 `src/components/retry_policy.ts`와 `src/config.ts` |
+| 한 세션의 요청은 순서대로 하나씩 | `src/components/link_public_api_send.ts` 세션별 직렬 큐 |
+| 상태 코드로 분기(D66 표 + FAULT_POLICY). 429·502·503·504·네트워크 오류·무응답은 지수 백오프(0.5초 x2, 상한 5초, 지터 50~100%)로 재시도하고 `Retry-After`가 있으면 그 이상 기다린다(위로만 지터). 409 중 본문 `code = CONFLICT`이면서 `details.reason = TURN_IN_PROGRESS`인 것만 (PUBLIC_API.md 409 행) 같은 `turn_id`로 재시도하고 나머지 409는 기존대로 WAITING_STAFF. 400/401/403/404/500은 재시도 안 함. `Retry-After`가 남은 예산보다 길면 기다리지 않고 직원 호출 | `src/components/link_public_api_send.ts`, `src/components/retry_policy.ts`와 `src/config.ts` |
 | `turn_id`는 봉투 필드: 떼어 낸 나머지가 FrontendMessage/InterventionDecision | 시험 `test/mock.test.ts`, 모의 서버 |
-| 위험 정지 중 상태 폴링 2초 | `apps/kiosk/flow.ts` |
-| SSE 이벤트 `alert`/`resolved`, 15초 `: ping` | `api/staff.ts`, 모의 서버 |
-| `turn_failure_signal` 처리 | `apps/kiosk/flow.ts` |
-| 빈/불신 STT는 보내지 않음 | `apps/kiosk/flow.ts` `isUsableTranscript` |
-| 개입 결정: 확인 후 전송, 알림당 같은 `turn_id` | `apps/staff/decide.ts` |
-| SSE 끊김 복구(FAULT_POLICY 원칙 7·12) | 재연결은 EventSource 자동 재연결에 맡기지 않고 `api/staff.ts` `stream()`이 한다(HTTP 오류를 받으면 브라우저는 재연결 없이 CLOSED로 끝내고, 간격에 지터가 없기 때문). 지수 백오프 1초 x2, 상한 15초, 지터 50~100%, 예산 없음(`api/retry.ts` `STAFF_STREAM_RETRY`). 새 EventSource는 `Last-Event-ID`를 보내지 않으므로 붙을 때마다 `apps/staff/sync.ts`가 알림 목록을 다시 읽어 놓친 알림을 보충한다(커서 따라 최대 20쪽). 목록도 15초마다 다시 읽는다(스트림이 소리 없이 죽은 경우의 안전망 겸 목록 읽기 실패 복구) |
-| 푸시 구독 등록(멱등)·해지. 구독 실패는 알림 배너와 분리된 `#push-status`에 "실시간 알림은 그대로 동작합니다"와 함께 표시 | `api/staff.ts`, `apps/staff/push.ts`, `apps/staff/main.ts`, `sw.js` |
-| 모르는 `kind`·열거값은 그대로 표시, 죽지 않음 | `api/types.ts` 관대한 읽기 |
-| 기기 인증은 게이트웨이 mTLS(2.3.0)이고 앱은 자격을 보내지 않는다. 2.x 호환 토큰이 있으면 헤더는 `/sessions*`에만, 직원 경로에는 붙이지 않음 | `api/client.ts`(`deviceToken` 옵션), `test/d85.test.ts` |
+| 위험 정지 중 상태 폴링 2초 | `src/components/kiosk_flow.ts` |
+| SSE 이벤트 `alert`/`resolved`, 15초 `: ping` | `src/components/link_staff_stream_receive.ts`, 모의 서버 |
+| `turn_failure_signal` 처리 | `src/components/kiosk_flow.ts` |
+| 빈/불신 STT는 보내지 않음 | `src/components/kiosk_flow.ts` `UsableTranscript` 스키마 검증 |
+| 개입 결정: 확인 후 전송, 알림당 같은 `turn_id` | `src/components/intervention_decision.ts` |
+| SSE 끊김 복구(FAULT_POLICY 원칙 7·12) | 재연결은 EventSource 자동 재연결에 맡기지 않고 `src/components/link_staff_stream_receive.ts` `stream()`이 한다(HTTP 오류를 받으면 브라우저는 재연결 없이 CLOSED로 끝내고, 간격에 지터가 없기 때문). 지수 백오프 1초 x2, 상한 15초, 지터 50~100%, 예산 없음(`src/components/retry_policy.ts`와 `src/config.ts` `STAFF_STREAM_RETRY`). 새 EventSource는 `Last-Event-ID`를 보내지 않으므로 붙을 때마다 `apps/staff/sync.ts`가 알림 목록을 다시 읽어 놓친 알림을 보충한다(커서 따라 최대 20쪽). 목록도 15초마다 다시 읽는다(스트림이 소리 없이 죽은 경우의 안전망 겸 목록 읽기 실패 복구) |
+| 푸시 구독 등록(멱등)·해지. 구독 실패는 알림 배너와 분리된 `#push-status`에 "실시간 알림은 그대로 동작합니다"와 함께 표시 | `src/components/link_staff_stream_receive.ts`, `apps/staff/push.ts`, `apps/staff/main.ts`, `sw.js` |
+| 모르는 `kind`·열거값은 그대로 표시, 죽지 않음 | `src/types/`(생성) 관대한 읽기 |
+| 기기 인증은 게이트웨이 mTLS(2.3.0)이고 앱은 자격을 보내지 않는다. 2.x 호환 토큰이 있으면 헤더는 `/sessions*`에만, 직원 경로에는 붙이지 않음 | `src/components/link_public_api_send.ts`(`deviceToken` 옵션), `test/d85.test.ts` |
 
 ## 5. 모의 서버 시나리오 (`mock-server/`)
 계약의 모든 호출(세션·턴·종료·healthz/readyz·알림 목록·SSE·푸시 구독 등록/해지·개입)을 구현하고 `FrontendInput`을 스키마로 검증하는 시험을 둔다.
@@ -106,10 +106,14 @@
 
 ## 6. 디렉터리 구조
 ```
-api/            공개 API 클라이언트(UI 무관)
+schemas/        영역 내부 타입 JSON Schema와 예시
+src/types/      생성한 타입·검증기
+src/components/ 컴포넌트(link_* 통신 포함, docs/components.md)
+src/wiring/     연결·주입
+src/ui/         화면 부품(DOM)
+src/kiosk/, src/staff/  앱 진입점, HTML, CSS
+src/config.ts   설정 값
 mock-server/    모의 서버(Node, 의존 없음)
-apps/kiosk/     키오스크 앱(flow.ts 상태 기계, stt.ts 어댑터, main.ts UI)
-apps/staff/     직원 콘솔(main.ts, sync.ts, decide.ts, push.ts, sw.ts)
 Caddyfile      정적 서빙 설정(Caddy, /healthz, /readyz)
 scripts/        빌드, 스키마 대조, 스모크
 test/           자동 시험
@@ -122,7 +126,7 @@ Dockerfile, package-lock.json
 - 글꼴·스크립트는 모두 이미지에 포함, 외부 CDN 없음. 글꼴은 시스템 한국어 글꼴 우선 [미정: 오프라인 글꼴 파일 포함은 라이선스 결정 후].
 - 정적 서빙은 Caddy file_server(non-root, ADR 0022). `/healthz`, `/readyz`. VAPID 공개키는 서버의 `GET /v1/staff/push-config`에서 받고, null이면 푸시 UI를 끄고 SSE만 쓴다.
 - STT: `SttAdapter` 인터페이스, 기본은 Web Speech API(`ko-KR`) [미정: 한국어 정확도 확인 못 함].
-- 스키마 대조: `scripts/check-schema.mjs`가 `../survey-service/schema/schemas`를 읽어 열거값을 `api/types.ts`와 비교한다(스키마 복사본을 두지 않음). 이웃 폴더가 없으면 이유를 내고 비0으로 끝난다.
+- 스키마 대조: `scripts/check-schema.mjs`가 `../survey-service/schema/schemas`를 읽어 표기(계약 버전, 모의 서버 pipeline 버전)와 서버 스키마를 대조한다(타입은 `scripts/gen-types.mjs`가 스키마에서 생성한다, 스키마 복사본을 두지 않음). 이웃 폴더가 없으면 이유를 내고 비0으로 끝난다.
 
 ## 8. 경계 밖으로 넘기는 것
 변경 요청 `docs/change-requests/`: 게이트웨이 인증·정적 서빙·/v1 프록시·직원 콘솔 접근 제어(deploy), 계약 부족분(헤드).
