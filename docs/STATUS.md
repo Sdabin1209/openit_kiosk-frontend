@@ -1,5 +1,9 @@
 # STATUS
 
+## U422 시험에서 실제 시간 제거 (2026-10-31, 브랜치 wo-422, ADR 0034)
+- 컴포넌트가 시계·타이머를 인자로 받는다(wiring/clock.ts가 실제를 넣음). 시험은 `fakeTimers`·`timesOut()`·사건 대기. 분류표: `test/TIMING.md`. 라이브러리(Caddy) 시간 시험 2개는 설정 값 확인으로 대체.
+- 남은 것(헤드 판단): `test-e2e`의 실제 시간(하트비트 30초, 재시도 예산 24초, sleep 3곳). E2E 금지라 실행·변경하지 못함.
+
 ## U400 영역 구조 개편 (2026-10-30, 브랜치 wo-400, ADR 0032)
 - 한 일: 컴포넌트 분해(`docs/components.md`), `schemas/` 32개와 예시, `src/types/` 생성(`npm run gen-types`), 코드를 `src/components`(링크 `link_*` 3개 포함)·`src/wiring`·`src/ui`로 이동, `test/test_structure.test.ts`. 계약 핀 v3.1.1. 와이어 형식은 바꾸지 않았다.
 - 시험: README 5절 상태 참고. `build`/`smoke`/`test:image`/`test:dom` 통과(로그 `~/openit-logs/kf400-*.log`).
