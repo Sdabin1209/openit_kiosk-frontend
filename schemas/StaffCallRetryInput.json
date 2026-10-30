@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "StaffCallRetryInput.json",
+  "title": "StaffCallRetryInput",
+  "description": "직원 호출 재알림 요청 입력. 같은 turn_id의 재전송은 서버가 같은 응답을 준다(멱등).",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "$ref": "SessionState.schema.json#/properties/session_id"
+    },
+    "turn_id": {
+      "$ref": "StaffCallReport.schema.json#/properties/turn_id"
+    }
+  },
+  "required": [
+    "session_id",
+    "turn_id"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,6 @@
+{
+  "canRetry": true,
+  "sending": false,
+  "waitS": -1,
+  "attempts": 0
+}

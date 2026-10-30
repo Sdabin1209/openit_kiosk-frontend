@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SessionStateBody.json",
+  "title": "SessionStateBody",
+  "description": "세션 상태 응답을 받아들이는 조건. state의 모르는 값도 받는다(계속 기다린다, 관대하게 읽기).",
+  "type": "object",
+  "properties": {
+    "state": {
+      "type": "string"
+    },
+    "resume_text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pause_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "state",
+    "resume_text"
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ApiFailure.json",
+  "title": "ApiFailure",
+  "description": "링크가 던지는 오류의 데이터 모양. 업무 컴포넌트는 클래스를 가져오지 않고 name과 이 필드만 읽는다.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "enum": [
+        "ApiError",
+        "CallStaffError",
+        "AbortedError",
+        "BadBodyError"
+      ]
+    },
+    "status": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 599,
+      "description": "ApiError만"
+    },
+    "code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ApiError: 오류 본문 code. 413·414·431은 INVALID_RECORD"
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ApiError: 본문 details.reason"
+    },
+    "retryAfterMs": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "CallStaffError만"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "ApiError"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "status",
+          "code",
+          "reason",
+          "retryAfterMs"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "CallStaffError"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "attempts"
+        ]
+      }
+    }
+  ]
+}

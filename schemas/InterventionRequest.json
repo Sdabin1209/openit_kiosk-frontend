@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "InterventionRequest.json",
+  "title": "InterventionRequest",
+  "description": "직원의 개입 결정 전송 입력.",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "$ref": "SessionState.schema.json#/properties/session_id"
+    },
+    "decision": {
+      "enum": [
+        "RESUME",
+        "END"
+      ]
+    },
+    "turn_id": {
+      "$ref": "StaffCallReport.schema.json#/properties/turn_id"
+    }
+  },
+  "required": [
+    "session_id",
+    "decision",
+    "turn_id"
+  ],
+  "additionalProperties": false
+}

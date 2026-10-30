@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "FrontendBody.json",
+  "title": "FrontendBody",
+  "description": "턴·종료·개입 응답 본문을 받아들이는 조건(문진 스키마 FrontendInput의 읽는 쪽 부분집합, 모르는 키 허용). 어기면 성공으로 취급하지 않고 재시도한다(FAULT_POLICY 원칙 10).",
+  "type": "object",
+  "properties": {
+    "response_text": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "turn_failure_signal": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "session_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "write_committed": {
+              "enum": [
+                "COMMITTED",
+                "NOT_COMMITTED"
+              ]
+            },
+            "staff_alert": {
+              "enum": [
+                "NONE",
+                "DELIVERED",
+                "DELIVERY_FAILED"
+              ]
+            }
+          },
+          "required": [
+            "session_id",
+            "write_committed",
+            "staff_alert"
+          ]
+        }
+      ]
+    }
+  },
+  "required": [
+    "response_text",
+    "turn_failure_signal"
+  ]
+}

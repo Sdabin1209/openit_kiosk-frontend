@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ChatView.json",
+  "title": "ChatView",
+  "description": "대화 목록의 출력(뷰 모델). 최대 100개(임의 값, 측정 안 함, ADR 0015).",
+  "type": "object",
+  "properties": {
+    "bubbles": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "ChatBubble.json"
+      }
+    }
+  },
+  "required": [
+    "bubbles"
+  ],
+  "additionalProperties": false
+}

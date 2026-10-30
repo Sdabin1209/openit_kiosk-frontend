@@ -1,0 +1,8 @@
+{
+  "response_text": "x",
+  "turn_failure_signal": {
+    "session_id": "s",
+    "write_committed": "MAYBE",
+    "staff_alert": "NONE"
+  }
+}

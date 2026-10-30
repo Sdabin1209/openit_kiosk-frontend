@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "StartRequest.json",
+  "title": "StartRequest",
+  "description": "세션 시작 요청 입력. subject_ref는 병원 접수 환자 참조(계약 DeviceConfig의 형식), 없으면 생략 또는 null.",
+  "type": "object",
+  "properties": {
+    "subject_ref": {
+      "anyOf": [
+        {
+          "$ref": "DeviceConfig.schema.json#/properties/subject_ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

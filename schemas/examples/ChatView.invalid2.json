@@ -1,0 +1,509 @@
+{
+  "bubbles": [
+    {
+      "id": "i0",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i1",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i2",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i3",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i4",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i5",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i6",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i7",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i8",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i9",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i10",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i11",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i12",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i13",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i14",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i15",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i16",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i17",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i18",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i19",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i20",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i21",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i22",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i23",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i24",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i25",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i26",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i27",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i28",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i29",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i30",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i31",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i32",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i33",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i34",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i35",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i36",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i37",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i38",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i39",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i40",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i41",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i42",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i43",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i44",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i45",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i46",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i47",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i48",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i49",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i50",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i51",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i52",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i53",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i54",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i55",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i56",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i57",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i58",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i59",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i60",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i61",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i62",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i63",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i64",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i65",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i66",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i67",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i68",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i69",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i70",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i71",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i72",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i73",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i74",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i75",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i76",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i77",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i78",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i79",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i80",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i81",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i82",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i83",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i84",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i85",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i86",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i87",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i88",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i89",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i90",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i91",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i92",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i93",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i94",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i95",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i96",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i97",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i98",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i99",
+      "speaker": "system",
+      "text": "x"
+    },
+    {
+      "id": "i100",
+      "speaker": "system",
+      "text": "x"
+    }
+  ]
+}

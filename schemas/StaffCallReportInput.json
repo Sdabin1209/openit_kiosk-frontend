@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "StaffCallReportInput.json",
+  "title": "StaffCallReportInput",
+  "description": "환자의 직접 통지 보고 입력.",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "$ref": "SessionState.schema.json#/properties/session_id"
+    },
+    "outcome": {
+      "$ref": "StaffCallReport.schema.json#/properties/outcome"
+    },
+    "turn_id": {
+      "$ref": "StaffCallReport.schema.json#/properties/turn_id"
+    }
+  },
+  "required": [
+    "session_id",
+    "outcome",
+    "turn_id"
+  ],
+  "additionalProperties": false
+}

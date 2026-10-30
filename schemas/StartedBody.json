@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "StartedBody.json",
+  "title": "StartedBody",
+  "description": "세션 시작 응답 본문: FrontendBody + 서버가 발급한 session_id(1~64자 영문·숫자·-_). 없거나 틀리면 성공으로 보지 않는다(ID를 지어내지 않는다).",
+  "allOf": [
+    {
+      "$ref": "FrontendBody.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "$ref": "SessionState.schema.json#/properties/session_id"
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    }
+  ]
+}

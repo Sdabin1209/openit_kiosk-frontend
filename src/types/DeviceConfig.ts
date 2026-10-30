@@ -1,0 +1,21 @@
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts DeviceConfig (패키지 버전 3.1.1) */
+
+
+/**
+ * 키오스크 기기 설정(`GET /config.json`). 쓰는 쪽: deploy(운영이 마운트하는 CONFIG_FILE 내용). 읽는 쪽: kiosk-frontend(api/device.ts loadKioskStart). 초안. 모든 키는 선택이다. device_token이 없으면 키오스크는 세션을 시작하지 않고 직원 호출 화면(NO_DEVICE_TOKEN)을 보인다. 이 문서의 값은 비밀(device_token)·개인정보 참조(subject_ref)를 담을 수 있으므로 로그·오류 응답에 쓰지 않는다. [ADR 0012(헤드)로 변경 예정: 키오스크 기기 인증이 mTLS 인증서가 되면 device_token 필드는 구현 때 사라진다. 지금 스키마는 현재 필드를 쓴다.]
+ */
+export interface DeviceConfig {
+/**
+ * @deprecated
+ * (폐기 예정, 2.3.0) 기기 토큰. 2.3.0부터 키오스크 기기 인증은 게이트웨이의 클라이언트 인증서(mTLS, ADR 0012)라 이 값이 필요 없다. 2.x 호환으로만 남고 3.0.0에서 없어진다. 있으면 /v1/sessions* 요청에 `Authorization: Bearer`로 실린다. 비밀 값.
+ */
+device_token?: string
+/**
+ * 병원 접수가 넘긴 환자 참조(PUBLIC_API.md 추가 인터페이스 A의 형식). 기기당 고정 참조인지 환자마다 새 값인지는 미정(사용자 확인 대기). 시작 URL 조각의 subject_ref가 있으면 그것이 먼저다.
+ */
+subject_ref?: string
+/**
+ * true일 때만 기기 안 인식이 안 되는 기기에서 외부 음성 인식 제공자로 환자 음성이 나갈 수 있다(화면에 환자 고지 문구가 보인다). 없으면 false. 반드시 JSON 불리언 true여야 켜진다(문자열 "true"는 꺼짐).
+ */
+allow_remote_stt?: boolean
+}

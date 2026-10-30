@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "StaffCallView.json",
+  "title": "StaffCallView",
+  "description": "직원 호출 화면의 '다시 부르기' 상태. 없으면(옛 서버) 기능 없음.",
+  "type": "object",
+  "properties": {
+    "canRetry": {
+      "type": "boolean"
+    },
+    "sending": {
+      "type": "boolean"
+    },
+    "waitS": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "서버가 준 retry_after_s로만 정한다"
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "notice": {
+      "enum": [
+        "NO_ALERT",
+        "STILL_FAILED",
+        "NETWORK",
+        "LIMIT",
+        "UNSUPPORTED",
+        "REPORT_FAILED",
+        "AUTH",
+        "BUSY",
+        "READY"
+      ]
+    }
+  },
+  "required": [
+    "canRetry",
+    "sending",
+    "waitS",
+    "attempts"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,6 @@
+{
+  "deviceToken": "tok",
+  "subjectRef": "P1",
+  "subjectInvalid": false,
+  "allowRemoteStt": true
+}

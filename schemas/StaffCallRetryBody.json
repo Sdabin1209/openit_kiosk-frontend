@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "StaffCallRetryBody.json",
+  "title": "StaffCallRetryBody",
+  "description": "직원 호출 재알림 응답을 받아들이는 조건. retry_after_s가 없으면 버튼 비활성 시간을 지어내야 하므로 성공으로 보지 않는다.",
+  "type": "object",
+  "properties": {
+    "alert_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "staff_alert": {
+      "enum": [
+        "DELIVERED",
+        "DELIVERY_FAILED"
+      ]
+    },
+    "delivery_attempts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "retry_after_s": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "alert_id",
+    "staff_alert",
+    "delivery_attempts",
+    "retry_after_s"
+  ]
+}

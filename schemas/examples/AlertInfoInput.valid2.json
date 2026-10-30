@@ -1,0 +1,5 @@
+{
+  "delivery_attempts": 2,
+  "last_delivery_status": "DELIVERY_FAILED",
+  "pause_reason": "RISK"
+}

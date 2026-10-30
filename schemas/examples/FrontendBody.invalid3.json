@@ -1,0 +1,8 @@
+{
+  "response_text": "x",
+  "turn_failure_signal": {
+    "session_id": "",
+    "write_committed": "COMMITTED",
+    "staff_alert": "NONE"
+  }
+}

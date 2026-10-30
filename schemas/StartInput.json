@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "StartInput.json",
+  "title": "StartInput",
+  "description": "시작 값 결정 입력: 주소창 조각(#...)과 기기 설정 본문(없으면 null).",
+  "type": "object",
+  "properties": {
+    "hash": {
+      "type": "string"
+    },
+    "config": {}
+  },
+  "required": [
+    "hash",
+    "config"
+  ],
+  "additionalProperties": false
+}

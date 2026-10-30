@@ -1,0 +1,7 @@
+{
+  "baseMs": 500,
+  "factor": 2,
+  "maxMs": 5000,
+  "budgetMs": 20000,
+  "minJitter": 1.5
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "PushNotification.json",
+  "title": "PushNotification",
+  "description": "푸시 본문에서 만든 알림 문구와 tag.",
+  "type": "object",
+  "properties": {
+    "body": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tag": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "body",
+    "tag"
+  ],
+  "additionalProperties": false
+}

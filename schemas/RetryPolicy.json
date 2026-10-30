@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "RetryPolicy.json",
+  "title": "RetryPolicy",
+  "description": "재시도 정책 값. 값의 근거는 docs/adr/0004.",
+  "type": "object",
+  "properties": {
+    "baseMs": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "첫 재시도 기준 대기(ms)"
+    },
+    "factor": {
+      "type": "number",
+      "minimum": 1
+    },
+    "maxMs": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "budgetMs": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "총 재시도 예산(ms). 직원 스트림은 무한"
+    },
+    "maxAttempts": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "시도 횟수 상한. 무한은 JSON에 없으므로 이 값을 생략한다"
+    },
+    "minJitter": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": [
+    "baseMs",
+    "factor",
+    "maxMs",
+    "budgetMs",
+    "minJitter"
+  ],
+  "additionalProperties": false
+}

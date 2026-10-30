@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "AlertInfoInput.json",
+  "title": "AlertInfoInput",
+  "description": "알림 보조 정보 입력: 계약 StaffAlert의 2.1.0 선택 필드만 읽는다. 모르는 값도 그대로 보인다(관대하게 읽기).",
+  "type": "object",
+  "properties": {
+    "delivery_attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_delivery_status": {
+      "type": "string"
+    },
+    "manual_notice_outcome": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "manual_notice_reported_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pause_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

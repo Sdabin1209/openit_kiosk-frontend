@@ -1,0 +1,7 @@
+{
+  "name": "ApiError",
+  "status": 409,
+  "code": "CONFLICT",
+  "reason": "NO_OPEN_ALERT",
+  "retryAfterMs": null
+}

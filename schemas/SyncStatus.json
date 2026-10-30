@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SyncStatus.json",
+  "title": "SyncStatus",
+  "description": "직원 콘솔 알림 동기화 상태. 연결·목록 상태를 항상 밖으로 알린다(조용히 비어 있는 화면 금지).",
+  "type": "object",
+  "properties": {
+    "conn": {
+      "enum": [
+        "CONNECTING",
+        "CONNECTED",
+        "DISCONNECTED"
+      ]
+    },
+    "nextRetryMs": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "listStale": {
+      "type": "boolean"
+    },
+    "listLoaded": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "conn",
+    "nextRetryMs",
+    "listStale",
+    "listLoaded"
+  ],
+  "additionalProperties": false
+}

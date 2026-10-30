@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "KioskView.json",
+  "title": "KioskView",
+  "description": "키오스크 상태 기계의 출력(화면이 그리는 값). 환자 발화는 담지 않는다(text는 서버 응답 문장).",
+  "type": "object",
+  "properties": {
+    "state": {
+      "enum": [
+        "IDLE",
+        "STARTING",
+        "LISTENING",
+        "REPEAT_PROMPT",
+        "SENDING",
+        "WAITING_STAFF",
+        "CALL_STAFF",
+        "ENDING",
+        "ENDED"
+      ]
+    },
+    "text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "callStaffReason": {
+      "enum": [
+        "RETRY_EXHAUSTED",
+        "DELIVERY_FAILED",
+        "AUTH",
+        "START_FAILED",
+        "STAFF_REQUESTED",
+        "BAD_SUBJECT_REF",
+        "REPEAT_LIMIT"
+      ]
+    },
+    "repeatReason": {
+      "enum": [
+        "EMPTY_STT",
+        "NOT_COMMITTED"
+      ]
+    },
+    "retrying": {
+      "type": "boolean"
+    },
+    "idleWarnS": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "유휴 만료 경고 중: 만료까지 남은 초(WCAG 2.2.1)"
+    },
+    "textFallback": {
+      "type": "boolean"
+    },
+    "startNotice": {
+      "const": "NO_SUBJECT_REF"
+    },
+    "waitNotice": {
+      "enum": [
+        "SERVER_UNREACHABLE",
+        "LONG_WAIT"
+      ]
+    },
+    "endFailed": {
+      "type": "boolean"
+    },
+    "confirmLeave": {
+      "type": "boolean"
+    },
+    "pauseReason": {
+      "enum": [
+        "RISK",
+        "REASK_LIMIT",
+        "OTHER"
+      ]
+    },
+    "staffCall": {
+      "$ref": "StaffCallView.json"
+    },
+    "busy": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "state",
+    "text"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "CALL_STAFF"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "required": [
+          "callStaffReason"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "REPEAT_PROMPT"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "required": [
+          "repeatReason"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "callStaffReason"
+        ]
+      },
+      "then": {
+        "properties": {
+          "state": {
+            "const": "CALL_STAFF"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "staffCall"
+        ]
+      },
+      "then": {
+        "properties": {
+          "state": {
+            "const": "CALL_STAFF"
+          }
+        }
+      }
+    }
+  ]
+}

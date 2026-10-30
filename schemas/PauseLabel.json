@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "PauseLabel.json",
+  "title": "PauseLabel",
+  "description": "정지 사유 표시. 글자 접두를 항상 같이 쓴다(색에만 기대지 않는다).",
+  "type": "object",
+  "properties": {
+    "reason": {
+      "enum": [
+        "RISK",
+        "REASK_LIMIT",
+        "OTHER"
+      ]
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "reason",
+    "text"
+  ],
+  "additionalProperties": false
+}

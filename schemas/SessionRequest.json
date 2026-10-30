@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SessionRequest.json",
+  "title": "SessionRequest",
+  "description": "세션 하나를 가리키는 요청(종료, 상태 조회) 입력.",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "$ref": "SessionState.schema.json#/properties/session_id"
+    }
+  },
+  "required": [
+    "session_id"
+  ],
+  "additionalProperties": false
+}

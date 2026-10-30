@@ -1,0 +1,20 @@
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffPushPayload (패키지 버전 3.1.1) */
+
+
+/**
+ * 직원 콘솔 웹 푸시의 본문(암호 해제 뒤 JSON). 쓰는 쪽: 문진 서버(survey-service). 읽는 쪽: kiosk-frontend 서비스 워커(apps/staff/sw.ts). PUBLIC_API.md는 '푸시 본문에는 세션 ID와 종류만 넣는다'만 정하고 키 이름은 없다. 초안. 환자 발화·값 등 개인정보는 넣지 않는다.
+ */
+export interface StaffPushPayload {
+/**
+ * 알림의 세션 ID. 알림 본문 문구에 쓰인다. 없으면 수신 쪽은 일반 문구('새 알림이 있습니다')를 보인다.
+ */
+session_id: string
+/**
+ * StaffAlert.kind와 같은 이름·값(알려진 값 RISK_STOP, CALL_STAFF, USER_CALLED_STAFF; 모르는 값은 그대로 보여 준다). 없으면 '알림'.
+ */
+kind?: string
+/**
+ * StaffAlert.alert_id. 알림 tag로 쓴다: 같은 alert_id의 재알림은 같은 tag로 교체되고 소리·진동을 다시 낸다(renotify). 없으면 tag는 고정 'staff-alert'.
+ */
+alert_id?: string
+}

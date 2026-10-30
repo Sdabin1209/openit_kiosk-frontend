@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "UtteranceRequest.json",
+  "title": "UtteranceRequest",
+  "description": "발화 전송 입력. 빈 발화(공백뿐)는 서버로 보내지 않는다.",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "$ref": "SessionState.schema.json#/properties/session_id"
+    },
+    "utterance": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "turn_id": {
+      "$ref": "StaffCallReport.schema.json#/properties/turn_id"
+    }
+  },
+  "required": [
+    "session_id",
+    "utterance",
+    "turn_id"
+  ],
+  "additionalProperties": false
+}

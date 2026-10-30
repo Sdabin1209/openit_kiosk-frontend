@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SttResult.json",
+  "title": "SttResult",
+  "description": "음성 인식 어댑터의 출력.",
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string"
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "text",
+    "confidence"
+  ],
+  "additionalProperties": false
+}

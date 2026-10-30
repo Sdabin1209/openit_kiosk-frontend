@@ -1,0 +1,6 @@
+{
+  "alert_id": "a",
+  "staff_alert": "NONE",
+  "delivery_attempts": 1,
+  "retry_after_s": 0
+}

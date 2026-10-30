@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "KioskStart.json",
+  "title": "KioskStart",
+  "description": "키오스크 시작 값(메모리 전용). 형식은 계약 DeviceConfig·KioskStartFragment가 정한다.",
+  "type": "object",
+  "properties": {
+    "deviceToken": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "subjectRef": {
+      "anyOf": [
+        {
+          "$ref": "DeviceConfig.schema.json#/properties/subject_ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "subjectInvalid": {
+      "type": "boolean",
+      "description": "값이 있었지만 형식이 틀렸다. 세션을 시작하지 않고 직원을 부른다"
+    },
+    "allowRemoteStt": {
+      "const": true,
+      "description": "기기 설정이 켠 때만 있다(기본 꺼짐, D88 U3)"
+    }
+  },
+  "required": [
+    "deviceToken",
+    "subjectRef",
+    "subjectInvalid"
+  ],
+  "additionalProperties": false
+}

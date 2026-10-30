@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "UsableTranscript.json",
+  "title": "UsableTranscript",
+  "description": "서버로 보내도 되는 인식 결과. 글자가 하나도 없는(공백·문장부호뿐) 결과와 신뢰도 0.4 미만은 거부한다. 0.4는 잠정(사용자 결정 U10, 근거 없는 임의 값, 측정하지 않았다, ADR 0008).",
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string",
+      "pattern": "[^\\s.,?!]"
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0.4,
+          "maximum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "text",
+    "confidence"
+  ],
+  "additionalProperties": false
+}

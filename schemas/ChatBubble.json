@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ChatBubble.json",
+  "title": "ChatBubble",
+  "description": "말풍선 하나.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "speaker": {
+      "enum": [
+        "patient",
+        "system"
+      ]
+    },
+    "text": {
+      "type": "string",
+      "pattern": "\\S"
+    }
+  },
+  "required": [
+    "id",
+    "speaker",
+    "text"
+  ],
+  "additionalProperties": false
+}
