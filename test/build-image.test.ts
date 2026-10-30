@@ -19,7 +19,7 @@ const EXPOSURE_LABEL = JSON.stringify(JSON.parse(readFileSync("deploy-exposure.j
 // 이 영역이 실제로 쓰는(고정한) 버전: Dockerfile의 ARG 기본값이다. 요청 버전이 이것과 다르면 진입점은 라벨을 찍지 않고 실패한다(U50, 라벨이 거짓이 되지 않게).
 const DOCKERFILE = readFileSync("Dockerfile", "utf8");
 const PIN_BOUNDARY = DOCKERFILE.match(/^ARG BOUNDARY_CONTRACT=(\S+)/m)![1];
-const REQ = { source_dir: REPO, revision: "bad876c", versions: { boundary: PIN_BOUNDARY, survey_schema: "v2.0.0" }, image_tag: "kiosk-frontend-test/kiosk-frontend:bad876c" };
+const REQ = { source_dir: REPO, revision: "bad876c", versions: { boundary: PIN_BOUNDARY, survey_schema: "v3.0.0" }, image_tag: "kiosk-frontend-test/kiosk-frontend:bad876c" };
 
 /** 가짜 docker: build 인자를 기록하고, inspect는 요청과 같은 라벨을 돌려준다(labelsOverride로 어긋난 이미지를 흉내 낸다). */
 function fakeDocker(dir: string, labelsOverride?: Record<string, string>) {

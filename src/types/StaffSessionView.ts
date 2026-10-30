@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: survey-service/schema/schemas/StaffSessionView.json */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: survey-service survey-schema-v3.0.0 schema/schemas/StaffSessionView.json */
 
 
 export type SessionId = string

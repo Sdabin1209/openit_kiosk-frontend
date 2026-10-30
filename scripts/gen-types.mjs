@@ -1,6 +1,6 @@
 // schemas/(영역 내부 타입)과 계약·문진 스키마에서 src/types/를 만든다. 손으로 고치지 않는다(DESIGN.md 3절, D117).
 //   src/types/<이름>.ts            : json-schema-to-typescript가 만든 코드 타입. 영역 타입은 schemas/<이름>.json, 공개 API 본문 타입은
-//                                    문진 스키마(../survey-service/schema/schemas, 읽기 전용)와 고정 태그의 계약(scripts/contract-source.mjs)에서 만든다.
+//                                    문진 스키마(survey-service 리포의 고정 태그 survey-schema-v3.0.0, 읽기 전용)와 고정 태그의 계약(scripts/contract-source.mjs)에서 만든다.
 //   src/types/validators.gen.cjs   : 위 스키마 검증기(ajv standalone). 컴포넌트의 입력 검사는 이 검증기 하나다(DESIGN.md 5절).
 //   src/types/validators.gen.d.cts : 검증기 이름 목록의 형.
 // 사용: node scripts/gen-types.mjs [--check]   (--check: 쓰지 않고 현재 파일이 생성 결과와 같은지만 본다)
@@ -9,11 +9,10 @@ import { compile } from "json-schema-to-typescript";
 import Ajv2020 from "ajv/dist/2020.js";
 import standaloneCode from "ajv/dist/standalone/index.js";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { contractJson, contractVersion } from "./contract-source.mjs";
+import { contractJson, contractVersion, surveySchemaJson, SURVEY_SCHEMA_TAG } from "./contract-source.mjs";
 
 const ROOT = new URL("../", import.meta.url);
 const OUT = new URL("src/types/", ROOT);
-const SURVEY = new URL("../../survey-service/schema/schemas/", import.meta.url);
 const check = process.argv.includes("--check");
 
 // 공개 API 본문 타입의 출처. 계약은 고정 태그에서, 문진 스키마는 옆 폴더에서(읽기 전용) 읽는다.
@@ -56,10 +55,10 @@ const files = new Map();
 for (const [n, s] of Object.entries(internal)) files.set(`${n}.ts`, await ts(n, s, `schemas/${n}.json`));
 for (const n of CONTRACT_TYPES) files.set(`${n}.ts`, await ts(n, contract(n), `boundary-contracts ${n} (패키지 버전 ${contractVersion()})`));
 for (const n of SURVEY_TYPES) {
-  const s = readJson(new URL(`${n}.json`, SURVEY));
+  const s = surveySchemaJson(n); // 고정 태그에서 읽는다(옆 폴더 작업 트리가 아님)
   const dup = files.has(`${n}.ts`);
   if (dup) throw new Error(`gen-types: 타입 이름 충돌 ${n}`);
-  files.set(`${n}.ts`, await ts(n, s, `survey-service/schema/schemas/${n}.json`));
+  files.set(`${n}.ts`, await ts(n, s, `survey-service ${SURVEY_SCHEMA_TAG} schema/schemas/${n}.json`));
 }
 
 // 검증기: 영역 스키마 전부 + 계약 경계 스키마.
