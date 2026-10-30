@@ -5,11 +5,12 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { PublicApiClient } from "../api/client.ts";
-import { ApiError } from "../api/errors.ts";
-import { normalizePauseReason } from "../api/types.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { deliveryLines, pauseLabel } from "../apps/staff/alertinfo.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { ApiError } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
+import { deliveryLines, pauseLabel } from "../src/components/alert_info.ts";
 import { hang, json, ok, settle, startMock, started } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
@@ -27,7 +28,7 @@ type Route = (path: string, body: any) => Response | Promise<Response>;
 function make(route: Route, state: () => any = () => ({ state: "PAUSED_RISK", resume_text: null })) {
   const calls: Array<{ path: string; body: any }> = [];
   const clk = clock();
-  const api = new PublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, "");
     if (init.method === "GET") return json({ session_id: "s", ...state() });
     const body = JSON.parse(init.body as string); calls.push({ path, body });
@@ -35,7 +36,7 @@ function make(route: Route, state: () => any = () => ({ state: "PAUSED_RISK", re
     if (body.kind === "SESSION_START") return started("시작");
     return ok("대기", DF);
   }) as any });
-  const flow = new KioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}), timers: clk });
+  const flow = createKioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}), timers: clk });
   return { flow, calls, clk, sc: () => calls.filter((c) => c.path.includes("/staff-call/")) };
 }
 const toFailed = async (m: ReturnType<typeof make>) => { await m.flow.start(); await m.flow.hear(say("위험")); assert.equal(m.flow.current.callStaffReason, "DELIVERY_FAILED"); };
@@ -70,7 +71,7 @@ test("재알림이 DELIVERED이면 안내(대기) 화면으로 바뀌고 상태 
 test("응답을 못 받은 재전송(시간 초과·네트워크)은 같은 turn_id, 화면은 유지, 버튼은 다시 켜진다", async () => {
   let n = 0;
   const m = make((p, b) => (++n === 1 ? hang() as any : retryOk("DELIVERED")));
-  (m.flow as any).api = new PublicApiClient({ timeoutMs: 20, retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  (m.flow as any).api = createPublicApiClient({ timeoutMs: 20, retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, ""); if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
     const body = JSON.parse(init.body as string); m.calls.push({ path, body });
     if (path.includes("/staff-call/")) return ++n === 1 ? hang(init) : retryOk("DELIVERED");
@@ -137,16 +138,14 @@ test("report가 네트워크로 실패해도 환자를 화면에 가두지 않�
 });
 
 test("pause_reason: 상태 폴링 값을 정규화한다(모르는 값=OTHER, 없음=미상) - WAITING_STAFF에 실린다", async () => {
-  assert.equal(normalizePauseReason("REASK_LIMIT"), "REASK_LIMIT"); assert.equal(normalizePauseReason("FUTURE"), "OTHER");
-  assert.equal(normalizePauseReason(null), undefined); assert.equal(normalizePauseReason(undefined), undefined);
   for (const [reason, want] of [["REASK_LIMIT", "REASK_LIMIT"], ["RISK", "RISK"], ["NEW_THING", "OTHER"], [undefined, undefined]] as const) {
     const calls: any[] = [];
-    const api = new PublicApiClient({ sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+    const api = createPublicApiClient({ sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
       if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null, ...(reason ? { pause_reason: reason } : {}) });
       const b = JSON.parse(init.body as string); calls.push(b);
       return b.kind === "SESSION_START" ? started("시작") : ok("서버 고정 문장", null);
     }) as any });
-    const flow = new KioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}) });
+    const flow = createKioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}) });
     await flow.start(); await flow.hear(say("아무말"));
     assert.equal(flow.current.state, "WAITING_STAFF");
     assert.equal(flow.current.pauseReason, want);
@@ -171,7 +170,7 @@ const bs = (n: string) => ajv.compile(contractJson(`schemas/${n}`)); // 고정 �
 const vRetryReq = bs("StaffCallRetryRequest.schema.json"), vRetry = bs("StaffCallRetryResult.schema.json"), vReport = bs("StaffCallReport.schema.json"), vAlert = bs("StaffAlert.schema.json"), vState = bs("SessionState.schema.json");
 const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
-async function mk(sc = {}) { const m = await startMock(sc); open.push(m.close); return { m, api: new PublicApiClient({ baseUrl: m.base + "/v1", sleep: async () => {} }) }; }
+async function mk(sc = {}) { const m = await startMock(sc); open.push(m.close); return { m, api: createPublicApiClient({ baseUrl: m.base + "/v1", sleep: async () => {} }) }; }
 
 test("모의 서버: retry/report/state 응답이 계약 스키마를 지키고 멱등·간격·상한이 동작한다", async () => {
   const { m, api } = await mk({ alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERY_FAILED", retryAfterS: 60, enforceInterval: true, retryLimit: 2 });

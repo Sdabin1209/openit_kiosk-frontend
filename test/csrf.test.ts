@@ -4,22 +4,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { PublicApiClient } from "../api/client.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 
-const files = ["api", "apps/kiosk", "apps/staff"].flatMap((d) => readdirSync(new URL(`../${d}/`, import.meta.url)).filter((f) => /\.(ts|html)$/.test(f)).map((f) => `${d}/${f}`));
+const files = ["src/components", "src/wiring", "src/ui", "src/kiosk", "src/staff", "src/staff/sw"].flatMap((d) => readdirSync(new URL(`../${d}/`, import.meta.url)).filter((f) => /\.(ts|html)$/.test(f)).map((f) => `${d}/${f}`));
 
 test("Origin: null이 될 수 있는 전송 방식(form POST·sendBeacon·no-cors·XHR)을 쓰지 않고, 서비스 워커는 요청을 보내지 않는다", () => {
   for (const f of files) {
     const t = readFileSync(new URL(`../${f}`, import.meta.url), "utf8").replace(/\/\/.*$/gm, "");
     assert.ok(!/sendBeacon|no-cors|XMLHttpRequest|<form|keepalive/.test(t), `${f}: CSRF 호환을 깨는 전송 방식`);
   }
-  const sw = readFileSync(new URL("../apps/staff/sw.ts", import.meta.url), "utf8");
-  assert.ok(!/fetch\(|sync|Request\(/.test(sw.replace(/\/\/.*$/gm, "")), "sw.ts는 push·notificationclick만 처리한다(네트워크 요청 없음)");
+  const sw = readFileSync(new URL("../src/staff/sw/index.ts", import.meta.url), "utf8");
+  assert.ok(!/fetch\(|sync|Request\(/.test(sw.replace(/\/\/.*$/gm, "")), "sw는 push·notificationclick만 처리한다(네트워크 요청 없음)");
 });
 
 test("PublicApiClient 상태 변경 요청은 mode·referrer 옵션 없이 same-origin 자격으로 나간다(기본 mode=cors → Origin: https://호스트)", async () => {
   const seen: RequestInit[] = [];
-  const c = new PublicApiClient({ fetch: (async (_u: string, init: RequestInit) => { seen.push(init); return new Response("{}", { status: 200 }); }) as any });
+  const c = createPublicApiClient({ fetch: (async (_u: string, init: RequestInit) => { seen.push(init); return new Response("{}", { status: 200 }); }) as any });
   await c.request("POST", "/staff/push-subscriptions", {}).catch(() => {});
   await c.request("DELETE", "/staff/push-subscriptions?endpoint=x").catch(() => {});
   assert.deepEqual(seen.map((s) => s.method), ["POST", "DELETE"]);

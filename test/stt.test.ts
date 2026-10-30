@@ -1,7 +1,7 @@
 // D88 U3: 음성 인식은 기기 안에서만(processLocally). 지원하지 않으면 음성 입력을 끄고 외부로 보내지 않는다.
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { WebSpeechStt } from "../apps/kiosk/stt.ts";
+import { WebSpeechStt } from "../src/components/stt_adapter.ts";
 
 const g = globalThis as any;
 afterEach(() => { delete g.SpeechRecognition; delete g.webkitSpeechRecognition; });

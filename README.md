@@ -19,13 +19,17 @@
 
 | 경로 | 역할 |
 |---|---|
-| `api/` | 공개 API 클라이언트. UI를 모른다. `contract.ts`와 생성물 `contract-validators.gen.cjs`는 계약 경계 스키마(DeviceConfig, KioskStartFragment, StaffPushPayload)의 검증기(ADR 0021). 재시도(같은 `turn_id`, 지수 백오프+지터, 총 예산 20초; 재시도·처리 여부 불명 분류는 `api/retry.ts` 한 곳), 세션별 순서 큐, 10초 타임아웃, 상태 코드 분기 |
-| `apps/kiosk/` | 키오스크 앱. `flow.ts` 상태 기계, `stt.ts` 음성 어댑터(오류는 `SttError.kind` 열거), `chat.ts` 현재 세션 대화 목록(입력 이벤트, 출력 뷰 모델, 메모리 전용, ADR 0015)과 `chatview.ts` 대화 스레드 그리기(현재 질문은 마지막 시스템 말풍선, ADR 0023), `main.ts` 화면 |
-| `apps/staff/` | 직원 콘솔. `decide.ts` 개입 결정(확인 후 전송), `push.ts` 푸시 구독, `sw.ts` 서비스 워커 |
+| `schemas/` | 영역 내부 타입의 JSON Schema(draft 2020-12)와 통과·거부 예시. 받아들이는 조건은 전부 여기에 있다(`schemas/README.md`) |
+| `src/types/` | `schemas/`와 계약·문진 스키마에서 **생성**한 코드 타입과 검증기. 손으로 고치지 않는다(4절) |
+| `src/components/` | 컴포넌트마다 파일 하나(분해와 표: `docs/components.md`). 공개 API 보내기(`link_public_api_send.ts`, 재시도 세션 큐·상태 코드 해석), 직원 스트림 받기, 기기 설정 받기, 재시도 정책, 시작 값, 키오스크 상태 기계, 음성 인식, 대화 목록, 환자 문구, 개입 결정, 알림 동기화·보조 정보, 푸시. 컴포넌트끼리 import하지 않는다 |
+| `src/wiring/` | 컴포넌트 연결과 주입(링크에 재시도 정책·턴 ID, 상태 기계에 공개 API 등) |
+| `src/ui/` | 화면 부품(DOM): 키오스크 화면, 대화 스레드 그리기, 직원 기록 보기 |
+| `src/kiosk/`, `src/staff/` | 앱 진입점(`main.ts`, 서비스 워커 `sw/index.ts`)과 HTML·CSS |
+| `src/config.ts` | 설정 값(재시도·유휴·재질문 상한 등)과 근거 |
 | `mock-server/` | 공개 API 모의 서버(시나리오: normal, risk_stop, delivery_failed, not_committed, delay, hang, error 등). 서버 없이 혼자 시험·시연하는 대역 |
 | `Caddyfile` | 정적 서빙 설정(Caddy file_server: 보안 헤더, `/healthz`, `/readyz`, `/config.json`, ADR 0022). `mock-server/devstatic.ts`는 시험·시연용 대역(이미지에 없음) |
 | `deploy-exposure.json` | 게이트웨이 노출 선언의 정본(계약 Exposure, 라벨 `io.openit.exposure`, ADR 0029) |
-| `scripts/` | `build-image.sh`(영역 빌드 진입점, ADR 0026), `build.mjs`, `check-schema.mjs`(스키마 열거값 대조), `gen-validators.mjs`(계약 경계 스키마에서 검증기 생성, ADR 0021), `doctor.mjs`(전제 점검), `smoke.sh`, `e2e-docker.sh` |
+| `scripts/` | `gen-types.mjs`(타입·검증기 생성), `build-image.sh`(영역 빌드 진입점, ADR 0026), `build.mjs`, `check-schema.mjs`(스키마 열거값 대조), `gen-validators.mjs`(빌드 진입점용 검증기 생성, ADR 0021), `doctor.mjs`(전제 점검), `smoke.sh`, `e2e-docker.sh` |
 | `test/`, `test-e2e/` | 단위·계약 시험(`node:test`), 브라우저 시험(Playwright 컨테이너) |
 | `Dockerfile` | 정적 빌드 이미지(non-root, 라벨 `io.openit.*`) |
 | `docs/` | 아래 "더 자세한 문서" 참고 |
@@ -58,6 +62,17 @@ npm run test:e2e        # 헤드리스 Chromium 화면 시험, Playwright 공식
 
 이 문서를 쓰며 직접 돌려 본 것(2026-10-27, Node v24.14.0): `npm test`(통과, 숫자는 실행 결과 참조), `npm run typecheck`(오류 없음), `npm run check-schema`("스키마 열거값 일치"), `npm run doctor`("OK: 전제 충족").
 `bash scripts/setup-env.sh`는 2026-10-28 새 clone에서 두 번 돌려 둘 다 성공했다(위 설명). 돌리지 않은 것: `npm run build`, 모의 서버 시연, `npm run smoke`, `npm run test:e2e`, `npm run test:e2e:host`.
+
+## 4. 타입 생성 (schemas/ -> src/types/)
+
+`src/types/`는 생성물이다. 영역 타입은 `schemas/<이름>.json`에서, 공개 API 본문 타입은 문진 스키마(`../survey-service/schema/schemas`, 읽기 전용)와 고정 태그의 계약에서 만든다. 도구: json-schema-to-typescript(타입), ajv standalone(검증기); 버전은 `package-lock.json`으로 고정.
+
+```bash
+npm run gen-types            # = node scripts/gen-types.mjs   (src/types/ 다시 생성)
+node scripts/gen-types.mjs --check   # 생성 결과와 같은지만 확인(test/test_structure.test.ts 5번이 돌린다)
+```
+
+구조 규칙 시험: `test/test_structure.test.ts`(DESIGN.md 6절). 구조 개편 근거: `docs/adr/0032-*.md`.
 
 ## 현재 상태
 

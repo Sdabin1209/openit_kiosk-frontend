@@ -2,10 +2,12 @@
 // 컴포넌트 시험은 입력(이벤트) -> 출력(뷰 모델)만 본다. 기대값은 데모 요구(시간순, 세션 끝나면 지움)에서 나왔다.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PublicApiClient } from "../api/client.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
-import { ChatLog, MAX_BUBBLES, type ConversationEvent } from "../apps/kiosk/chat.ts";
-import { renderChat } from "../apps/kiosk/chatview.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
+import { ChatLog, MAX_BUBBLES, type ConversationEvent } from "../src/components/chat_log.ts";
+import { renderChat } from "../src/ui/chat_view.ts";
 import { json, ok, settle, started, asStarted } from "./helpers.ts";
 
 let JSDOM: any = null;
@@ -35,12 +37,12 @@ test("ChatLog: 상한을 넘으면 가장 오래된 것부터 버린다", () => 
 });
 
 function make(handler: (b: any) => Response, stateFn: () => any = () => ({ state: "ACTIVE", resume_text: null })) {
-  const api = new PublicApiClient({ retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (_u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", ...stateFn() });
     const b = JSON.parse(init.body as string); const res = handler(b); return b.kind === "SESSION_START" ? asStarted(res) : res;
   }) as any });
   const sleepers: Array<() => void> = [];
-  const flow = new KioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) });
+  const flow = createKioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) });
   const chat = new ChatLog();
   flow.subscribeConversation((e: ConversationEvent) => chat.accept(e));
   return { flow, chat, step: async () => { await settle(); sleepers.splice(0).forEach((r) => r()); await settle(); } };

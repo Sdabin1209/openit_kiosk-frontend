@@ -2,16 +2,18 @@
 // 엔드포인트 URL은 그 자체가 푸시 권한을 주는 값이라 URL(쿼리 문자열)에 싣지 않는다. 기준: ../boundary-contracts/PUBLIC_API.md 푸시 구독 행.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PublicApiClient } from "../api/client.ts";
-import { StaffApi } from "../api/staff.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createStaffApi } from "../src/wiring/public_api.ts";
+import type { StaffApi } from "../src/wiring/public_api.ts";
 import { startMock } from "./helpers.ts";
 
 const EP = "https://push.example/secret-endpoint-abc";
 
 test("unregisterPush: POST .../unsubscribe, 본문에 endpoint, URL에는 endpoint 없음", async () => {
   const seen: Array<{ method: string; url: string; body: any }> = [];
-  const c = new PublicApiClient({ fetch: (async (url: string, init: RequestInit) => { seen.push({ method: init.method!, url, body: init.body ? JSON.parse(init.body as string) : undefined }); return new Response(null, { status: 204 }); }) as any });
-  await new StaffApi(c).unregisterPush(EP);
+  const c = createPublicApiClient({ fetch: (async (url: string, init: RequestInit) => { seen.push({ method: init.method!, url, body: init.body ? JSON.parse(init.body as string) : undefined }); return new Response(null, { status: 204 }); }) as any });
+  await createStaffApi(c).unregisterPush(EP);
   assert.equal(seen.length, 1);
   assert.equal(seen[0].method, "POST");
   assert.equal(seen[0].url, "/v1/staff/push-subscriptions/unsubscribe");

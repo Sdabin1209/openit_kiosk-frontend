@@ -9,7 +9,7 @@ import { createECDH } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { chromium, type Browser, type Page, type BrowserContext } from "playwright";
 import { createMock } from "../mock-server/app.ts";
-import { makeDevStatic } from "../mock-server/devstatic.ts";
+import { makeDevStatic } from "../mock-server/server.ts";
 
 const SHOTS = "e2e-artifacts";
 mkdirSync(SHOTS, { recursive: true });

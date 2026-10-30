@@ -1,6 +1,6 @@
-// ../survey-service/schema/schemas(읽기 전용)의 열거값이 api/types.ts와 같은지 대조한다. 스키마 복사본은 두지 않는다.
+// ../survey-service/schema/schemas(읽기 전용)의 이 영역의 표기(계약 버전, 모의 서버 pipeline 버전)와 서버 스키마(StaffSessionView)를 대조한다. 스키마 복사본은 두지 않는다.
 import { existsSync, readFileSync } from "node:fs";
-import { contractFile, contractJson } from "./contract-source.mjs";
+import { contractFile } from "./contract-source.mjs";
 // 왜: 이 대조는 이웃 폴더(문진 스키마, 계약)를 읽기 전용으로 읽는다. 없을 때 ENOENT 스택 대신 이유와 해결을 내고 비0으로 끝낸다.
 for (const rel of ["../../survey-service/schema/schemas/", "../../boundary-contracts/schemas/"]) { // 계약은 git 태그에서 읽고 폴더는 그 저장소가 있는지 보려는 것이다
   if (!existsSync(new URL(rel, import.meta.url))) {
@@ -9,20 +9,8 @@ for (const rel of ["../../survey-service/schema/schemas/", "../../boundary-contr
   }
 }
 const dir = new URL("../../survey-service/schema/schemas/", import.meta.url);
-const read = (n) => JSON.parse(readFileSync(new URL(n, dir), "utf8"));
-const consts = (o) => (o.oneOf ?? []).map((x) => x.const);
-const fi = read("FrontendInput.json").$defs.TurnFailureSignal.properties;
-const iv = read("InterventionDecision.json").$defs.Decision;
-const bread = (n) => contractJson(`schemas/${n}`); // 고정 태그의 계약(옆 폴더 작업 트리가 아님, ADR 0027)
-const ss = bread("SessionState.schema.json");
-const st = bread("StaffAlert.schema.json");
-const src = readFileSync(new URL("../api/types.ts", import.meta.url), "utf8");
-const arr = (name) => JSON.parse(src.match(new RegExp(`${name} = (\\[[^\\]]*\\])`))[1].replace(/'/g, '"'));
-const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+// 열거값 대조는 하지 않는다: 공개 API 본문 타입은 문진 스키마와 계약에서 생성한다(scripts/gen-types.mjs --check가 최신인지 본다, D117).
 let bad = 0;
-for (const [name, want] of [["WRITE_COMMITTED", consts(fi.write_committed)], ["STAFF_ALERT", consts(fi.staff_alert)], ["DECISIONS", consts(iv)], ["SESSION_STATES", ss.properties.state.enum], ["ALERT_STATUS", st.properties.status.enum]]) {
-  if (!eq(arr(name), want)) { console.error(`불일치 ${name}: types.ts=${arr(name)} schema=${want}`); bad++; }
-}
 // 계약 버전 대조: 기준 계약(../boundary-contracts)의 패키지 버전과 pipeline_schema_version이 이 영역의 표기와 같아야 한다.
 const bc = (n) => contractFile(n);
 const ver = bc("pyproject.toml").match(/^version\s*=\s*"([^"]+)"/m)?.[1];
@@ -56,4 +44,4 @@ if (existsSync(svUrl)) {
 }
 if (bad) process.exit(1);
 console.log(sessionViewNote);
-console.log(`스키마 열거값 일치, 계약 v${ver}(pipeline ${pipe}) 표기 일치`);
+console.log(`계약 v${ver}(pipeline ${pipe}) 표기 일치`);

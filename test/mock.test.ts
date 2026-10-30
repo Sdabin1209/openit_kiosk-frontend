@@ -3,10 +3,13 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { PublicApiClient } from "../api/client.ts";
-import { StaffApi } from "../api/staff.ts";
-import { ApiError, CallStaffError } from "../api/errors.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createStaffApi } from "../src/wiring/public_api.ts";
+import type { StaffApi } from "../src/wiring/public_api.ts";
+import { ApiError, CallStaffError } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { startMock, waitFor } from "./helpers.ts";
 
 const SCHEMA_DIR = new URL("../../survey-service/schema/schemas/", import.meta.url);
@@ -18,7 +21,7 @@ const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
 async function mk(sc = {}, opt = {}, mopt = {}) {
   const m = await startMock(sc, mopt); open.push(m.close);
-  return { m, api: new PublicApiClient({ baseUrl: m.base + "/v1", ...fast, ...opt }) };
+  return { m, api: createPublicApiClient({ baseUrl: m.base + "/v1", ...fast, ...opt }) };
 }
 
 test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진이 돈다", async () => {
@@ -37,7 +40,7 @@ const vAlert = ajv.getSchema("StaffAlert.schema.json")!, vPage = bs("StaffAlertP
 
 test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDecision을 지킨다(D66)", async () => {
   const bodies: Record<string, any>[] = [];
-  const c = new PublicApiClient({ ...fast, fetch: (async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(init.body as string)); return new Response(JSON.stringify({ response_text: null, turn_failure_signal: null, session_id: "srv-1" })); }) as any });
+  const c = createPublicApiClient({ ...fast, fetch: (async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(init.body as string)); return new Response(JSON.stringify({ response_text: null, turn_failure_signal: null, session_id: "srv-1" })); }) as any });
   const SID_s1 = (await c.startSession()).session_id; await c.sendUtterance(SID_s1, "x", "t1"); await c.intervene(SID_s1, "RESUME", "t2"); await c.endSession(SID_s1);
   assert.equal(bodies.length, 4);
   for (const b of bodies) {
@@ -67,13 +70,13 @@ test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async ()
 test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨다", async () => {
   const { m, api } = await mk({ vapidPublicKey: "PUBKEY" });
   const SID_s1 = (await api.startSession()).session_id; await api.sendUtterance(SID_s1, "위험");
-  const page = await new StaffApi(api).listAlerts("OPEN");
+  const page = await createStaffApi(api).listAlerts("OPEN");
   assert.ok(vPage(page), JSON.stringify(vPage.errors)); // 새 optional 필드 포함 목록 전체(계약 2ec2849에서 StaffAlertPage가 StaffAlert를 $ref)
   assert.ok(vAlert(page.items[0]), JSON.stringify(vAlert.errors));
   const st = await api.getSessionState(SID_s1);
   assert.ok(vState(st), JSON.stringify(vState.errors));
   assert.equal(st.state, "PAUSED_RISK");
-  const pc = await new StaffApi(api).pushConfig();
+  const pc = await createStaffApi(api).pushConfig();
   assert.ok(vPush(pc)); assert.equal(pc.vapid_public_key, "PUBKEY");
   m.state.sc.vapidPublicKey = null;
   assert.equal((await api.getPushConfig()).vapid_public_key, null);
@@ -81,7 +84,7 @@ test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨
 
 test("위험 정지 -> 직원 재개: state는 ACTIVE+resume_text, 다음 턴 뒤 null, 종료는 ENDED", async () => {
   const { api } = await mk();
-  const staff = new StaffApi(api);
+  const staff = createStaffApi(api);
   const SID_s1 = (await api.startSession()).session_id; await api.sendUtterance(SID_s1, "위험");
   await staff.intervene(SID_s1, "RESUME", "i1");
   const a = await api.getSessionState(SID_s1);
@@ -96,7 +99,7 @@ test("위험 정지 -> 직원 재개: state는 ACTIVE+resume_text, 다음 턴 �
 
 test("risk_resume 시나리오: 키오스크가 폴링으로 재개를 알고 이어간다", async () => {
   const { api } = await mk({ autoResumeMs: 30 });
-  const flow = new KioskFlow(api, { pollMs: 10, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
+  const flow = createKioskFlow(api, { pollMs: 10, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
   await flow.start(); await flow.hear({ text: "위험해요", confidence: 0.9 });
   assert.equal(flow.current.state, "WAITING_STAFF");
   await waitFor(() => flow.current.state === "LISTENING", "재개를 폴링으로 알아 LISTENING"); // 서버 30ms 뒤 재개, 상한 10초
@@ -113,7 +116,7 @@ test("rate_limited 시나리오: 429에 Retry-After를 붙이고 클라이언트
   assert.equal(((await r.json()) as any).code, "UNAVAILABLE");
   const waits: number[] = [];
   m.state.sc.errorTimes = 1;
-  const api = new PublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
+  const api = createPublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
   const SID_s2 = (await api.startSession()).session_id;
   assert.deepEqual(waits, [2000]);
 });
@@ -170,7 +173,7 @@ test("error 시나리오: 503 두 번 뒤 성공, 지연 시나리오", async ()
 
 test("위험 정지 -> 알림 -> 개입 RESUME/END, 중복 turn_id는 같은 응답, 정지 아니면 409", async () => {
   const { m, api } = await mk();
-  const staff = new StaffApi(new PublicApiClient({ baseUrl: m.base + "/v1", ...fast }));
+  const staff = createStaffApi(createPublicApiClient({ baseUrl: m.base + "/v1", ...fast }));
   const SID_s1 = (await api.startSession()).session_id;
   await assert.rejects(staff.intervene(SID_s1, "RESUME", "i0"), (e) => e instanceof ApiError && e.status === 409);
   const stop = await api.sendUtterance(SID_s1, "위험해요");
@@ -191,7 +194,7 @@ test("위험 정지 -> 알림 -> 개입 RESUME/END, 중복 turn_id는 같은 응
 
 test("delivery_failed 시나리오: 키오스크가 직원 호출 화면, 알림은 목록에 있다", async () => {
   const { m, api } = await mk({ alertDelivery: "DELIVERY_FAILED" });
-  const flow = new KioskFlow(api);
+  const flow = createKioskFlow(api);
   await flow.start(); await flow.hear({ text: "위험해요", confidence: 0.9 });
   assert.equal(flow.current.state, "CALL_STAFF");
   assert.equal(m.state.alerts.length, 1);
@@ -199,14 +202,14 @@ test("delivery_failed 시나리오: 키오스크가 직원 호출 화면, 알림
 
 test("not_committed 시나리오", async () => {
   const { api } = await mk({ notCommitted: true });
-  const flow = new KioskFlow(api);
+  const flow = createKioskFlow(api);
   await flow.start(); await flow.hear({ text: "아파요", confidence: 0.9 });
   assert.equal(flow.current.repeatReason, "NOT_COMMITTED");
 });
 
 test("푸시 구독 등록은 멱등, 해지 가능", async () => {
   const { m, api } = await mk();
-  const staff = new StaffApi(api);
+  const staff = createStaffApi(api);
   const sub = { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } };
   await staff.registerPush(sub); await staff.registerPush(sub);
   assert.equal(m.state.subs.size, 1);
@@ -227,7 +230,7 @@ test("SSE: 새 알림과 해결 이벤트, Last-Event-ID로 이어 받기", asyn
   };
   const first = await read();
   assert.match(first, /id: 1\nevent: alert\ndata: .*"status":"OPEN"/);
-  await new StaffApi(api).intervene(SID_s1, "END", "i1");
+  await createStaffApi(api).intervene(SID_s1, "END", "i1");
   const resumed = await read({ "last-event-id": "1" });
   assert.doesNotMatch(resumed, /id: 1\n/);
   assert.match(resumed, /id: 2\nevent: resolved\ndata: .*"status":"RESOLVED"/);
@@ -260,7 +263,7 @@ test("turn_in_progress 시나리오: 409 CONFLICT + details.reason + Retry-After
   assert.equal(b.code, "CONFLICT"); assert.equal(b.details.reason, "TURN_IN_PROGRESS");
   const waits: number[] = [];
   m.state.sc.errorTimes = 1;
-  const api = new PublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
+  const api = createPublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
   const SID_s3 = (await api.startSession()).session_id;
   assert.deepEqual(waits, [2000]);
 });
@@ -283,7 +286,7 @@ test("SSE: 연결 직후와 주기마다 id 없는 heartbeat, 끄면 멈추고, 
 test("StaffSessionView: 모의 서버의 세션 보기가 survey-service 스키마를 그대로 지킨다(알림 kind는 RISK_STOP 등 공개 이름)", async () => {
   const { api } = await mk({ alertDelivery: "DELIVERED" });
   const sid = (await api.startSession()).session_id; await api.sendUtterance(sid, "위험해요");
-  const v = await new StaffApi(api).getSession(sid);
+  const v = await createStaffApi(api).getSession(sid);
   const vView = ajv.compile(JSON.parse(readFileSync(new URL("StaffSessionView.json", SCHEMA_DIR), "utf8")));
   assert.ok(vView(v), JSON.stringify(vView.errors));
   assert.equal(v.alerts[0].kind, "RISK_STOP");

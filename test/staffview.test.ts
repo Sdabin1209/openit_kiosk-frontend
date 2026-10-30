@@ -2,10 +2,11 @@
 // 호스트에 jsdom이 없으면 이 파일은 건너뛴다(통과로 세지 않는다).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ApiError } from "../api/errors.ts";
-import type { StaffSessionView } from "../api/types.ts";
+import { ApiError } from "../src/components/link_public_api_send.ts";
+// 시험은 계약 밖의 값(옛 서버, 모르는 값)도 일부러 넣으므로 느슨한 형을 쓴다(관대하게 읽기 시험).
+type StaffSessionView = any;
 import { settle, waitFor } from "./helpers.ts";
-import { createRecordViewer } from "../apps/staff/record.ts";
+import { createRecordViewer } from "../src/ui/record_view.ts";
 
 let JSDOM: any = null;
 const mod = "jsdom"; // 문자열로 import: 호스트 typecheck가 jsdom 없이도 통과한다

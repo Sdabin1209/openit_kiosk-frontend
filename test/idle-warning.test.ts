@@ -5,8 +5,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { PublicApiClient } from "../api/client.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { json, ok, settle, started } from "./helpers.ts";
 
 const WCAG_MIN_WARNING_MS = 20_000, WCAG_MIN_EXTENSIONS = 10, TOTAL_MS = 60_000;
@@ -14,12 +16,12 @@ const WCAG_MIN_WARNING_MS = 20_000, WCAG_MIN_EXTENSIONS = 10, TOTAL_MS = 60_000;
 function rig() {
   const q: Array<{ fn: () => void; ms: number }> = [], kinds: string[] = [];
   const timers = { set: (fn: () => void, ms: number) => { const t = { fn, ms }; q.push(t); return t; }, clear: (h: unknown) => { const i = q.indexOf(h as any); if (i >= 0) q.splice(i, 1); } };
-  const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", state: "ACTIVE", resume_text: null });
     const b = JSON.parse(init.body as string); kinds.push(b.kind);
     return b.kind === "SESSION_START" ? started() : b.kind === "SESSION_END" ? ok(null) : ok("질문");
   }) as any });
-  const flow = new KioskFlow(api, { idleMs: TOTAL_MS, timers });
+  const flow = createKioskFlow(api, { idleMs: TOTAL_MS, timers });
   return { flow, q, kinds, ends: () => kinds.filter((k) => k === "SESSION_END").length };
 }
 /** 지금 걸린 타이머를 시간 순서대로 하나 발화한다(실제 시계로 다음 타이머가 울린 것). */
@@ -67,8 +69,8 @@ test("경고는 말하기 대기·다시 말하기에만 뜨고, 위험 정지·
 });
 
 test("화면 쪽: 키오스크 HTML에 연장 버튼이 있고 main.ts가 경고 문구·연장 동작을 연결한다", () => {
-  const html = readFileSync(new URL("../apps/kiosk/index.html", import.meta.url), "utf8");
-  const main = readFileSync(new URL("../apps/kiosk/main.ts", import.meta.url), "utf8");
+  const html = readFileSync(new URL("../src/kiosk/index.html", import.meta.url), "utf8");
+  const main = readFileSync(new URL("../src/ui/kiosk_screen.ts", import.meta.url), "utf8");
   assert.match(html, /id="extend"/);
   assert.match(main, /idleWarnS/);
   assert.match(main, /extend/);

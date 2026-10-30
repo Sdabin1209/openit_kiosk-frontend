@@ -1,5 +1,5 @@
 import { SCENARIO_PRESETS, createMock } from "./app.ts";
-import { makeDevStatic } from "./devstatic.ts";
+import { makeDevStatic } from "./server.ts";
 
 const name = process.env.MOCK_SCENARIO ?? "normal";
 const { server } = createMock({ ...(SCENARIO_PRESETS[name] ?? {}), vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? null, deviceToken: process.env.MOCK_DEVICE_TOKEN || null, gatewayDevice: Boolean(process.env.MOCK_GATEWAY_DEVICE), requireSubjectRef: process.env.MOCK_REQUIRE_SUBJECT_REF === "1" });

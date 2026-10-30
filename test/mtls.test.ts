@@ -3,8 +3,10 @@
 // X-Openit-Device를 기기 ID로 받는다(없거나 형식이 틀리면 401, 다른 기기의 세션은 404).
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { PublicApiClient } from "../api/client.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { startMock } from "./helpers.ts";
 
 const open: Array<() => Promise<void>> = [];
@@ -24,8 +26,8 @@ const viaGateway = (base: string, deviceId: string | null) => ((u: string, init:
 
 test("토큰 없이 게이트웨이(기기 ID 헤더)를 거치면 세션 시작, 발화, 종료까지 된다", async () => {
   const m = await gateway();
-  const api = new PublicApiClient({ baseUrl: m.base + "/v1", ...fast, fetch: viaGateway(m.base, "kiosk-01") });
-  const flow = new KioskFlow(api, { startValues: async () => ({ deviceToken: null, subjectRef: null, subjectInvalid: false }) });
+  const api = createPublicApiClient({ baseUrl: m.base + "/v1", ...fast, fetch: viaGateway(m.base, "kiosk-01") });
+  const flow = createKioskFlow(api, { startValues: async () => ({ deviceToken: null, subjectRef: null, subjectInvalid: false }) });
   await flow.start();
   assert.equal(flow.current.state, "LISTENING");
   await flow.hear({ text: "머리가 아파요", confidence: 0.9 });

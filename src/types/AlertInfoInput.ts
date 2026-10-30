@@ -6,8 +6,9 @@
  */
 export interface AlertInfoInput {
 delivery_attempts?: number
-last_delivery_status?: string
+last_delivery_status?: (string | null)
 manual_notice_outcome?: (string | null)
 manual_notice_reported_at?: (string | null)
 pause_reason?: (string | null)
+[k: string]: unknown | undefined
 }

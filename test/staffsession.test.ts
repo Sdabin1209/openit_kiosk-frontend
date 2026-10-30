@@ -1,17 +1,19 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { PublicApiClient } from "../api/client.ts";
-import { StaffApi } from "../api/staff.ts";
-import { ApiError } from "../api/errors.ts";
-import { errorMessage, formatValue } from "../apps/staff/record.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createStaffApi } from "../src/wiring/public_api.ts";
+import type { StaffApi } from "../src/wiring/public_api.ts";
+import { ApiError } from "../src/components/link_public_api_send.ts";
+import { errorMessage, formatValue } from "../src/ui/record_view.ts";
 import { startMock } from "./helpers.ts";
 
 const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
 async function mk(sc = {}) {
   const m = await startMock(sc); open.push(m.close);
-  const c = new PublicApiClient({ baseUrl: m.base + "/v1", retry: { maxAttempts: 3 }, sleep: async () => {} });
-  return { m, c, staff: new StaffApi(c) };
+  const c = createPublicApiClient({ baseUrl: m.base + "/v1", retry: { maxAttempts: 3 }, sleep: async () => {} });
+  return { m, c, staff: createStaffApi(c) };
 }
 
 test("GET /v1/staff/sessions/{id}: 모양이 StaffSessionView와 같고 위험 알림에 rule_id가 있다", async () => {

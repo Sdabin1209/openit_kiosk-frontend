@@ -2,15 +2,17 @@
 // 클라이언트는 본문과 무관하게 INVALID_RECORD(재시도 안 함)로 읽는다. 환자에게는 기존 실패 안내(직원 호출)가 나간다.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PublicApiClient } from "../api/client.ts";
-import { ApiError } from "../api/errors.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { ApiError } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { settle, started } from "./helpers.ts";
 
 const plain = (status: number) => new Response(`${status} transport limit`, { status, headers: { "content-type": "text/plain" } });
 function make(status: number) {
   let n = 0; const waits: number[] = [];
-  const api = new PublicApiClient({ timeoutMs: 1000, sleep: async (ms) => { waits.push(ms); }, rand: () => 0.5, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ timeoutMs: 1000, sleep: async (ms) => { waits.push(ms); }, rand: () => 0.5, fetch: (async (_u: string, init: RequestInit) => {
     n++;
     return JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : plain(status);
   }) as any });
@@ -34,7 +36,7 @@ for (const status of [413, 414, 431]) {
 
   test(`${status} text/plain 응답: 환자에게는 기존 실패 안내(직원 호출 화면)가 나가고 다시 보내지 않는다`, async () => {
     const { api, count } = make(status);
-    const flow = new KioskFlow(api);
+    const flow = createKioskFlow(api);
     await flow.start(); await settle();
     const before = count();
     await flow.hear({ text: "머리가 아파요", confidence: 0.9 }); await settle();

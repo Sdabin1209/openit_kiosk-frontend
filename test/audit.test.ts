@@ -5,10 +5,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { PublicApiClient } from "../api/client.ts";
-import { createStartHolder } from "../api/device.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
-import * as clinical from "../apps/kiosk/clinical.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createStartHolder } from "../src/components/start_values.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
+import * as clinical from "../src/config.ts";
 import { json, ok, settle, started } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
@@ -18,7 +20,7 @@ const sig = (staff_alert: string, write_committed = "COMMITTED") => ({ session_i
 /** 가짜 서버. state는 GET /state 응답, turn은 발화 응답. 호출 본문을 기록한다. */
 function server(o: { turn?: () => Response; state?: () => Response; end?: () => Response } = {}) {
   const bodies: any[] = []; let gets = 0;
-  const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
     if (init.method === "GET") { gets++; return (o.state ?? (() => json({ session_id: "s", state: "ACTIVE", resume_text: null })))(); }
     const b = JSON.parse(init.body as string); bodies.push(b);
     if (b.kind === "SESSION_START") return started("첫 질문");
@@ -49,7 +51,7 @@ test("P1: 한 번 쓴 환자 참조는 다음 시작에 다시 쓰이지 않는�
 test("P1: 두 번째 환자 세션은 참조 없이 시작하고 화면 표시(startNotice)가 켜진다", async () => {
   const { api, bodies } = server();
   const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:1", subjectInvalid: false }));
-  const flow = new KioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
+  const flow = createKioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
   await flow.start();
   assert.equal(bodies[0].subject_ref, "visit:1");
   assert.equal(flow.current.startNotice, undefined);
@@ -64,7 +66,7 @@ test("P1: 두 번째 환자 세션은 참조 없이 시작하고 화면 표시(s
 // ---- P3 ----
 test("P3: 말하기 대기에서 입력이 없으면 세션을 끝내고 처음 화면으로 돌아간다, 조작하면 다시 센다", async () => {
   const { api, bodies } = server(); const t = fakeTimers();
-  const flow = new KioskFlow(api, { idleMs: 60_000, timers: t.timers });
+  const flow = createKioskFlow(api, { idleMs: 60_000, timers: t.timers });
   await flow.start();
   assert.equal(t.q.length, 1); assert.equal(t.q[0]!.ms + clinical.IDLE_WARNING_MS, 60_000, "첫 타이머는 경고 시점(총 60초 중 마지막 경고 구간 앞)");
   const first = t.q[0]; flow.touch();
@@ -78,7 +80,7 @@ test("P3: 말하기 대기에서 입력이 없으면 세션을 끝내고 처음 
 // ---- P4 ----
 test("P4: 마이크 거부는 화면 입력으로 대체되고(textFallback) 직원 호출 상한까지만 다시 묻는다", async () => {
   const { api } = server();
-  const flow = new KioskFlow(api, { idleMs: 0 });
+  const flow = createKioskFlow(api, { idleMs: 0 });
   await flow.start();
   flow.sttError("BLOCKED");
   assert.equal(flow.current.state, "REPEAT_PROMPT");
@@ -93,7 +95,7 @@ test("P4: 마이크 거부는 화면 입력으로 대체되고(textFallback) 직
 test("P4: 성공한 턴이 있으면 반복 횟수가 초기화되고, 저장 실패(NOT_COMMITTED) 반복도 상한을 센다", async () => {
   let committed = false;
   const { api } = server({ turn: () => committed ? ok("다음") : ok("저장 못 함", sig("NONE", "NOT_COMMITTED")) });
-  const flow = new KioskFlow(api, { idleMs: 0 });
+  const flow = createKioskFlow(api, { idleMs: 0 });
   await flow.start();
   for (let i = 0; i < clinical.MAX_REPEAT; i++) await flow.hear(say("배가 아파요"));
   assert.equal(flow.current.state, "REPEAT_PROMPT");
@@ -105,7 +107,7 @@ test("P4: 성공한 턴이 있으면 반복 횟수가 초기화되고, 저장 �
 });
 
 test("P4: 수동 입력은 최대 글자 수로 자르고 널 문자를 제거한다", async () => {
-  const { api, bodies } = server(); const flow = new KioskFlow(api, { idleMs: 0 });
+  const { api, bodies } = server(); const flow = createKioskFlow(api, { idleMs: 0 });
   await flow.start();
   await flow.hear(say("가".repeat(clinical.MAX_INPUT_CHARS + 50) + "\u0000"));
   const sent = bodies.find((b) => b.kind === "UTTERANCE").utterance as string;
@@ -118,7 +120,7 @@ test("P5: 위험 정지 대기 중 상태 조회가 실패하면 환자에게 �
   let down = true;
   const { api } = server({ turn: () => ok(RISK, sig("DELIVERED")), state: () => down ? json({ code: "UNAVAILABLE" }, 503) : json({ session_id: "s", state: "PAUSED_RISK", resume_text: null }) });
   const ms = manualSleep();
-  const flow = new KioskFlow(api, { idleMs: 0, pollMs: 1000, sleep: ms.sleep });
+  const flow = createKioskFlow(api, { idleMs: 0, pollMs: 1000, sleep: ms.sleep });
   await flow.start(); await flow.hear(say("위험"));
   await ms.step();
   assert.equal(flow.current.waitNotice, "SERVER_UNREACHABLE");
@@ -140,7 +142,7 @@ test("H-2: 실서버 응답 모양(신호 null + 상태 PAUSED_RISK)이면 대�
   const state = { session_id: "s", state: "PAUSED_RISK", resume_text: null };
   assert.ok(sessionState(state), JSON.stringify(sessionState.errors));
   const { api } = server({ turn: () => json(turn), state: () => json(state) });
-  const flow = new KioskFlow(api, { idleMs: 0, sleep: () => new Promise(() => {}) });
+  const flow = createKioskFlow(api, { idleMs: 0, sleep: () => new Promise(() => {}) });
   await flow.start(); await flow.hear(say("가슴이 너무 아파요"));
   assert.equal(flow.current.state, "WAITING_STAFF");
   assert.equal(flow.current.text, RISK);
@@ -149,45 +151,45 @@ test("H-2: 실서버 응답 모양(신호 null + 상태 PAUSED_RISK)이면 대�
 
 test("H-2: 신호 null이고 상태가 ACTIVE면 평소처럼 LISTENING, 상태 조회가 실패해도 환자 턴은 막지 않는다", async () => {
   const a = server({ turn: () => json({ response_text: "다음 질문", turn_failure_signal: null }) });
-  const f1 = new KioskFlow(a.api, { idleMs: 0 }); await f1.start(); await f1.hear(say("네"));
+  const f1 = createKioskFlow(a.api, { idleMs: 0 }); await f1.start(); await f1.hear(say("네"));
   assert.equal(f1.current.state, "LISTENING"); assert.equal(a.gets(), 1);
   const b = server({ turn: () => json({ response_text: "다음 질문", turn_failure_signal: null }), state: () => json({ code: "X" }, 500) });
-  const f2 = new KioskFlow(b.api, { idleMs: 0 }); await f2.start(); await f2.hear(say("네"));
+  const f2 = createKioskFlow(b.api, { idleMs: 0 }); await f2.start(); await f2.hear(say("네"));
   assert.equal(f2.current.state, "LISTENING");
 });
 
 test("H-2: DELIVERED 신호가 오면 상태 조회 없이 대기 화면(기존 동작 유지)", async () => {
   const a = server({ turn: () => ok(RISK, sig("DELIVERED")) });
-  const f = new KioskFlow(a.api, { idleMs: 0, sleep: () => new Promise(() => {}) }); await f.start(); await f.hear(say("위험"));
+  const f = createKioskFlow(a.api, { idleMs: 0, sleep: () => new Promise(() => {}) }); await f.start(); await f.hear(say("위험"));
   assert.equal(f.current.state, "WAITING_STAFF"); assert.equal(a.gets(), 0);
 });
 
 // ---- P16 ----
 test("P16: 종료 요청이 서버에 닿지 않으면 종료 화면에 endFailed를 표시하고, 이미 끝난 세션(404·409)은 실패로 보지 않는다", async () => {
   const a = server({ end: () => json({ code: "UNAVAILABLE" }, 503) });
-  const f = new KioskFlow(a.api, { idleMs: 0 }); await f.start(); await f.end();
+  const f = createKioskFlow(a.api, { idleMs: 0 }); await f.start(); await f.end();
   assert.equal(f.current.state, "ENDED"); assert.equal(f.current.endFailed, true);
   for (const st of [404, 409]) {
     const b = server({ end: () => json({ code: "X" }, st) });
-    const g = new KioskFlow(b.api, { idleMs: 0 }); await g.start(); await g.end();
+    const g = createKioskFlow(b.api, { idleMs: 0 }); await g.start(); await g.end();
     assert.equal(g.current.endFailed, undefined, `status ${st}`);
   }
-  const c = server(); const h = new KioskFlow(c.api, { idleMs: 0 }); await h.start(); await h.end();
+  const c = server(); const h = createKioskFlow(c.api, { idleMs: 0 }); await h.start(); await h.end();
   assert.equal(h.current.endFailed, undefined);
 });
 
 // ---- 임상 값 한 곳 ----
-test("임상 판단 값은 clinical.ts 한 곳에 있고 사용자 결정 U10 표시가 붙어 있다", () => {
-  const src = readFileSync(new URL("../apps/kiosk/clinical.ts", import.meta.url), "utf8");
-  for (const name of ["MIN_CONFIDENCE", "ENDED_RESET_MS", "IDLE_RESET_MS", "MAX_REPEAT", "LONG_WAIT_NOTICE_MS"]) {
+test("임상 판단 값은 config.ts 한 곳에 있고 사용자 결정 U10 표시가 붙어 있다", () => {
+  const src = readFileSync(new URL("../src/config.ts", import.meta.url), "utf8");
+  for (const name of ["ENDED_RESET_MS", "IDLE_RESET_MS", "MAX_REPEAT", "LONG_WAIT_NOTICE_MS"]) {
     const lines = src.split("\n"), line = lines.findIndex((l) => l.startsWith(`export const ${name}`));
     assert.ok(line > 0, name);
     let top = line; while (top > 0 && lines[top - 1]!.startsWith(" *") || lines[top - 1]?.startsWith("/**")) top--;
     assert.match(lines.slice(top, line).join("\n"), /사용자 결정 U10/, `${name} 위 주석`);
   }
-  const stt = readFileSync(new URL("../apps/kiosk/stt.ts", import.meta.url), "utf8");
+  const stt = readFileSync(new URL("../src/components/stt_adapter.ts", import.meta.url), "utf8");
   assert.doesNotMatch(stt, /MIN_CONFIDENCE\s*=\s*0/);
-  const main = readFileSync(new URL("../apps/kiosk/main.ts", import.meta.url), "utf8");
+  const main = readFileSync(new URL("../src/ui/kiosk_screen.ts", import.meta.url), "utf8");
   assert.doesNotMatch(main, /\b8000\b/);
 });
 
@@ -195,7 +197,7 @@ test("임상 판단 값은 clinical.ts 한 곳에 있고 사용자 결정 U10 �
 /** 가짜 서버(요청마다 제어 가능). hold가 켜지면 해당 종류 요청은 끝나지 않는다. */
 function rig(o: { hold?: "SESSION_START" | "UTTERANCE"; turn?: () => Response; endFail?: boolean } = {}) {
   const kinds: string[] = []; const t = fakeTimers();
-  const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: ((_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: ((_u: string, init: RequestInit) => {
     if (init.method === "GET") return Promise.resolve(json({ session_id: "s", state: "PAUSED_RISK", resume_text: null }));
     const b = JSON.parse(init.body as string); kinds.push(b.kind);
     if (o.hold === b.kind) return new Promise<Response>(() => {});
@@ -203,7 +205,7 @@ function rig(o: { hold?: "SESSION_START" | "UTTERANCE"; turn?: () => Response; e
     if (b.kind === "SESSION_END") return Promise.resolve(o.endFail ? json({ code: "UNAVAILABLE" }, 503) : ok(null));
     return Promise.resolve((o.turn ?? (() => ok("다음 질문")))());
   }) as any });
-  const flow = new KioskFlow(api, { idleMs: 60_000, timers: t.timers, sleep: () => new Promise(() => {}) });
+  const flow = createKioskFlow(api, { idleMs: 60_000, timers: t.timers, sleep: () => new Promise(() => {}) });
   return { flow, kinds, t, ends: () => kinds.filter((k) => k === "SESSION_END").length };
 }
 const DF = () => ok(RISK, sig("DELIVERY_FAILED")), DEL = () => ok(RISK, sig("DELIVERED")), NC = () => ok("저장 못 함", sig("NONE", "NOT_COMMITTED"));
@@ -264,13 +266,13 @@ test("K-1: DELIVERY_FAILED 화면은 오래 두어도 IDLE로 가지 않고 서�
 // ---- K-2 ----
 test("K-2: 시작이 실패하면 환자 참조가 남아 같은 참조로 다시 시작하고, 성공한 뒤에는 다음 시작에 쓰이지 않는다", async () => {
   const bodies: any[] = []; let fail = true;
-  const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string); bodies.push(b);
     if (b.kind === "SESSION_START" && fail) return json({ code: "UNAVAILABLE" }, 503);
     return b.kind === "SESSION_START" ? started("질문") : ok("질문");
   }) as any });
   const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:9", subjectInvalid: false }));
-  const flow = new KioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
+  const flow = createKioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
   await flow.start();
   assert.equal(flow.current.state, "CALL_STAFF");
   assert.equal(bodies[0].subject_ref, "visit:9");
@@ -283,7 +285,7 @@ test("K-2: 시작이 실패하면 환자 참조가 남아 같은 참조로 다�
 
 // ---- L ----
 test("L: 입력 자르기는 코드 포인트 단위라 이모지 서로게이트 쌍을 가르지 않는다", async () => {
-  const { api, bodies } = server(); const flow = new KioskFlow(api, { idleMs: 0 });
+  const { api, bodies } = server(); const flow = createKioskFlow(api, { idleMs: 0 });
   await flow.start();
   await flow.hear(say("가".repeat(clinical.MAX_INPUT_CHARS - 1) + "😀😀😀"));
   const sent = bodies.find((b) => b.kind === "UTTERANCE").utterance as string;

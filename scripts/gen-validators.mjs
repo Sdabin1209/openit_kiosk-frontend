@@ -1,5 +1,5 @@
 // 계약(../boundary-contracts/schemas)의 이 영역 경계 스키마에서 검증기 코드를 만들어 생성 파일에 쓴다.
-//   api/contract-validators.gen.cjs  : 화면 번들이 쓰는 읽는 쪽 스키마(DeviceConfig, KioskStartFragment, StaffPushPayload)
+//   (화면 번들이 쓰는 검증기는 scripts/gen-types.mjs가 src/types/validators.gen.cjs로 만든다.)
 //   scripts/build-validators.gen.cjs : 빌드 진입점(scripts/build-image.mjs)이 쓰는 BuildImageRequest, BuildImageResult (계약 2.5.0, ADR 0026), setup-env.sh 보고를 시험하는 SetupEnvReport (계약 2.6.0, ADR 0028), 노출 선언 Exposure (ADR 0029)
 // 왜 생성물을 커밋하나: 이미지 빌드 문맥과 deploy의 빌드 호출에는 이웃 폴더·npm 설치가 없다(진입점은 이 리포만으로 돈다). 생성물은 스키마 복사본이 아니라
 // 스키마에서 만든 코드이고, `--check`(test/contract-validation.test.ts)가 계약과 같은지 매번 확인한다. ADR 0021.
@@ -16,7 +16,6 @@ const load = (n) => contractJson(`schemas/${n}.schema.json`);
 
 // USED: 내보내는 검증기. DEPS: 참조를 풀기 위해 등록만 하는 스키마.
 const TARGETS = [
-  { out: new URL("../api/contract-validators.gen.cjs", import.meta.url), rel: "api/contract-validators.gen.cjs", used: ["DeviceConfig", "KioskStartFragment", "StaffPushPayload"], deps: [] },
   { out: new URL("./build-validators.gen.cjs", import.meta.url), rel: "scripts/build-validators.gen.cjs", used: ["BuildImageRequest", "BuildImageResult", "SetupEnvReport", "Exposure"], deps: ["ImageLabels", "_common", "JobsDeclaration"], unicode: false },
 ];
 

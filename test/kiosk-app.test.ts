@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import { createMock } from "../mock-server/app.ts";
-import { makeDevStatic } from "../mock-server/devstatic.ts";
+import { makeDevStatic } from "../mock-server/server.ts";
 import { waitFor } from "./helpers.ts";
 
 let JSDOM: any = null;

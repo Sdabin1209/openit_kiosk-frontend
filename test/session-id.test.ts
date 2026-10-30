@@ -4,14 +4,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { PublicApiClient } from "../api/client.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { json, ok, settle, startMock, started, SERVER_SESSION_ID } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 function rig(o: { startResp?: () => Response } = {}) {
   const calls: Array<{ method: string; url: string; body: any }> = [];
-  const api = new PublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (url: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (url: string, init: RequestInit) => {
     const body = init.body ? JSON.parse(init.body as string) : undefined;
     calls.push({ method: init.method ?? "GET", url, body });
     if (body?.kind === "SESSION_START") return (o.startResp ?? (() => started()))();
@@ -32,7 +34,7 @@ test("세션 시작 요청 본문에 session_id가 없다", async () => {
 
 test("이후 요청(발화, 종료)이 응답의 session_id를 경로와 본문에 쓴다", async () => {
   const { api, calls } = rig();
-  const flow = new KioskFlow(api, { idleMs: 0 });
+  const flow = createKioskFlow(api, { idleMs: 0 });
   await flow.start();
   assert.equal(flow.session, SERVER_SESSION_ID);
   await flow.hear(say("배가 아파요"));
@@ -47,7 +49,7 @@ test("이후 요청(발화, 종료)이 응답의 session_id를 경로와 본문�
 test("응답에 session_id가 없거나 형식이 틀리면 시작 성공으로 보지 않는다(직원 호출)", async () => {
   for (const bad of [json({ response_text: "첫 질문", turn_failure_signal: null }), started("첫 질문", null, "bad id!"), started("첫 질문", null, "a".repeat(65))]) {
     const { api } = rig({ startResp: () => bad.clone() });
-    const flow = new KioskFlow(api, { idleMs: 0 });
+    const flow = createKioskFlow(api, { idleMs: 0 });
     await flow.start();
     assert.equal(flow.current.state, "CALL_STAFF");
     assert.equal(flow.session, null, "검증되지 않은 ID를 세션으로 두지 않는다");
@@ -56,11 +58,11 @@ test("응답에 session_id가 없거나 형식이 틀리면 시작 성공으로 
 
 test("시작 재시도 중 '그만하기': 서버가 발급한 ID를 아직 모르므로 종료 요청 없이 끝난다", async () => {
   const calls: string[] = [];
-  const api = new PublicApiClient({ now: () => 0, sleep: () => new Promise(() => {}), fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: () => new Promise(() => {}), fetch: (async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string); calls.push(b.kind);
     return json({ code: "UNAVAILABLE" }, 503);
   }) as any });
-  const flow = new KioskFlow(api, { idleMs: 0, sleep: () => new Promise(() => {}) });
+  const flow = createKioskFlow(api, { idleMs: 0, sleep: () => new Promise(() => {}) });
   void flow.start(); await settle();
   assert.equal(flow.current.state, "STARTING");
   await flow.end(); await settle();
@@ -69,8 +71,8 @@ test("시작 재시도 중 '그만하기': 서버가 발급한 ID를 아직 모�
 });
 
 test("소스에 세션 ID를 만드는 코드가 없다(newSessionId 제거)", () => {
-  const ids = readFileSync(new URL("../api/ids.ts", import.meta.url), "utf8");
-  const flow = readFileSync(new URL("../apps/kiosk/flow.ts", import.meta.url), "utf8");
+  const ids = readFileSync(new URL("../src/wiring/ids.ts", import.meta.url), "utf8");
+  const flow = readFileSync(new URL("../src/components/kiosk_flow.ts", import.meta.url), "utf8");
   assert.doesNotMatch(ids, /newSessionId/);
   assert.doesNotMatch(flow, /newSessionId/);
 });

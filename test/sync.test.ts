@@ -1,12 +1,14 @@
 // 직원 콘솔 스트림 재연결(백오프+지터)과 목록 보충(catch-up), 연결 끊김 표시 (FAULT_POLICY 7·12)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PublicApiClient } from "../api/client.ts";
-import { StaffApi } from "../api/staff.ts";
-import { STAFF_STREAM_RETRY } from "../api/retry.ts";
-import { createAlertSync, type SyncStatus } from "../apps/staff/sync.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createStaffApi } from "../src/wiring/public_api.ts";
+import type { StaffApi } from "../src/wiring/public_api.ts";
+import { STAFF_STREAM_RETRY } from "../src/config.ts";
+import { createAlertSync, type SyncStatus } from "../src/components/alert_sync.ts";
 import { settle } from "./helpers.ts";
-import type { StaffAlert } from "../api/types.ts";
+import type { StaffAlert } from "../src/types/StaffAlert.ts";
 
 class FakeES {
   static all: FakeES[] = [];
@@ -30,12 +32,12 @@ function timers() {
 function setup(list: () => StaffAlert[] | Error, rand = () => 0) {
   FakeES.all = [];
   const tm = timers();
-  const client = new PublicApiClient({ fetch: (async (u: string) => {
+  const client = createPublicApiClient({ fetch: (async (u: string) => {
     const r = list(); if (r instanceof Error) throw r;
     const open = u.includes("status=OPEN");
     return new Response(JSON.stringify({ items: r.filter((a) => (a.status === "OPEN") === open), next_cursor: null }));
   }) as any, retry: { maxAttempts: 1 }, sleep: async () => {} });
-  const api = new StaffApi(client, { eventSource: (u) => new FakeES(u) as any });
+  const api = createStaffApi(client, { eventSource: (u) => new FakeES(u) as any });
   const statuses: SyncStatus[] = []; const news: string[] = [];
   const sync = createAlertSync({ api, onChange: () => {}, onNew: (a) => news.push(a.alert_id), onStatus: (s) => statuses.push(s), refreshMs: 0, streamTimers: { setTimeout: tm.setTimeout, clearTimeout: tm.clearTimeout, rand } });
   return { sync, tm, statuses, news };
@@ -166,8 +168,8 @@ test("resync를 받으면 목록을 즉시 다시 읽어 놓친 알림을 채운
 // 같은 alert_id의 재전달은 delivery_attempts가 커졌을 때만 배너(onRedelivery). 목록은 한 건으로 합친다.
 test("재알림 이벤트: 같은 alert_id에서 delivery_attempts가 커지면 재전달 알림, 같은/오래된 번호는 조용히", async () => {
   FakeES.all = [];
-  const client = new PublicApiClient({ fetch: (async () => new Response(JSON.stringify({ items: [], next_cursor: null }))) as any, retry: { maxAttempts: 1 }, sleep: async () => {} });
-  const api = new StaffApi(client, { eventSource: (u) => new FakeES(u) as any });
+  const client = createPublicApiClient({ fetch: (async () => new Response(JSON.stringify({ items: [], next_cursor: null }))) as any, retry: { maxAttempts: 1 }, sleep: async () => {} });
+  const api = createStaffApi(client, { eventSource: (u) => new FakeES(u) as any });
   const news: string[] = [], again: number[] = []; let last: ReadonlyMap<string, StaffAlert> = new Map();
   const sync = createAlertSync({ api, onChange: (m) => { last = m; }, onNew: (a) => news.push(a.alert_id), onRedelivery: (a) => again.push(a.delivery_attempts!), onStatus: () => {}, refreshMs: 0 });
   await flush(); const es = FakeES.all[0]; es.open(); await flush();
@@ -185,6 +187,6 @@ test("재알림 이벤트: 같은 alert_id에서 delivery_attempts가 커지면 
 
 test("서비스 워커: 같은 tag의 재알림도 소리·진동을 내도록 renotify를 켠다", async () => {
   const { readFileSync } = await import("node:fs");
-  const src = readFileSync(new URL("../apps/staff/sw.ts", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../src/staff/sw/index.ts", import.meta.url), "utf8");
   assert.match(src, /tag, renotify: true/);
 });

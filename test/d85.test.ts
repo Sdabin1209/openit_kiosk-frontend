@@ -2,11 +2,15 @@
 // 값은 모두 가짜다. 환자 참조·기기 토큰은 로그·콘솔에 남지 않아야 한다.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { PublicApiClient } from "../api/client.ts";
-import { StaffApi } from "../api/staff.ts";
-import { ApiError } from "../api/errors.ts";
-import { loadKioskStart, parseFragment, type KioskStart } from "../api/device.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createStaffApi } from "../src/wiring/public_api.ts";
+import type { StaffApi } from "../src/wiring/public_api.ts";
+import { ApiError } from "../src/components/link_public_api_send.ts";
+import { loadKioskStart } from "../src/wiring/kiosk.ts";
+import { parseFragment, type KioskStart } from "../src/components/start_values.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { startMock, json, ok, started } from "./helpers.ts";
 
 const TOKEN = "dev-tok-FAKE-123";
@@ -58,7 +62,7 @@ function capture() {
 
 test("세션 시작 본문에 subject_ref를 넣고, 없으면 필드를 생략하고, 틀리면 보내지 않는다", async () => {
   const { calls, f } = capture();
-  const c = new PublicApiClient({ ...fast, fetch: f });
+  const c = createPublicApiClient({ ...fast, fetch: f });
   const SID_s1 = (await c.startSession(REF)).session_id;
   const SID_s2 = (await c.startSession()).session_id;
   const SID_s3 = (await c.startSession(null)).session_id;
@@ -72,9 +76,9 @@ test("세션 시작 본문에 subject_ref를 넣고, 없으면 필드를 생략�
 test("기기 토큰은 /sessions* 요청에만 Authorization: Bearer로 간다(직원 경로·없을 때는 없음)", async () => {
   const { calls, f } = capture();
   let tok: string | null = TOKEN;
-  const c = new PublicApiClient({ ...fast, fetch: f, deviceToken: () => tok });
+  const c = createPublicApiClient({ ...fast, fetch: f, deviceToken: () => tok });
   const SID_s1 = (await c.startSession()).session_id; await c.sendUtterance(SID_s1, "가짜"); await c.getSessionState(SID_s1).catch(() => {}); await c.endSession(SID_s1);
-  await new StaffApi(c).listAlerts("OPEN").catch(() => {});
+  await createStaffApi(c).listAlerts("OPEN").catch(() => {});
   await c.intervene(SID_s1, "RESUME", "t1");
   const bySession = calls.filter((x) => x.url.includes("/sessions"));
   assert.ok(bySession.length >= 4 && bySession.every((x) => x.headers.authorization === `Bearer ${TOKEN}`));
@@ -86,15 +90,15 @@ test("기기 토큰은 /sessions* 요청에만 Authorization: Bearer로 간다(�
 
 test("개입 결정 본문에 직원 ID가 없다(E절: 게이트웨이 헤더)", async () => {
   const { calls, f } = capture();
-  await new StaffApi(new PublicApiClient({ ...fast, fetch: f })).intervene("s1", "END", "t1");
+  await createStaffApi(createPublicApiClient({ ...fast, fetch: f })).intervene("s1", "END", "t1");
   assert.deepEqual(Object.keys(calls[0].body).sort(), ["decision", "session_id", "turn_id"]);
   assert.equal(calls[0].headers["x-openit-user"], undefined);
 });
 
 function flowWith(start: KioskStart, handler: (b: any) => Response = (b) => b.kind === "SESSION_START" ? started("질문") : ok("질문")) {
   const calls: any[] = [];
-  const api = new PublicApiClient({ ...fast, deviceToken: () => start.deviceToken, fetch: (async (_u: string, init: RequestInit) => { calls.push({ body: JSON.parse(init.body as string), auth: (init.headers as any).authorization }); return handler(calls.at(-1).body); }) as any });
-  return { flow: new KioskFlow(api, { startValues: async () => start }), calls };
+  const api = createPublicApiClient({ ...fast, deviceToken: () => start.deviceToken, fetch: (async (_u: string, init: RequestInit) => { calls.push({ body: JSON.parse(init.body as string), auth: (init.headers as any).authorization }); return handler(calls.at(-1).body); }) as any });
+  return { flow: createKioskFlow(api, { startValues: async () => start }), calls };
 }
 
 test("키오스크 흐름: 정상이면 subject_ref와 토큰이 시작 요청에 실린다", async () => {
@@ -174,7 +178,7 @@ test("모의 서버: StaffSessionView에 subject_ref, 알림에 resolved_by(헤�
   assert.equal(v.alerts[0].resolved_by, "staff-7");
   const list = await (await fetch(m.base + "/v1/staff/alerts?status=RESOLVED")).json() as any;
   assert.equal("resolved_by" in list.items[0], false); // 알림 목록 모양은 그대로
-  const e = await new StaffApi(new PublicApiClient({ baseUrl: m.base + "/v1", ...fast })).getSession("zzz").catch((x) => x);
+  const e = await createStaffApi(createPublicApiClient({ baseUrl: m.base + "/v1", ...fast })).getSession("zzz").catch((x) => x);
   assert.ok(e instanceof ApiError && e.status === 404);
 });
 
@@ -184,10 +188,10 @@ test("토큰과 환자 참조가 콘솔·모의 서버 로그에 남지 않는�
   const orig = { log: console.log, error: console.error, warn: console.warn, info: console.info, debug: console.debug };
   for (const k of Object.keys(orig) as (keyof typeof orig)[]) console[k] = (...a: unknown[]) => { out.push(a.map(String).join(" ")); };
   try {
-    const api = new PublicApiClient({ baseUrl: m.base + "/v1", ...fast, deviceToken: () => TOKEN });
-    const flow = new KioskFlow(api, { startValues: async () => ({ deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false }) });
+    const api = createPublicApiClient({ baseUrl: m.base + "/v1", ...fast, deviceToken: () => TOKEN });
+    const flow = createKioskFlow(api, { startValues: async () => ({ deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false }) });
     await flow.start(); await flow.hear({ text: "가짜 문장", confidence: 0.9 });
-    const bad = new PublicApiClient({ baseUrl: m.base + "/v1", ...fast, deviceToken: () => "wrong" });
+    const bad = createPublicApiClient({ baseUrl: m.base + "/v1", ...fast, deviceToken: () => "wrong" });
     await bad.startSession(REF).catch(() => {});
     await start({ session_id: "q" }).catch(() => {});
   } finally { Object.assign(console, orig); }

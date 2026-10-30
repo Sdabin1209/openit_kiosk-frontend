@@ -1,7 +1,9 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { PublicApiClient } from "../api/client.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { asStarted, hang, json, ok, settle } from "./helpers.ts";
 
 afterEach(() => { stateFn = () => ({ state: "ACTIVE", resume_text: null }); }); // 시험 간 공유 상태 초기화
@@ -13,11 +15,11 @@ const step = async (n = 1) => { for (let i = 0; i < n; i++) { await settle(); sl
 function make(handler: (body: any, init: RequestInit) => Promise<Response> | Response) {
   const calls: any[] = [];
   const polls: string[] = [];
-  const api = new PublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     if (init.method === "GET") { polls.push(u); return json({ session_id: "s", ...stateFn() }); }
     const body = JSON.parse(init.body as string); calls.push(body); const res = handler(body, init); return body.kind === "SESSION_START" ? asStarted(res) : res;
   }) as any });
-  return { flow: new KioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) }), calls, polls };
+  return { flow: createKioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) }), calls, polls };
 }
 
 test("정상 흐름: 시작 -> 듣기 -> 응답 -> 종료", async () => {

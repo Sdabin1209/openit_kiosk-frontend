@@ -5,9 +5,11 @@
 // 말이 없음(no-speech)은 NO_SPEECH, 나머지는 OTHER다(분류는 기존 동작을 그대로 옮긴 것: 막힘만 화면 입력으로 대체한다).
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { SttError, WebSpeechStt } from "../apps/kiosk/stt.ts";
-import { PublicApiClient } from "../api/client.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { SttError, WebSpeechStt } from "../src/components/stt_adapter.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { ok, started } from "./helpers.ts";
 
 const g = globalThis as any;
@@ -44,7 +46,7 @@ test("KF-10: 이 기기에서 음성 입력을 쓸 수 없어 거부될 때도 B
 });
 
 test("KF-10: 상태 기계는 kind만 본다 - BLOCKED는 화면 입력으로 대체, 그 밖은 다시 말하기이며 문구가 같아도 BLOCKED가 되지 않는다", async () => {
-  const mk = () => new KioskFlow(new PublicApiClient({ sleep: async () => {}, fetch: (async () => started("질문")) as any }), { idleMs: 0 });
+  const mk = () => createKioskFlow(createPublicApiClient({ sleep: async () => {}, fetch: (async () => started("질문")) as any }), { idleMs: 0 });
   const a = mk(); await a.start(); a.sttError("BLOCKED");
   assert.equal(a.current.state, "REPEAT_PROMPT"); assert.equal(a.current.textFallback, true);
   for (const k of ["NO_SPEECH", "OTHER", null, "STT 사용 불가", "not-allowed"]) {

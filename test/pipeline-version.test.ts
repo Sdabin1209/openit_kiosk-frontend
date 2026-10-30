@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from "node:fs";
 
 test("pipeline_schema_version 값을 문자열로 박아 둔 시험·소스가 없다(모의 서버 상수 한 곳만)", () => {
   const found: string[] = [];
-  for (const d of ["test", "api", "apps", "mock-server"]) {
+  for (const d of ["test", "mock-server", "src/components", "src/wiring"]) {
     for (const f of readdirSync(d)) {
       if (!f.endsWith(".ts")) continue;
       const s = readFileSync(`${d}/${f}`, "utf8");

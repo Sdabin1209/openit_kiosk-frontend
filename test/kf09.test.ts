@@ -1,14 +1,19 @@
-// KF-09 재현: 재시도·"처리 여부 불명" 분류가 api/retry.ts 한 곳에 있고, 상태 기계는 오류 본문 모양(details.reason)을 직접 읽지 않는다.
+// KF-09 재현: 재시도·"처리 여부 불명" 분류가 components/retry_policy.ts 한 곳에 있고, 상태 기계는 오류 본문 모양(details.reason)을 직접 읽지 않는다.
 // 기대값의 출처(고치는 쪽 시험이 아님): boundary-contracts/PUBLIC_API.md 125행 "5xx와 시간 초과는 처리 여부를 모르는 경우이므로 같은 turn_id를 유지한다",
 // 17행 409 details.reason, 124행 "클라이언트는 details.reason을 먼저 본다".
 import { PIPELINE_SCHEMA_VERSION } from "../mock-server/app.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { PublicApiClient } from "../api/client.ts";
-import { ApiError } from "../api/errors.ts";
-import * as retry from "../api/retry.ts";
-import { KioskFlow } from "../apps/kiosk/flow.ts";
+import { createPublicApiClient } from "../src/wiring/public_api.ts";
+import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
+import { ApiError } from "../src/components/link_public_api_send.ts";
+import { createRetryPolicy } from "../src/components/retry_policy.ts";
+import { DEFAULT_RETRY } from "../src/config.ts";
+const policy = createRetryPolicy(DEFAULT_RETRY);
+const retry = { isRetryable: (s: number, r: string | null) => policy.classify({ status: s, reason: r }).retryable, isOutcomeUnknown: (s: number) => policy.classify({ status: s, reason: null }).outcomeUnknown };
+import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { json, ok, settle, started } from "./helpers.ts";
 
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
@@ -16,14 +21,14 @@ const err = (status: number, code = "UNAVAILABLE", details?: object) =>
   new Response(JSON.stringify({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message: "x", retryable: false, ...(details ? { details } : {}) }), { status, headers: { "content-type": "application/json" } });
 function make(route: (path: string, body: any) => Response) {
   const calls: Array<{ path: string; body: any }> = [];
-  const api = new PublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, "");
     if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
     const body = JSON.parse(init.body as string); calls.push({ path, body });
     if (path.includes("/staff-call/")) return route(path, body);
     return body.kind === "SESSION_START" ? started("시작") : ok("대기", DF);
   }) as any });
-  const flow = new KioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}) });
+  const flow = createKioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}) });
   return { flow, sc: () => calls.filter((c) => c.path.includes("/staff-call/")) };
 }
 const toFailed = async (m: ReturnType<typeof make>) => { await m.flow.start(); await m.flow.hear({ text: "위험", confidence: 0.9 }); assert.equal(m.flow.current.callStaffReason, "DELIVERY_FAILED"); };
@@ -57,7 +62,7 @@ test("KF-09: ApiError가 해석된 reason을 내보낸다(본문 details.reason)
   assert.equal(new ApiError(502, null).reason, null);
 });
 
-test("KF-09: 재시도 분류 함수는 api/retry.ts가 내보내고, 클라이언트 재시도(429·502·503·504, TURN_IN_PROGRESS)와 일치한다", () => {
+test("KF-09: 재시도 분류 함수는 components/retry_policy.ts가 내보내고, 클라이언트 재시도(429·502·503·504, TURN_IN_PROGRESS)와 일치한다", () => {
   const r = retry as any;
   assert.equal(typeof r.isRetryable, "function");
   assert.equal(typeof r.isOutcomeUnknown, "function");
@@ -71,6 +76,6 @@ test("KF-09: 재시도 분류 함수는 api/retry.ts가 내보내고, 클라이�
 });
 
 test("KF-09: 상태 기계(flow.ts)는 오류 본문 모양(.body/.details)을 직접 읽지 않고 상태 집합을 따로 갖지 않는다", () => {
-  const src = readFileSync("apps/kiosk/flow.ts", "utf8");
+  const src = readFileSync("src/components/kiosk_flow.ts", "utf8");
   assert.doesNotMatch(src, /\.details|\.body\b|NO_RESPONSE_STATUS|new Set\(\[\s*5/);
 });

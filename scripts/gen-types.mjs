@@ -63,9 +63,11 @@ for (const n of SURVEY_TYPES) {
 }
 
 // 검증기: 영역 스키마 전부 + 계약 경계 스키마.
+// 왜 $schema를 뺀다: 생성 코드에 스키마 본문이 그대로 실려 화면 번들에 들어가는데, 메타스키마 주소(https://...)가 번들에 외부 URL로 남으면 "외부 URL 없음" 검사(test/static.test.ts)와 섞인다. Ajv2020은 기본이 2020-12라 뺀다.
+const noMeta = ({ $schema, ...rest }) => rest;
 const ajv = new Ajv2020({ code: { source: true, esm: false }, allErrors: true, strict: false });
-for (const n of [...CONTRACT_DEPS, ...CONTRACT_VALIDATORS]) ajv.addSchema(contract(n), `${n}.schema.json`);
-for (const [n, s] of Object.entries(internal)) ajv.addSchema(s, `${n}.json`);
+for (const n of [...CONTRACT_DEPS, ...CONTRACT_VALIDATORS]) ajv.addSchema(noMeta(contract(n)), `${n}.schema.json`);
+for (const [n, s] of Object.entries(internal)) ajv.addSchema(noMeta(s), `${n}.json`);
 const refs = { ...Object.fromEntries(Object.keys(internal).map((n) => [n, `${n}.json`])), ...Object.fromEntries(CONTRACT_VALIDATORS.map((n) => [n, `${n}.schema.json`])) };
 files.set("validators.gen.cjs", `// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts ${CONTRACT_VALIDATORS.join(", ")} (패키지 버전 ${contractVersion()}).\n/* eslint-disable */\n` + standaloneCode(ajv, refs));
 const names = Object.keys(refs).sort();

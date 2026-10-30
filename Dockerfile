@@ -3,8 +3,7 @@ FROM node:24-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci --ignore-scripts
-COPY api ./api
-COPY apps ./apps
+COPY src ./src
 COPY assets ./assets
 COPY scripts/build.mjs ./scripts/build.mjs
 RUN node scripts/build.mjs

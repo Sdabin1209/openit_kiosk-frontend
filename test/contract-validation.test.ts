@@ -5,9 +5,9 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { contractJson, contractList } from "../scripts/contract-source.mjs";
-import { loadKioskStart } from "../api/device.ts";
-import { pushNotification } from "../apps/staff/pushbody.ts";
-import { validateDeviceConfig, validateKioskStartFragment, validateStaffPushPayload } from "../api/contract.ts";
+import { loadKioskStart } from "../src/wiring/kiosk.ts";
+import { pushNotification } from "../src/components/push_notification.ts";
+import { DeviceConfig as validateDeviceConfig, KioskStartFragment as validateKioskStartFragment, StaffPushPayload as validateStaffPushPayload } from "../src/types/validators.gen.cjs";
 
 const ex = (dir: string, name: string) => contractJson(`${dir}/${name}.json`); // 고정 태그의 내용(ADR 0027)
 const names = (dir: string, prefix: string) => contractList(dir).filter((f) => f.startsWith(prefix + ".")).map((f) => f.replace(/\.json$/, ""));
@@ -16,6 +16,7 @@ const cfg = (obj: unknown) => (async () => new Response(JSON.stringify(obj), { s
 
 test("생성된 검증기가 계약 스키마와 같다(최신성)", () => {
   execFileSync("node", ["scripts/gen-validators.mjs", "--check"], { stdio: "pipe" });
+  execFileSync("node", ["scripts/gen-types.mjs", "--check"], { stdio: "pipe" });
 });
 
 for (const [schema, fn] of [["DeviceConfig", validateDeviceConfig], ["KioskStartFragment", validateKioskStartFragment], ["StaffPushPayload", validateStaffPushPayload]] as const) {

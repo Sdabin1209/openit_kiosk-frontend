@@ -10,7 +10,10 @@
       "minimum": 0
     },
     "last_delivery_status": {
-      "type": "string"
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "manual_notice_outcome": {
       "type": [
@@ -32,5 +35,5 @@
     }
   },
   "required": [],
-  "additionalProperties": false
+  "additionalProperties": true
 }
