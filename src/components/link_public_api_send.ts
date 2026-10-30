@@ -1,7 +1,7 @@
 // 통신 컴포넌트(보내는 쪽): 공개 API(I10, PUBLIC_API.md)를 부르는 클라이언트. HTTP는 이 파일에서만 한다(DESIGN.md 4절).
 // 입력: 요청 입력 스키마(StartRequest, UtteranceRequest, SessionRequest, StaffCallRetryInput, StaffCallReportInput, InterventionRequest) -> 출력: 계약 응답 타입(FrontendInput, SessionState 등).
 // 계약 타입 <-> 영역 타입 변환을 맡는다. 재시도 판단은 주입받은 retry_policy를 쓴다(컴포넌트끼리 import하지 않는다, 규칙 3).
-// UI를 모른다. 세션 순서 큐, 10초 타임아웃, 상태 코드 분기, 오류를 ApiFailure 데이터 모양으로 던진다.
+// UI를 모른다. 세션 순서 큐, 응답 대기 타임아웃, 상태 코드 분기, 오류를 ApiFailure 데이터 모양으로 던진다.
 import {
   InterventionRequest as vIntervention, SessionRequest as vSession, StaffCallReportInput as vReport, StaffCallRetryInput as vRetry,
   StartRequest as vStart, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
@@ -87,7 +87,7 @@ export interface ClientOptions {
   /** 키오스크 기기 토큰(메모리 값). 있으면 /sessions* 요청에만 Authorization: Bearer로 보낸다. 직원 경로에는 보내지 않는다. */
   deviceToken?: () => string | null;
   fetch?: typeof fetch;
-  timeoutMs?: number; // 기본 10초
+  timeoutMs?: number; // 기본 12초(config.ts REQUEST_TIMEOUT_MS와 같은 값, 사용자 결정 2026-10-30)
   /** 재시도 판단(components/retry_policy.ts). wiring이 넣는다. */
   retryPolicy: RetryPolicyPort;
   /** 턴 ID 발급(wiring). 호출자가 주지 않은 발화·개입에 쓴다. */
@@ -120,7 +120,7 @@ export class PublicApiClient {
     this.f = o.fetch ?? ((...a) => globalThis.fetch(...a));
     this.deviceToken = o.deviceToken ?? (() => null);
     this.base = (o.baseUrl ?? "/v1").replace(/\/$/, "");
-    this.timeoutMs = o.timeoutMs ?? 10_000;
+    this.timeoutMs = o.timeoutMs ?? 12_000;
     this.retryPolicy = o.retryPolicy;
     this.newTurnId = o.newTurnId;
     this.now = o.now ?? (() => Date.now());

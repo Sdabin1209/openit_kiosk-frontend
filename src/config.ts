@@ -2,7 +2,7 @@
 // 임상·운영 판단이 들어간 값을 한 곳에 모은다. D88: 아래 값은 모두 설정이고 **잠정, H1(24GB) 실측 뒤 재정**한다(사용자 결정 U10).
 // 근거 구분: 재질문 3회·유휴 60초 = D88 U10 / 신뢰도 0.4·ENDED 8초 = 기존 코드의 임의 값(근거 기록 없음) / 나머지 = 임의(측정 안 함). 이유: docs/adr/0008.
 // 정한 것이지 확인한 것이 아니다. 값을 바꿀 때는 이 파일만 고친다. 근거가 있는 값은 근거를, 없는 값은 '임의'라고 적었다.
-// (재시도 총 예산 20초는 같은 성격이라 아래 RETRY 값에 있다. FAULT_POLICY의 사용자 결정 항목.)
+// (재시도 총 예산 24초는 같은 성격이라 아래 RETRY 값에 있다. FAULT_POLICY의 사용자 결정 항목.)
 import { MSG } from "./components/patient_copy.ts";
 
 // STT 신뢰도 하한 0.4는 스키마 UsableTranscript(schemas/UsableTranscript.json)가 정한다(사용자 결정 U10, 잠정, 근거 없는 임의 값, ADR 0008).
@@ -55,12 +55,13 @@ export const DELIVERY_FAILED_DIRECT_NOTICE = MSG.DELIVERY_FAILED_DIRECT.text;
 export const RETRY_BUTTON_LABEL = MSG.BTN_RETRY_STAFF_CALL.text;
 
 // ---- 재시도 정책 값(FAULT_POLICY 원칙 2·3·7). 구조는 components/retry_policy.ts, 스키마는 schemas/RetryPolicy.json.
-// 값의 근거 구분(자세한 이유: docs/adr/0004, 0003): 총 예산 20초와 재시도 대상 코드 집합 = FAULT_POLICY 원칙 7(정책에서 온 값).
+// 값의 근거 구분(자세한 이유: docs/adr/0004, 0003): 재시도 대상 코드 집합 = FAULT_POLICY 원칙 7(정책에서 온 값). 총 예산 24초와 응답 대기 12초 = 사용자 결정 2026-10-30(시간 상한 사슬 변경, ADR 0033).
 // 지수 백오프+지터 구조 = 표준 관행. 기준 0.5초·상한 5초·지터 하한 50%·직원 스트림 1초/15초·하트비트 30초+지터 5초 = 임의(측정 안 함).
 // 이 값들은 '정한 것'이다. 임상 현장 흐름에 맞는지는 사용자 결정 대기(FAULT_POLICY 맨 아래)이며 실측으로 확인하지 못했다.
 /** 키오스크 요청. 서비스 재시작은 수 초 걸리므로 0.5초로 빠르게 한 번 더 시도하되 곧 늘린다(0.5 -> 1 -> 2 -> 4 -> 상한 5). 환자가 화면 앞에서 기다리므로 한 번 쉬는 시간이 5초를 넘지 않게 한다.
- * 총 예산 20초: 서버 턴 마감(6초)과 키오스크 대기(10초) 뒤에도 한두 번 더 시도할 수 있는 길이, 넘으면 직원 호출 화면. 시도 횟수 상한은 없다(예산이 끊는다). */
-export const DEFAULT_RETRY = { baseMs: 500, factor: 2, maxMs: 5_000, budgetMs: 20_000, minJitter: 0.5 } as const;
+ * 총 예산 24초 [사용자 결정 2026-10-30, 계약 CONVENTIONS 시간 상한 사슬: 응답 생성 5.0초, survey 턴 총 마감 9.0초, gateway 10.5초, 키오스크 대기 12초]: 키오스크 대기(12초)의 2배다.
+ * 이전 값(20초)도 대기(10초)의 2배였고 그 비례를 유지했다: 한 번 기다린 뒤 한 번 더 시도할 수 있는 길이이며, 넘으면 직원 호출 화면. 비례 2배는 측정이 아니라 이전 선택을 따른 것이다(측정하지 않았다). 시도 횟수 상한은 없다(예산이 끊는다). */
+export const DEFAULT_RETRY = { baseMs: 500, factor: 2, maxMs: 5_000, budgetMs: 24_000, minJitter: 0.5 } as const;
 /** 직원 콘솔 실시간 스트림 재연결(예산 없음: 복구되면 사람 개입 없이 다시 붙는다, 원칙 12). 직원은 화면 앞에서 계속 기다리는 사람이 아니므로 상한을 15초로 두고, 상류가 재시작 중일 때 몰려들지 않게 지터를 둔다.
  * 예산이 없는 값은 JSON에 없으므로 매우 큰 수로 쓴다(약 285년, Number.MAX_SAFE_INTEGER ms). */
 export const STAFF_STREAM_RETRY = { baseMs: 1_000, factor: 2, maxMs: 15_000, budgetMs: Number.MAX_SAFE_INTEGER, minJitter: 0.5 } as const;
@@ -68,5 +69,5 @@ export const STAFF_STREAM_RETRY = { baseMs: 1_000, factor: 2, maxMs: 15_000, bud
  * 0~5초 지터를 더해 서버 재시작 직후 모든 콘솔이 같은 초에 재연결하지 않게 한다. 값은 '정한 것'이며 실측하지 않았다. */
 export const STAFF_HEARTBEAT = { intervalMs: 15_000, missFactor: 2, jitterMs: 5_000 } as const;
 export const heartbeatTimeoutMs = (rand: () => number = Math.random) => STAFF_HEARTBEAT.intervalMs * STAFF_HEARTBEAT.missFactor + Math.round(rand() * STAFF_HEARTBEAT.jitterMs);
-/** 요청 하나의 응답 대기 상한(PUBLIC_API.md: 응답이 없으면 10초 뒤 같은 turn_id로 재시도). */
-export const REQUEST_TIMEOUT_MS = 10_000;
+/** 요청 하나의 응답 대기 상한 12초 [사용자 결정 2026-10-30, 계약 CONVENTIONS 시간 상한 사슬: 키오스크 12초 > gateway 10.5초 > survey 턴 9.0초 > 응답 생성 5.0초]. 응답이 없으면 이 시간 뒤 같은 turn_id로 재시도한다. 사슬은 바깥이 항상 더 길어야 한다. 값은 정한 것이며 측정하지 않았다. */
+export const REQUEST_TIMEOUT_MS = 12_000;

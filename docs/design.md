@@ -29,15 +29,15 @@
 - `staff_alert = DELIVERY_FAILED` -> CALL_STAFF(최우선).
 - `staff_alert = DELIVERED` -> WAITING_STAFF.
 - `write_committed = NOT_COMMITTED`(DELIVERY_FAILED가 아닐 때) -> 다시 말해 달라고 안내, LISTENING.
-- 재시도 예산(20초) 소진, 401/403 -> CALL_STAFF. 500·그 밖의 4xx(429 제외)는 재시도 없이 오류로 처리. 404 -> 세션 만료 안내 후 IDLE. 409 -> 위험 정지 중으로 보고 WAITING_STAFF(폴링으로 확인). 위험 정지 세션은 유휴 만료되지 않는다(계약).
+- 재시도 예산(24초) 소진, 401/403 -> CALL_STAFF. 500·그 밖의 4xx(429 제외)는 재시도 없이 오류로 처리. 404 -> 세션 만료 안내 후 IDLE. 409 -> 위험 정지 중으로 보고 WAITING_STAFF(폴링으로 확인). 위험 정지 세션은 유휴 만료되지 않는다(계약).
 
 ### 재시도와 대기 화면 (FAULT_POLICY 원칙 2·3·7)
-- 정책 값은 `src/components/retry_policy.ts`와 `src/config.ts` 한 곳(기준 0.5초, 배율 2, 상한 5초, 예산 20초, 지터 하한 50%)에 근거와 함께 둔다. 예산·값이 임상 현장에 맞는지는 FAULT_POLICY의 사용자 결정 대기 항목이며 실측으로 확인하지 못했다. 예산은 타임아웃과 대기를 합산하며 시작한 시도는 끊지 않으므로 최악 약 예산 + 10초(한 번의 타임아웃)까지 길어질 수 있다.
+- 정책 값은 `src/components/retry_policy.ts`와 `src/config.ts` 한 곳(기준 0.5초, 배율 2, 상한 5초, 예산 24초, 지터 하한 50%)에 근거와 함께 둔다. 예산·값이 임상 현장에 맞는지는 FAULT_POLICY의 사용자 결정 대기 항목이며 실측으로 확인하지 못했다. 예산은 타임아웃과 대기를 합산하며 시작한 시도는 끊지 않으므로 최악 약 예산 + 10초(한 번의 타임아웃)까지 길어질 수 있다.
 - 재시도가 시작되면 화면은 "잠시만 기다려 주세요"(기존 STARTING 문구)와 안내 문장, "직원 부르기", "그만하기"를 보인다. 안내 문장은 임상 문구가 아닌 임시 UI 문구다. 직원 부르기는 진행 중 요청을 끊고 CALL_STAFF, 그만하기는 끊고 세션 종료를 요청한다. 이미 서버가 확정한 턴이 있을 수 있으나 같은 `turn_id` 재전송은 멱등이라 안전하다(서버 계약).
 - 409 `details.reason = TURN_IN_PROGRESS`(+`Retry-After`)의 형식은 PUBLIC_API.md 409 행으로 확정되었다. 모의 서버는 시나리오 `turn_in_progress`로 이를 낸다. survey-service가 이 형식을 구현했다고 헤드가 알려 왔고(survey-service 757351e, 이 영역은 그 리포지토리를 읽지 않아 직접 확인하지 못했다) 이 영역은 그 형식에 맞췄다(e69d441). 이 PC의 전체 E2E에서 실제 survey-service와 키오스크를 잇는 시험은 아직 없다. 이 경로는 모의 서버와 가짜 fetch 시험으로만 확인했다. reason이 없거나 다른 409는 기존대로 WAITING_STAFF.
 
 ### 깨진 응답과 정적 서버 장애 (FAULT_POLICY 원칙 10, FAULT_MATRIX A1·A2 F6, A3)
-- 키오스크 클라이언트는 세션 시작·발화·종료·개입 응답을 `FrontendInput` 모양으로, 상태 폴링 응답을 `SessionState` 모양으로 검사한다(`schemas/*Body.json`(생성 검증기)). HTML·빈 본문·204·잘린 JSON·배열·`response_text` 누락/숫자/빈 문자열·알 수 없는 신호 값은 `BadBodyError`가 되어 5xx와 같은 재시도 대상이다(같은 `turn_id`, 예산 20초). 계속되면 직원 호출 화면이고 응답 문장을 지어내지 않는다. 이전에는 JSON 파싱 실패만 재시도되고, 빈 본문 200이나 필드가 빠진 JSON은 성공으로 취급되어 흐름에서 예외가 나 재시도 없이 직원 호출로 갔다.
+- 키오스크 클라이언트는 세션 시작·발화·종료·개입 응답을 `FrontendInput` 모양으로, 상태 폴링 응답을 `SessionState` 모양으로 검사한다(`schemas/*Body.json`(생성 검증기)). HTML·빈 본문·204·잘린 JSON·배열·`response_text` 누락/숫자/빈 문자열·알 수 없는 신호 값은 `BadBodyError`가 되어 5xx와 같은 재시도 대상이다(같은 `turn_id`, 예산 24초). 계속되면 직원 호출 화면이고 응답 문장을 지어내지 않는다. 이전에는 JSON 파싱 실패만 재시도되고, 빈 본문 200이나 필드가 빠진 JSON은 성공으로 취급되어 흐름에서 예외가 나 재시도 없이 직원 호출로 갔다.
 - 검사 기준은 `FrontendInput.json`·`TurnFailureSignal.json`(열거값은 `check-schema`가 대조)이다. 스키마 파일을 복사하지 않고 손으로 쓴 검사라, 서버가 새 열거값을 추가하면 이 검사가 거부해 직원 호출이 될 수 있다(의도한 보수적 동작).
 - 직원 콘솔 쪽 목록·세션 기록 응답은 이 검사를 하지 않는다("읽을 때는 관대하게").
 - A3: 키오스크는 정적 파일이 한 번 로드되면 JS를 메모리에 두고 `/v1`만 호출하므로, 정적 화면 서버가 죽어도 진행 중인 세션은 이어진다. 브라우저 시험(정적 경로만 503으로 만든 상태에서 한 턴과 종료)으로 확인했다. 이 시험 구조에서는 정적 서버와 모의 API가 한 프로세스라 컨테이너를 따로 멈추지 못해 정적 경로만 503으로 바꾸는 방식으로 모의했다. 실제 gateway·Caddy가 정적 서버 중단 때 어떻게 응답하는지는 확인하지 못했다. 최초 로드나 새로고침이 정적 서버 장애 중이면 브라우저 기본 오류 화면이 뜬다(키오스크 서비스 워커·오프라인 캐시는 없다. 환자 화면에 낡은 코드를 남길 위험이 있어 만들지 않았다). 보완은 deploy의 gateway 몫이다(CR-004 4항).
@@ -67,7 +67,7 @@
 
 ### 직원 콘솔 연결 상태 (FAULT_POLICY 원칙 7·12)
 - 머리줄 `#conn`: "실시간 연결됨" / "연결 중" / "연결 끊김 - 다시 연결 중 (N초 뒤). 새 알림이 바로 보이지 않을 수 있습니다."(끊김은 붉은 배경, `role=alert`).
-- 목록 읽기에 실패하면 `#list-status`가 "알림 목록을 불러오지 못했습니다. 비어 있는 것이 아닙니다"(처음부터 실패) 또는 "새로 읽지 못했습니다. 화면이 최신이 아닐 수 있습니다"를 보인다. 목록 요청 자체는 키오스크와 같은 재시도 정책(`src/components/retry_policy.ts`와 `src/config.ts`, 502·503·504·429 등, 예산 20초)을 따른다.
+- 목록 읽기에 실패하면 `#list-status`가 "알림 목록을 불러오지 못했습니다. 비어 있는 것이 아닙니다"(처음부터 실패) 또는 "새로 읽지 못했습니다. 화면이 최신이 아닐 수 있습니다"를 보인다. 목록 요청 자체는 키오스크와 같은 재시도 정책(`src/components/retry_policy.ts`와 `src/config.ts`, 502·503·504·429 등, 예산 24초)을 따른다.
 - 이 안내 문구는 임상 문구가 아닌 임시 UI 문구다.
 - 하트비트(PUBLIC_API.md 43행, D87): EventSource는 `: ping` 주석 줄을 보여 주지 않으므로 서버가 보내는 이름 있는 이벤트 `heartbeat`(연결 직후 한 번, 약 15초마다, `id` 없음)를 쓴다. 한 연결에서 첫 `heartbeat`를 받으면 무음 감시를 켜고, 주기의 2배(30초) + 지터 0~5초 안에 다음 `heartbeat`가 없으면 조용히 죽은 연결로 보고 직접 닫아 `#conn`을 "연결 끊김"으로 바꾸며 재연결 백오프 경로로 간다(`src/components/retry_policy.ts`와 `src/config.ts` `STAFF_HEARTBEAT`, 값은 정한 것이고 실측하지 않았다). 새 연결은 첫 `heartbeat`를 받을 때까지 감시하지 않는다. 그래서 `heartbeat`를 보내지 않는 구버전 서버에서는 감시가 켜지지 않고 15초 주기 목록 재읽기가 유일한 안전망으로 남는다.
 - `resync`(`{"reason": "EVENTS_NOT_RESUMABLE"}`): 받으면 알림 목록을 즉시 다시 읽는다(OPEN·RESOLVED 둘 다 읽는 기존 `load()`를 그대로 쓴다. OPEN만 읽는 최적화는 하지 않았다). 모르는 이벤트 이름은 무시한다.
@@ -79,7 +79,7 @@
 | 세션 ID는 **서버가 발급**한다(계약 2.2.0, D106): 시작 본문에 `session_id`를 보내지 않고 응답의 `session_id`(1~64자, 영문·숫자·`-_`)를 이후 호출에 쓴다. 응답에 없거나 형식이 틀리면 시작 실패(재시도 대상) | `src/components/link_public_api_send.ts` `startSession`, `schemas/*Body.json`(생성 검증기) `validateSessionStarted`, `src/components/kiosk_flow.ts` `start`. ADR 0020 |
 | 턴마다 고유 `turn_id` | `src/wiring/ids.ts` `newTurnId`, 발화 호출 한 번에 하나 |
 | 같은 `turn_id` 재전송은 안전 | `src/components/link_public_api_send.ts` 재시도는 같은 `turn_id` |
-| 10초 무응답이면 같은 `turn_id`로 재시도, 총 재시도 예산(기본 20초)을 넘으면 직원 호출(FAULT_POLICY 원칙 7; 이전 "3회 실패"를 대체) | `src/components/link_public_api_send.ts` `AbortController` 타임아웃, 예산 소진 시 `CallStaffError`. 값과 근거는 `src/components/retry_policy.ts`와 `src/config.ts` |
+| 12초 무응답이면 같은 `turn_id`로 재시도, 총 재시도 예산(기본 24초)을 넘으면 직원 호출(FAULT_POLICY 원칙 7; 이전 "3회 실패"를 대체) | `src/components/link_public_api_send.ts` `AbortController` 타임아웃, 예산 소진 시 `CallStaffError`. 값과 근거는 `src/components/retry_policy.ts`와 `src/config.ts` |
 | 한 세션의 요청은 순서대로 하나씩 | `src/components/link_public_api_send.ts` 세션별 직렬 큐 |
 | 상태 코드로 분기(D66 표 + FAULT_POLICY). 429·502·503·504·네트워크 오류·무응답은 지수 백오프(0.5초 x2, 상한 5초, 지터 50~100%)로 재시도하고 `Retry-After`가 있으면 그 이상 기다린다(위로만 지터). 409 중 본문 `code = CONFLICT`이면서 `details.reason = TURN_IN_PROGRESS`인 것만 (PUBLIC_API.md 409 행) 같은 `turn_id`로 재시도하고 나머지 409는 기존대로 WAITING_STAFF. 400/401/403/404/500은 재시도 안 함. `Retry-After`가 남은 예산보다 길면 기다리지 않고 직원 호출 | `src/components/link_public_api_send.ts`, `src/components/retry_policy.ts`와 `src/config.ts` |
 | `turn_id`는 봉투 필드: 떼어 낸 나머지가 FrontendMessage/InterventionDecision | 시험 `test/mock.test.ts`, 모의 서버 |

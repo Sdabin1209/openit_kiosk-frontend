@@ -46,7 +46,7 @@ test("502·504·429·네트워크 오류도 재시도한다", async () => {
   }
 });
 
-test("504가 계속되면 예산(20초)을 넘기기 전에 CallStaffError로 끝난다", async () => {
+test("504가 계속되면 예산(24초)을 넘기기 전에 CallStaffError로 끝난다", async () => {
   const { api, c, count } = make([() => err(504)]);
   await assert.rejects(api.sendUtterance("s1", "x", "t"), (e) => e instanceof CallStaffError && e.lastCause instanceof ApiError && e.lastCause.status === 504);
   const total = c.waits.reduce((a, b) => a + b, 0);
