@@ -7,7 +7,9 @@ import type { StaffAlert } from "../types/StaffAlert.ts";
 import { DEFAULT_RETRY, REQUEST_TIMEOUT_MS, STAFF_STREAM_RETRY, heartbeatTimeoutMs } from "../config.ts";
 import { newTurnId } from "./ids.ts";
 
-export type PublicApiOptions = Omit<ClientOptions, "retryPolicy" | "newTurnId"> & {
+export type PublicApiOptions = Omit<ClientOptions, "retryPolicy" | "newTurnId" | "timeoutMs"> & {
+  /** 기본 config.ts REQUEST_TIMEOUT_MS. 시험에서만 줄인다. */
+  timeoutMs?: number;
   /** 기본 정책(config.ts DEFAULT_RETRY) 일부를 덮어쓴다(시험·특수 용도). */
   retry?: Partial<RetryPolicy>;
   rand?: () => number;
@@ -16,7 +18,7 @@ export type PublicApiOptions = Omit<ClientOptions, "retryPolicy" | "newTurnId"> 
 
 export function createPublicApiClient(o: PublicApiOptions = {}): PublicApiClient {
   const { retry, rand, ...rest } = o;
-  return new PublicApiClient({ timeoutMs: REQUEST_TIMEOUT_MS, ...rest, newTurnId: o.newTurnId ?? newTurnId, retryPolicy: createRetryPolicy({ ...DEFAULT_RETRY, ...retry }, rand) });
+  return new PublicApiClient({ ...rest, timeoutMs: o.timeoutMs ?? REQUEST_TIMEOUT_MS, newTurnId: o.newTurnId ?? newTurnId, retryPolicy: createRetryPolicy({ ...DEFAULT_RETRY, ...retry }, rand) });
 }
 
 /** 직원 콘솔이 쓰는 서버 면: REST(link_public_api_send)와 실시간 스트림(link_staff_stream_receive)을 한 객체로 묶는다. */

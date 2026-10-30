@@ -87,7 +87,8 @@ export interface ClientOptions {
   /** 키오스크 기기 토큰(메모리 값). 있으면 /sessions* 요청에만 Authorization: Bearer로 보낸다. 직원 경로에는 보내지 않는다. */
   deviceToken?: () => string | null;
   fetch?: typeof fetch;
-  timeoutMs?: number; // 기본 12초(config.ts REQUEST_TIMEOUT_MS와 같은 값, 사용자 결정 2026-10-30)
+  /** 응답 대기 상한(ms). 기본값이 없다: 값은 config.ts의 REQUEST_TIMEOUT_MS 한 곳에만 있고 wiring이 넘긴다(이중 정의 금지). */
+  timeoutMs: number;
   /** 재시도 판단(components/retry_policy.ts). wiring이 넣는다. */
   retryPolicy: RetryPolicyPort;
   /** 턴 ID 발급(wiring). 호출자가 주지 않은 발화·개입에 쓴다. */
@@ -120,7 +121,7 @@ export class PublicApiClient {
     this.f = o.fetch ?? ((...a) => globalThis.fetch(...a));
     this.deviceToken = o.deviceToken ?? (() => null);
     this.base = (o.baseUrl ?? "/v1").replace(/\/$/, "");
-    this.timeoutMs = o.timeoutMs ?? 12_000;
+    this.timeoutMs = o.timeoutMs;
     this.retryPolicy = o.retryPolicy;
     this.newTurnId = o.newTurnId;
     this.now = o.now ?? (() => Date.now());
