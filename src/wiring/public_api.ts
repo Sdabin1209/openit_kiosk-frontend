@@ -6,8 +6,9 @@ import { createRetryPolicy, type RetryPolicy } from "../components/retry_policy.
 import type { StaffAlert } from "../types/StaffAlert.ts";
 import { DEFAULT_RETRY, REQUEST_TIMEOUT_MS, STAFF_STREAM_RETRY, heartbeatTimeoutMs } from "../config.ts";
 import { newTurnId } from "./ids.ts";
+import { realNow, realSleep, realTimers } from "./clock.ts";
 
-export type PublicApiOptions = Omit<ClientOptions, "retryPolicy" | "newTurnId" | "timeoutMs"> & {
+export type PublicApiOptions = Partial<Pick<ClientOptions, "sleep" | "now" | "timers">> & Omit<ClientOptions, "retryPolicy" | "newTurnId" | "timeoutMs" | "sleep" | "now" | "timers"> & {
   /** 기본 config.ts REQUEST_TIMEOUT_MS. 시험에서만 줄인다. */
   timeoutMs?: number;
   /** 기본 정책(config.ts DEFAULT_RETRY) 일부를 덮어쓴다(시험·특수 용도). */
@@ -18,7 +19,7 @@ export type PublicApiOptions = Omit<ClientOptions, "retryPolicy" | "newTurnId" |
 
 export function createPublicApiClient(o: PublicApiOptions = {}): PublicApiClient {
   const { retry, rand, ...rest } = o;
-  return new PublicApiClient({ ...rest, timeoutMs: o.timeoutMs ?? REQUEST_TIMEOUT_MS, newTurnId: o.newTurnId ?? newTurnId, retryPolicy: createRetryPolicy({ ...DEFAULT_RETRY, ...retry }, rand) });
+  return new PublicApiClient({ ...rest, timeoutMs: o.timeoutMs ?? REQUEST_TIMEOUT_MS, sleep: o.sleep ?? realSleep, now: o.now ?? realNow, timers: o.timers ?? realTimers, newTurnId: o.newTurnId ?? newTurnId, retryPolicy: createRetryPolicy({ ...DEFAULT_RETRY, ...retry }, rand) });
 }
 
 /** 직원 콘솔이 쓰는 서버 면: REST(link_public_api_send)와 실시간 스트림(link_staff_stream_receive)을 한 객체로 묶는다. */
@@ -34,11 +35,11 @@ export function createStaffApi(client: PublicApiClient, o: { baseUrl?: string; e
     stream(
       onAlert: (a: StaffAlert) => void,
       onState: (connected: boolean, info?: { attempt: number; nextRetryMs: number | null }) => void,
-      t: StreamTimers & { rand?: () => number } = {},
+      t: Partial<StreamTimers> & { rand?: () => number } = {},
       hooks: { onResync?: () => void } = {},
     ): () => void {
       const policy = createRetryPolicy(STAFF_STREAM_RETRY, t.rand);
-      return openStaffStream({ ...o, backoffMs: policy.backoffMs, heartbeatTimeoutMs: () => heartbeatTimeoutMs(t.rand) }, onAlert, onState, t, hooks);
+      return openStaffStream({ ...o, backoffMs: policy.backoffMs, heartbeatTimeoutMs: () => heartbeatTimeoutMs(t.rand) }, onAlert, onState, { setTimeout: t.setTimeout ?? realTimers.setTimeout, clearTimeout: t.clearTimeout ?? realTimers.clearTimeout }, hooks);
     },
   };
 }

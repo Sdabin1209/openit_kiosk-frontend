@@ -57,7 +57,8 @@ test("setup-env.sh: 이미 준비돼 있으면(node_modules가 잠금 파일보�
     mkdirSync(join(d, "node_modules"));
     const lock = join(d, "package-lock.json");
     writeFileSync(join(d, "node_modules/.package-lock.json"), "{}");
-    const old = new Date(Date.now() - 60_000); utimesSync(lock, old, old);
+    // 고정된 과거(시계를 읽지 않는다): 잠금 파일이 설치 표지보다 오래됐다
+    const old = new Date("2000-01-01T00:00:00Z"); utimesSync(lock, old, old);
     const r = run(d);
     assert.equal(r.status, 0, r.stderr);
     assert.equal(JSON.parse(lastLine(r.stdout)).status, "ok");

@@ -30,16 +30,19 @@ export interface SttAdapter {
  * allowRemote(기기 설정 allow_remote_stt)를 켠 경우에만 외부 인식으로 대체할 수 있다(환자 고지 문구가 화면에 보인다).
  * 온디바이스 확인은 SpeechRecognition.available({langs, processLocally})/install(Chrome 138+ 계열 API). 이 PC에서는 실제 지원 여부를 확인하지 못했다.
  */
+export interface SttTimers { setTimeout(fn: () => void, ms: number): unknown; clearTimeout(handle: unknown): void }
 export class WebSpeechStt implements SttAdapter {
   private rec: any = null;
   private localOk = false;
   private ready = false;
   private allowRemote: boolean;
   private installTimeoutMs: number;
+  private timers: SttTimers;
   /** 언어 팩 설치가 시간 초과로 끝났다: 기기 안 인식이 곧 될 수도 있으므로 외부 인식으로 자동 전환하지 않는다(3차 점검 L). */
   private timedOut = false;
   private rechecking = false;
-  constructor(o: { allowRemote?: boolean; installTimeoutMs?: number } = {}) { this.allowRemote = o.allowRemote === true; this.installTimeoutMs = o.installTimeoutMs ?? 10_000; /* 임의(측정 안 함) */ }
+  /** installTimeoutMs와 timers는 기본값이 없다: 값은 config.ts에서, 타이머는 wiring이 넣는다(시계 주입, ADR 0034). */
+  constructor(o: { allowRemote?: boolean; installTimeoutMs: number; timers: SttTimers }) { this.allowRemote = o.allowRemote === true; this.installTimeoutMs = o.installTimeoutMs; this.timers = o.timers; }
   setAllowRemote(v: boolean): void { this.allowRemote = v === true; }
   private ctor(): any {
     const w = globalThis as any;
@@ -55,9 +58,9 @@ export class WebSpeechStt implements SttAdapter {
         if ((st === "downloadable" || st === "downloading") && typeof C.install === "function") {
           try {
             // 언어 팩 내려받기가 끝나지 않으면 환자가 음성 입력만 기다리지 않게 상한 뒤 글자 입력으로 대체한다.
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const limit = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error("install timeout")), this.installTimeoutMs); });
-            try { await Promise.race([C.install(opts), limit]); } finally { clearTimeout(timer); }
+            let timer: unknown;
+            const limit = new Promise<never>((_, rej) => { timer = this.timers.setTimeout(() => rej(new Error("install timeout")), this.installTimeoutMs); });
+            try { await Promise.race([C.install(opts), limit]); } finally { this.timers.clearTimeout(timer); }
             st = await C.available(opts);
           } catch (e) { st = "unavailable"; /* 설치 실패·시간 초과는 지원 안 함으로 */ this.timedOut = (e as Error)?.message === "install timeout"; }
         }

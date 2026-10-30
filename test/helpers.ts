@@ -13,11 +13,33 @@ export const ok = (text: string | null = "응답", sig: unknown = null) => json(
 /** 신호(abort)를 따르는 응답 없는 fetch. */
 export const hang = (init?: RequestInit) => new Promise<Response>((_, rej) => init?.signal?.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError"))));
 
+/** 시험이 쥔 가짜 타이머(시계 주입, ADR 0034): 시간은 시험이 advance할 때만 흐른다. 실제 시간을 기다리지 않는다. */
+export function fakeTimers() {
+  type T = { id: number; fn: () => void; at: number };
+  let q: T[] = [], id = 0, now = 0;
+  return {
+    setTimeout(fn: () => void, ms: number): unknown { q.push({ id: ++id, fn, at: now + ms }); return id; },
+    clearTimeout(h: unknown): void { q = q.filter((x) => x.id !== h); },
+    /** ms만큼 시간을 흘리고 만기가 된 타이머를 시각 순서로 실행한다. */
+    advance(ms: number): void {
+      const end = now + ms;
+      for (;;) { const due = q.filter((x) => x.at <= end).sort((a, b) => a.at - b.at || a.id - b.id)[0]; if (!due) break; q = q.filter((x) => x !== due); now = Math.max(now, due.at); due.fn(); }
+      now = end;
+    },
+    pending: () => q.length,
+  };
+}
+/** 가짜 의존이 즉시 시간 초과를 낸다: 클라이언트 자신의 타이머가 발동했을 때 fetch가 내는 AbortError와 같은 것. 시간을 재지 않는다(U421). */
+export const timesOut = () => Promise.reject(new DOMException("timeout", "AbortError"));
+
 /** 타이머 없이 마이크로태스크·I/O 콜백이 모두 처리될 때까지 이벤트 루프를 몇 바퀴 돌린다(부하와 무관하게 결정적). */
 export const settle = async (rounds = 20) => { for (let i = 0; i < rounds; i++) await new Promise<void>((r) => setImmediate(r)); };
 
 /** 조건이 참이 될 때까지 기다린다. 시간은 상한(실패 시에만 쓰임)일 뿐 통과 조건이 아니다. */
-export async function waitFor(cond: () => boolean, what = "조건", timeoutMs = 10_000) {
+/** 매달림 감시(U422): 시험이 자기 가짜에게서 신호를 기다리는 대기의 바깥 마감(초). 정상이면 즉시(이벤트 루프 몇 바퀴) 끝나고 코드가 진짜로 멈췄을 때만 걸린다.
+ * 판정(옳고 그름)이 아니다. 숫자를 시험마다 쓰지 않고 이 상수 하나로 통일한다. 300초는 헤드 지시(U422)가 정한 값이다. */
+export const HANG_GUARD_SECONDS = 300;
+export async function waitFor(cond: () => boolean, what = "조건", timeoutMs = HANG_GUARD_SECONDS * 1000) {
   const t0 = Date.now();
   while (!cond()) {
     if (Date.now() - t0 > timeoutMs) throw new Error(`시간 초과: ${what}`);

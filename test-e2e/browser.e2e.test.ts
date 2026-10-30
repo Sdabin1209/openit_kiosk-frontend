@@ -10,6 +10,11 @@ import type { AddressInfo } from "node:net";
 import { chromium, type Browser, type Page, type BrowserContext } from "playwright";
 import { createMock } from "../mock-server/app.ts";
 import { makeDevStatic } from "../mock-server/server.ts";
+import { HANG_GUARD_SECONDS } from "./../test/helpers.ts";
+
+// 매달림 감시(U422): 화면 대기(waitFor 등)의 바깥 마감. 값은 test/helpers.ts의 HANG_GUARD_SECONDS 하나로 통일했다. 판정(옳고 그름)에는 쓰이지 않는다.
+// 이 파일은 실제 브라우저·서버·시간으로 끝까지 맞물리는지 보는 E2E라 영역 시험(npm test)에 들어 있지 않다. E2E 금지로 실행하지 못했다(tsc만 확인).
+const HANG_GUARD_MS = HANG_GUARD_SECONDS * 1000;
 
 const SHOTS = "e2e-artifacts";
 mkdirSync(SHOTS, { recursive: true });
@@ -134,7 +139,7 @@ test("키오스크: 실서버 응답 모양(신호 null + 상태 PAUSED_RISK)에
   await page.getByText("어디가 불편하신가요?").waitFor();
   await page.locator("#manual-input").fill("위험해요");
   await page.getByRole("button", { name: "말하기" }).click();
-  await page.getByText("직원이 곧 도와드립니다").waitFor({ timeout: 10_000 });
+  await page.getByText("직원이 곧 도와드립니다").waitFor({ timeout: HANG_GUARD_MS });
   assert.equal(await page.getByRole("button", { name: "그만하기" }).count(), 0, "정지 중에는 그만하기를 숨긴다");
   await ctx.close();
 });
@@ -164,7 +169,7 @@ test("키오스크: 마이크 거부는 글자 입력으로 대체되고 직원 
     if (await page.getByText("직원을 불러 주세요").count()) break;
     await page.getByRole("button", { name: "말하기" }).click();
   }
-  await page.getByText("여러 번 알아듣지 못했어요").waitFor({ timeout: 5_000 });
+  await page.getByText("여러 번 알아듣지 못했어요").waitFor({ timeout: HANG_GUARD_MS });
   await ctx0.close();
 });
 
@@ -233,7 +238,7 @@ test("키오스크 2.1.0: 다시 부르기 - 실패하면 카운트다운 동안
   assert.match(await page.locator("#notice").innerText(), /아직 직원에게 알림이 닿지 않았어요/);
   assert.equal(await page.getByText("직원을 불러 주세요").count(), 1, "화면은 끝나지 않는다");
   await page.screenshot({ path: `${SHOTS}/kiosk-7-retry-countdown.png` });
-  await page.waitForFunction(() => !(document.getElementById("staffcall") as HTMLButtonElement).disabled, null, { timeout: 8_000 }); // 상한은 실패 시에만 쓰인다
+  await page.waitForFunction(() => !(document.getElementById("staffcall") as HTMLButtonElement).disabled, null, { timeout: HANG_GUARD_MS }); // 상한은 실패 시에만 쓰인다
   assert.equal(await page.locator("#countdown").isHidden(), true);
   assert.match(await page.locator("#notice").innerText(), /다시 부르기를 누를 수 있습니다/, "버튼이 켜지는 순간 role=status로 알린다(L-4)");
   assert.equal(await page.evaluate(() => document.activeElement?.id), "staffcall", "초점이 버튼으로 돌아온다(L-4)");
@@ -267,7 +272,7 @@ test("키오스크 2.1.0: 상한(RETRY_LIMIT)이면 버튼이 사라지고 직�
   await toDeliveryFailed(page);
   const btn = page.getByRole("button", { name: "직원 다시 부르기" });
   await btn.click();
-  await page.waitForFunction(() => !(document.getElementById("staffcall") as HTMLButtonElement).disabled && !document.getElementById("staffcall")!.hidden, null, { timeout: 8_000 });
+  await page.waitForFunction(() => !(document.getElementById("staffcall") as HTMLButtonElement).disabled && !document.getElementById("staffcall")!.hidden, null, { timeout: HANG_GUARD_MS });
   await btn.click();
   await page.getByText("더 이상 다시 부를 수 없어요").waitFor();
   await btn.waitFor({ state: "hidden" });
@@ -346,7 +351,7 @@ test("키오스크 2.1.0: 정지 사유 - 위험 정지와 되묻기 한도 정�
     await page.locator("#manual-input").fill(word);
     await page.getByRole("button", { name: "말하기" }).click();
     await page.getByText("직원이 곧 도와드립니다").waitFor();
-    await page.waitForFunction((r) => document.body.dataset.pauseReason === r, reason, { timeout: 8_000 }); // 폴링(2초)으로 사유를 알게 된다
+    await page.waitForFunction((r) => document.body.dataset.pauseReason === r, reason, { timeout: HANG_GUARD_MS }); // 폴링(2초)으로 사유를 알게 된다
     assert.match(await page.locator("#text").innerText(), sentence, "서버 고정 문장이 우선");
     await ctx.close();
   }
@@ -390,10 +395,10 @@ test("키오스크: 서버 오류가 계속되면 직원 호출 화면 (503)", a
   await page.goto(kioskUrl());
   await page.getByRole("button", { name: "시작하기" }).click();
   // 재시도 중(예산 20초)에는 대기 문구와 직원 부르기·그만하기 버튼이 보인다.
-  await page.getByRole("button", { name: "직원 부르기" }).waitFor({ timeout: 10_000 });
+  await page.getByRole("button", { name: "직원 부르기" }).waitFor({ timeout: HANG_GUARD_MS });
   await page.getByText("잠시만 기다려 주세요").waitFor();
   await page.getByRole("button", { name: "그만하기" }).waitFor();
-  await page.getByText("직원을 불러 주세요").waitFor({ timeout: 45_000 }); // 예산 소진 뒤
+  await page.getByText("직원을 불러 주세요").waitFor({ timeout: HANG_GUARD_MS }); // 예산 소진 뒤
   await page.screenshot({ path: `${SHOTS}/kiosk-7-error-call-staff.png` });
   await ctx.close();
 });
@@ -403,8 +408,8 @@ test("키오스크: 재시도 중 직원 부르기를 누르면 바로 직원 �
   const { page, ctx } = await open("none");
   await page.goto(kioskUrl());
   await page.getByRole("button", { name: "시작하기" }).click();
-  await page.getByRole("button", { name: "직원 부르기" }).click({ timeout: 10_000 });
-  await page.getByText("직원을 불러 주세요").waitFor({ timeout: 3_000 });
+  await page.getByRole("button", { name: "직원 부르기" }).click({ timeout: HANG_GUARD_MS });
+  await page.getByText("직원을 불러 주세요").waitFor({ timeout: HANG_GUARD_MS });
   await ctx.close();
 });
 
@@ -421,9 +426,9 @@ test("키오스크: 이미 열린 화면은 정적 서버가 죽어도 진행 �
     assert.equal(st503, 503, "정적 파일은 실제로 내려가 있다");
     await page.locator("#manual-input").fill("가짜 두통 문장");
     await page.getByRole("button", { name: "말하기" }).click();
-    await page.getByText("언제부터 그러셨나요?").waitFor({ timeout: 10_000 });
+    await page.getByText("언제부터 그러셨나요?").waitFor({ timeout: HANG_GUARD_MS });
     await page.getByRole("button", { name: "그만하기" }).click();
-    await page.getByText("수고하셨습니다").waitFor({ timeout: 10_000 });
+    await page.getByText("수고하셨습니다").waitFor({ timeout: HANG_GUARD_MS });
   } finally { staticDown = false; }
   await ctx.close();
 });
@@ -448,16 +453,16 @@ test("키오스크: 응답 지연 중에는 '확인하고 있어요' 대기 화�
   await page.getByRole("button", { name: "시작하기" }).click();
   await page.getByText("잠시만 기다려 주세요").waitFor();
   await page.screenshot({ path: `${SHOTS}/kiosk-9-starting.png` });
-  await page.getByText("어디가 불편하신가요?").waitFor({ timeout: 10_000 });
+  await page.getByText("어디가 불편하신가요?").waitFor({ timeout: HANG_GUARD_MS });
   await ctx.close();
 });
 
 test("직원 콘솔: 스트림이 5xx로 거절되면 '연결 끊김'을 보이고 백오프 재연결로 사람 개입 없이 복구된다", async () => {
   await scenario("risk_stop", { streamErrorStatus: 503, streamErrorTimes: 2 });
   const staff = await open("none"); await staff.page.goto(base + "/staff/");
-  await staff.page.getByText("연결 끊김").first().waitFor({ timeout: 5_000 });
+  await staff.page.getByText("연결 끊김").first().waitFor({ timeout: HANG_GUARD_MS });
   assert.equal(await staff.page.locator("#conn").getAttribute("role"), "alert");
-  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: 15_000 }); // 1~2초 + 지터 후 복구
+  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: HANG_GUARD_MS }); // 1~2초 + 지터 후 복구
   await staff.ctx.close();
 });
 
@@ -467,13 +472,13 @@ test("직원 콘솔: 스트림이 끊긴 사이 생긴 알림이 재연결 뒤 �
   await staff.page.getByText("실시간 연결됨").waitFor();
   await fetch(base + "/__mock/scenario", { method: "POST", body: JSON.stringify({ name: "risk_stop", streamErrorStatus: 503, streamErrorTimes: 3 }) });
   await fetch(base + "/__mock/drop-sse", { method: "POST" });
-  await staff.page.getByText("연결 끊김").first().waitFor({ timeout: 5_000 });
+  await staff.page.getByText("연결 끊김").first().waitFor({ timeout: HANG_GUARD_MS });
   // 끊긴 동안 환자 쪽에서 위험 발화(가짜 입력)
   const post = (path: string, body: object) => fetch(base + "/v1" + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   await post("/sessions", { session_id: "gap-1", kind: "SESSION_START" });
   await post("/sessions/gap-1/turns", { session_id: "gap-1", kind: "UTTERANCE", utterance: "위험해요", turn_id: "gap-t1" });
-  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: 20_000 });
-  await staff.page.locator("#open").getByText("gap-1").waitFor({ timeout: 10_000 });
+  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: HANG_GUARD_MS });
+  await staff.page.locator("#open").getByText("gap-1").waitFor({ timeout: HANG_GUARD_MS });
   await staff.ctx.close();
 });
 
@@ -483,10 +488,10 @@ test("직원 콘솔: 하트비트가 끊긴 채 조용히 죽은 스트림을 �
   await staff.page.getByText("실시간 연결됨").waitFor();
   await new Promise((r) => setTimeout(r, 1500)); // 연결 직후 하트비트 도착
   await fetch(base + "/__mock/heartbeat", { method: "POST", body: JSON.stringify({ on: false }) }); // 연결은 열려 있고 하트비트만 멈춘다
-  await staff.page.locator("#conn.bad").waitFor({ timeout: 50_000 }); // 하트비트 주기 15초의 2배 + 지터 5초 이내
+  await staff.page.locator("#conn.bad").waitFor({ timeout: HANG_GUARD_MS }); // 하트비트 주기 15초의 2배 + 지터 5초 이내
   await staff.page.getByText("연결 끊김").first().waitFor();
   await fetch(base + "/__mock/heartbeat", { method: "POST", body: JSON.stringify({ on: true }) });
-  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: 20_000 }); // 새 연결 직후 하트비트 -> 감시 재개
+  await staff.page.getByText("실시간 연결됨").waitFor({ timeout: HANG_GUARD_MS }); // 새 연결 직후 하트비트 -> 감시 재개
   await staff.ctx.close();
 });
 
@@ -501,16 +506,16 @@ test("직원 콘솔: resync 이벤트를 받으면 스트림으로 오지 않은
   await new Promise((r) => setTimeout(r, 1000));
   assert.equal(await staff.page.locator("#open").getByText("rs-1").count(), 0, "스트림으로는 오지 않았다");
   await fetch(base + "/__mock/stream", { method: "POST", body: JSON.stringify({ mute: false, resync: true }) });
-  await staff.page.locator("#open").getByText("rs-1").waitFor({ timeout: 5_000 }); // 15초 주기보다 훨씬 빠르게
+  await staff.page.locator("#open").getByText("rs-1").waitFor({ timeout: HANG_GUARD_MS }); // 15초 주기보다 훨씬 빠르게
   await staff.ctx.close();
 });
 
 test("직원 콘솔: 목록 API가 실패하면 빈 목록이 아니라 '불러오지 못했습니다'를 보이고 복구되면 사라진다", async () => {
   await scenario("risk_stop", { errorStatus: 500, errorTimes: 1000 });
   const staff = await open("none"); await staff.page.goto(base + "/staff/");
-  await staff.page.getByText("알림 목록을 불러오지 못했습니다").waitFor({ timeout: 10_000 });
+  await staff.page.getByText("알림 목록을 불러오지 못했습니다").waitFor({ timeout: HANG_GUARD_MS });
   await scenario("risk_stop");
-  await staff.page.locator("#list-status").waitFor({ state: "hidden", timeout: 30_000 }); // 15초 주기 재읽기
+  await staff.page.locator("#list-status").waitFor({ state: "hidden", timeout: HANG_GUARD_MS }); // 15초 주기 재읽기
   await staff.ctx.close();
 });
 
@@ -530,7 +535,7 @@ test("직원 콘솔: 위험 알림이 실시간으로 뜨고 '이어서 진행'�
   await staff.page.locator("#resolved li").waitFor();
   await staff.page.screenshot({ path: `${SHOTS}/staff-2-resolved.png` });
   // 키오스크는 폴링으로 위험 정지가 풀린 것을 알아채 다시 질문한다.
-  await kiosk.page.getByText("다시 이어서 진행하겠습니다").waitFor({ timeout: 15_000 });
+  await kiosk.page.getByText("다시 이어서 진행하겠습니다").waitFor({ timeout: HANG_GUARD_MS });
   await staff.ctx.close(); await kiosk.ctx.close();
 });
 
@@ -574,7 +579,7 @@ test("직원 콘솔: 알림 → 기록 보기 → 재개 (읽기 전용 기록, 
   await dlg.waitFor();
   await staff.page.keyboard.press("Escape");
   await dlg.waitFor({ state: "hidden" });
-  await kiosk.page.getByText("다시 이어서 진행하겠습니다").waitFor({ timeout: 15_000 });
+  await kiosk.page.getByText("다시 이어서 진행하겠습니다").waitFor({ timeout: HANG_GUARD_MS });
   assert.deepEqual(staff.errors, []);
   await staff.ctx.close(); await kiosk.ctx.close();
 });
@@ -605,7 +610,7 @@ test("웹 푸시(헤드리스 가능 범위): 서비스 워커 등록·활성화
   // 실제 푸시 서비스 → 브라우저 전달 경로는 확인하지 못한다(사람 확인 필요).
   const sw = ctx.serviceWorkers().find((w) => w.url().endsWith("/staff/sw.js")) ?? await ctx.waitForEvent("serviceworker");
   await sw.evaluate(() => { (self as any).dispatchEvent(new (self as any).PushEvent("push", { data: JSON.stringify({ alert_id: "a-x", session_id: "s-fake", kind: "RISK_STOP" }) })); });
-  await page.waitForFunction(async () => (await (await navigator.serviceWorker.getRegistration("/staff/"))!.getNotifications()).length > 0, null, { timeout: 10_000 });
+  await page.waitForFunction(async () => (await (await navigator.serviceWorker.getRegistration("/staff/"))!.getNotifications()).length > 0, null, { timeout: HANG_GUARD_MS });
   const n = await page.evaluate(async () => (await (await navigator.serviceWorker.getRegistration("/staff/"))!.getNotifications()).map((x) => ({ t: x.title, b: x.body })));
   assert.deepEqual(n, [{ t: "직원 호출", b: "세션 s-fake (RISK_STOP)" }]);
   await ctx.close();

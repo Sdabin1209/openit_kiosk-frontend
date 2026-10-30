@@ -5,7 +5,8 @@
 // 말이 없음(no-speech)은 NO_SPEECH, 나머지는 OTHER다(분류는 기존 동작을 그대로 옮긴 것: 막힘만 화면 입력으로 대체한다).
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { SttError, WebSpeechStt } from "../src/components/stt_adapter.ts";
+import { SttError } from "../src/components/stt_adapter.ts";
+import { createWebSpeechStt } from "../src/wiring/kiosk.ts";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
@@ -32,7 +33,7 @@ test("KF-10: 브라우저 오류 코드를 SttError.kind 열거로 바꿔 reject
   };
   for (const [code, kind] of Object.entries(want)) {
     fakeWithError(code);
-    const stt = new WebSpeechStt(); await stt.init();
+    const stt = createWebSpeechStt(); await stt.init();
     const e = await stt.listen().then(() => null, (x) => x);
     assert.ok(e instanceof SttError, `${code}: SttError여야 한다`);
     assert.equal((e as SttError).kind, kind, code);
@@ -40,7 +41,7 @@ test("KF-10: 브라우저 오류 코드를 SttError.kind 열거로 바꿔 reject
 });
 
 test("KF-10: 이 기기에서 음성 입력을 쓸 수 없어 거부될 때도 BLOCKED(메시지 문구에 기대지 않는다)", async () => {
-  const stt = new WebSpeechStt(); await stt.init(); // SpeechRecognition 없음
+  const stt = createWebSpeechStt(); await stt.init(); // SpeechRecognition 없음
   const e = await stt.listen().then(() => null, (x) => x);
   assert.ok(e instanceof SttError); assert.equal((e as SttError).kind, "BLOCKED");
 });

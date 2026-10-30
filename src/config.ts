@@ -71,3 +71,6 @@ export const STAFF_HEARTBEAT = { intervalMs: 15_000, missFactor: 2, jitterMs: 5_
 export const heartbeatTimeoutMs = (rand: () => number = Math.random) => STAFF_HEARTBEAT.intervalMs * STAFF_HEARTBEAT.missFactor + Math.round(rand() * STAFF_HEARTBEAT.jitterMs);
 /** 요청 하나의 응답 대기 상한 12초 [사용자 결정 2026-10-30, 계약 CONVENTIONS 시간 상한 사슬: 키오스크 12초 > gateway 10.5초 > survey 턴 9.0초 > 응답 생성 5.0초]. 응답이 없으면 이 시간 뒤 같은 turn_id로 재시도한다. 사슬은 바깥이 항상 더 길어야 한다. 값은 정한 것이며 측정하지 않았다. */
 export const REQUEST_TIMEOUT_MS = 12_000;
+
+/** 언어 팩 설치가 이 시간(ms) 안에 끝나지 않으면 지원 안 함으로 보고 글자 입력으로 대체한다. 임의 값(측정 안 함): 환자가 음성 입력만 기다리지 않게 하는 상한. docs/design.md 5절 */
+export const STT_INSTALL_TIMEOUT_MS = 10_000;

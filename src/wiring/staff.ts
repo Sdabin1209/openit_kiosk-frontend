@@ -2,11 +2,13 @@
 import { InterventionDeciding } from "../components/intervention_decision.ts";
 import { createAlertSync, type SyncDeps } from "../components/alert_sync.ts";
 import { newTurnId } from "./ids.ts";
+import { realIntervals } from "./clock.ts";
+import { realTimers } from "./clock.ts";
 import type { StaffApi } from "./public_api.ts";
 
 export function createInterventionDeciding(api: Pick<StaffApi, "intervene">, confirm: (message: string) => Promise<boolean>, newId: () => string = newTurnId): InterventionDeciding {
   return new InterventionDeciding((s, d, t) => api.intervene(s, d, t), confirm, newId);
 }
-export function createStaffAlertSync(api: StaffApi, d: Omit<SyncDeps, "api">) {
-  return createAlertSync({ ...d, api });
+export function createStaffAlertSync(api: StaffApi, d: Omit<SyncDeps, "api" | "timers" | "streamTimers"> & Partial<Pick<SyncDeps, "timers" | "streamTimers">>) {
+  return createAlertSync({ ...d, api, timers: d.timers ?? realIntervals, streamTimers: d.streamTimers ?? realTimers });
 }

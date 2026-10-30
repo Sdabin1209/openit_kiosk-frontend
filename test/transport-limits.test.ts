@@ -12,7 +12,7 @@ import { settle, started } from "./helpers.ts";
 const plain = (status: number) => new Response(`${status} transport limit`, { status, headers: { "content-type": "text/plain" } });
 function make(status: number) {
   let n = 0; const waits: number[] = [];
-  const api = createPublicApiClient({ timeoutMs: 1000, sleep: async (ms) => { waits.push(ms); }, rand: () => 0.5, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ sleep: async (ms) => { waits.push(ms); }, rand: () => 0.5, fetch: (async (_u: string, init: RequestInit) => {
     n++;
     return JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : plain(status);
   }) as any });

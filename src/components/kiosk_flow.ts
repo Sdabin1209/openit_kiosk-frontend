@@ -79,14 +79,14 @@ export class KioskFlow {
   private retryTurnId: string | null = null; // 응답 없이 실패한 재알림은 같은 turn_id로 다시 보낸다(서버 멱등)
   private staffCallSupported = true; // 기능 감지: 404/405를 한 번 받으면 이 세션 동안 끈다
   private lastPause: PauseReason | undefined;
-  constructor(api: FlowApi, o: { newTurnId: () => string; isOutcomeUnknown: (status: number) => boolean; pollMs?: number; sleep?: (ms: number) => Promise<void>; startValues?: () => Promise<StartValues>; idleMs?: number; timers?: { set: (fn: () => void, ms: number) => unknown; clear: (h: unknown) => void } }) {
+  constructor(api: FlowApi, o: { newTurnId: () => string; isOutcomeUnknown: (status: number) => boolean; pollMs?: number; sleep: (ms: number) => Promise<void>; startValues?: () => Promise<StartValues>; idleMs?: number; timers: { set: (fn: () => void, ms: number) => unknown; clear: (h: unknown) => void } }) {
     this.idleMs = o.idleMs ?? IDLE_RESET_MS;
-    this.timers = o.timers ?? { set: (fn, ms) => { const h = setTimeout(fn, ms) as unknown as { unref?: () => void }; h.unref?.(); return h; }, clear: (h) => clearTimeout(h as number) };
+    this.timers = o.timers;
     this.api = api;
     this.newTurnId = o.newTurnId; this.isOutcomeUnknown = o.isOutcomeUnknown;
     this.startValues = o.startValues ?? null; // 시작 URL 조각·기기 설정에서 읽은 값(메모리)
     this.pollMs = o.pollMs ?? 2000; // 계약: 2초 간격
-    this.sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.sleep = o.sleep;
   }
 
   get current(): KioskView { return this.view; }

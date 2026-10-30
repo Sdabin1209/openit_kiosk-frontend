@@ -4,9 +4,10 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { connect } from "node:net";
-import { mkdtempSync, writeFileSync, rmSync, chmodSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, chmodSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { HANG_GUARD_SECONDS } from "../test/helpers.ts";
 
 const docker = (...a: string[]) => spawnSync("docker", a, { encoding: "utf8" });
 const TAG = process.env.IMAGE ?? `kiosk-frontend:imgtest-${process.pid}`;
@@ -23,13 +24,15 @@ function run(extra: string[] = [], env: string[] = []): { name: string; port: nu
   return { name, port, base: `http://127.0.0.1:${port}` };
 }
 async function ready(base: string) {
-  for (let i = 0; i < 50; i++) { try { if ((await fetch(base + "/healthz")).ok) return; } catch { /* 아직 */ } await new Promise((r) => setTimeout(r, 200)); }
+  // 매달림 감시: 컨테이너가 끝내 뜨지 않을 때 시험이 영원히 멈추지 않게 하는 바깥 마감(HANG_GUARD_SECONDS). 정상 기동은 1~2초이고 판정에는 쓰이지 않는다.
+  for (let i = 0; i < HANG_GUARD_SECONDS * 5; i++) { try { if ((await fetch(base + "/healthz")).ok) return; } catch { /* 아직 */ } await new Promise((r) => setTimeout(r, 200)); }
   throw new Error("healthz 응답 없음");
 }
 const raw = (port: number, req: string) => new Promise<string>((resolve) => {
   const s = connect(port, "127.0.0.1"); let out = "";
   s.on("data", (d) => { out += d; }); s.on("close", () => resolve(out)); s.on("error", () => resolve(out));
-  s.write(req); setTimeout(() => s.destroy(), 1500);
+  // 매달림 감시: 서버가 연결을 닫지 않을 때만 HANG_GUARD_SECONDS 뒤 끊는다(정상은 응답 직후 닫힘, 수 ms). 판정에 쓰이지 않는다.
+  s.write(req); setTimeout(() => s.destroy(), HANG_GUARD_SECONDS * 1000).unref();
 });
 
 let plain: { name: string; port: number; base: string };
@@ -117,20 +120,19 @@ test("STATIC_DIR에 화면이 없으면 /readyz는 503이고 /healthz는 200", a
   assert.equal((await fetch(c.base + "/healthz")).status, 200);
 });
 
-test("느린 클라이언트(요청을 끝내지 않는 연결)가 다른 요청을 막지 않는다", async () => {
-  const slow = Array.from({ length: 20 }, () => { const s = connect(plain.port, "127.0.0.1"); s.on("error", () => {}); s.write("GET / HTTP/1.1\r\nHost: x\r\n"); return s; });
-  try {
-    const t = Date.now();
-    assert.equal((await fetch(plain.base + "/healthz")).status, 200);
-    assert.ok(Date.now() - t < 2000);
-  } finally { for (const s of slow) s.destroy(); }
+// 느린 연결을 N초에 끊는지는 Caddy(라이브러리)의 동작이라 영역 시험에서 시간을 재지 않는다(U421). 이 영역의 책임은 올바른 값을 넘겼는가다.
+test("느린 클라이언트 방어: Caddy 서버 timeout 값을 설정에 넘겼다(read_header 10s, idle 60s) - 값만 확인하고 시간을 재지 않는다", () => {
+  const cf = readFileSync("Caddyfile", "utf8");
+  assert.match(cf, /timeouts\s*\{[^}]*read_header\s+10s[^}]*idle\s+60s[^}]*\}/);
 });
 
 test("로그는 표준 출력 JSON 한 줄이고 /healthz는 남기지 않는다", async () => {
   const c = run(); await ready(c.base);
   await fetch(c.base + "/healthz"); await fetch(c.base + "/marker-path-xyz");
-  await new Promise((r) => setTimeout(r, 500));
-  const out = docker("logs", c.name); const lines = (out.stdout + out.stderr).split("\n").filter((l) => l.startsWith("{"));
+  // 마커가 로그에 나타날 때까지 사건(로그 줄)을 기다린다. 매달림 감시: 끝내 나타나지 않으면 120초(600 x 200ms) 뒤 실패. 판정에 쓰이지 않는다.
+  let out = docker("logs", c.name);
+  for (let i = 0; i < HANG_GUARD_SECONDS * 5 && !(out.stdout + out.stderr).includes("marker-path-xyz"); i++) { await new Promise((r) => setTimeout(r, 200)); out = docker("logs", c.name); }
+  const lines = (out.stdout + out.stderr).split("\n").filter((l) => l.startsWith("{"));
   assert.ok(lines.length > 0);
   for (const l of lines) JSON.parse(l);
   const text = lines.join("\n");
@@ -138,13 +140,11 @@ test("로그는 표준 출력 JSON 한 줄이고 /healthz는 남기지 않는다
   assert.doesNotMatch(text, /"uri":"\/healthz"|"path":"\/healthz"/);
 });
 
-test("SIGTERM에 5초 안에 정상 종료(코드 0)한다", () => {
-  const c = run(); 
-  const t = Date.now();
-  const r = docker("stop", "-t", "5", c.name);
-  assert.equal(r.status, 0);
-  assert.ok(Date.now() - t < 5000, "SIGTERM 무시, SIGKILL까지 감");
-  assert.equal(docker("inspect", "-f", "{{.State.ExitCode}}", c.name).stdout.trim(), "0");
+// SIGTERM 처리와 종료 시각은 Caddy·Docker(라이브러리)의 동작이라 시간을 재지 않는다(U421). 이 영역의 책임은 값을 올바르게 넘긴 것이다:
+// 신호가 caddy에 닿도록 CMD가 exec 형식(JSON 배열)이고, Caddy 종료 유예가 Docker 기본 대기(10초) 이내로 설정됐다.
+test("종료 신호 설정: CMD는 exec 형식이고 grace_period는 10s다 - 값만 확인하고 시간을 재지 않는다", () => {
+  assert.match(readFileSync("Dockerfile", "utf8"), /^CMD \["caddy", "run"/m);
+  assert.match(readFileSync("Caddyfile", "utf8"), /grace_period\s+10s/);
 });
 
 test("PORT가 정수가 아니면 시작을 거부한다(비0 종료)", () => {

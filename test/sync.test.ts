@@ -6,7 +6,8 @@ import type { PublicApiClient } from "../src/components/link_public_api_send.ts"
 import { createStaffApi } from "../src/wiring/public_api.ts";
 import type { StaffApi } from "../src/wiring/public_api.ts";
 import { STAFF_STREAM_RETRY } from "../src/config.ts";
-import { createAlertSync, type SyncStatus } from "../src/components/alert_sync.ts";
+import type { SyncStatus } from "../src/components/alert_sync.ts";
+import { createStaffAlertSync } from "../src/wiring/staff.ts";
 import { settle } from "./helpers.ts";
 import type { StaffAlert } from "../src/types/StaffAlert.ts";
 
@@ -39,7 +40,7 @@ function setup(list: () => StaffAlert[] | Error, rand = () => 0) {
   }) as any, retry: { maxAttempts: 1 }, sleep: async () => {} });
   const api = createStaffApi(client, { eventSource: (u) => new FakeES(u) as any });
   const statuses: SyncStatus[] = []; const news: string[] = [];
-  const sync = createAlertSync({ api, onChange: () => {}, onNew: (a) => news.push(a.alert_id), onStatus: (s) => statuses.push(s), refreshMs: 0, streamTimers: { setTimeout: tm.setTimeout, clearTimeout: tm.clearTimeout, rand } });
+  const sync = createStaffAlertSync(api, { onChange: () => {}, onNew: (a) => news.push(a.alert_id), onStatus: (s) => statuses.push(s), refreshMs: 0, streamTimers: { setTimeout: tm.setTimeout, clearTimeout: tm.clearTimeout, rand } });
   return { sync, tm, statuses, news };
 }
 const flush = () => settle();
@@ -171,7 +172,7 @@ test("재알림 이벤트: 같은 alert_id에서 delivery_attempts가 커지면 
   const client = createPublicApiClient({ fetch: (async () => new Response(JSON.stringify({ items: [], next_cursor: null }))) as any, retry: { maxAttempts: 1 }, sleep: async () => {} });
   const api = createStaffApi(client, { eventSource: (u) => new FakeES(u) as any });
   const news: string[] = [], again: number[] = []; let last: ReadonlyMap<string, StaffAlert> = new Map();
-  const sync = createAlertSync({ api, onChange: (m) => { last = m; }, onNew: (a) => news.push(a.alert_id), onRedelivery: (a) => again.push(a.delivery_attempts!), onStatus: () => {}, refreshMs: 0 });
+  const sync = createStaffAlertSync(api, { onChange: (m) => { last = m; }, onNew: (a) => news.push(a.alert_id), onRedelivery: (a) => again.push(a.delivery_attempts!), onStatus: () => {}, refreshMs: 0 });
   await flush(); const es = FakeES.all[0]; es.open(); await flush();
   const base = al("1");
   es.emit({ ...base, delivery_attempts: 1 }); assert.deepEqual(news, ["1"]); assert.deepEqual(again, []);

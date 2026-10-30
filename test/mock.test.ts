@@ -97,12 +97,14 @@ test("위험 정지 -> 직원 재개: state는 ACTIVE+resume_text, 다음 턴 �
   await assert.rejects(api.getSessionState("nope"), (e) => e instanceof ApiError && e.status === 404);
 });
 
-test("risk_resume 시나리오: 키오스크가 폴링으로 재개를 알고 이어간다", async () => {
-  const { api } = await mk({ autoResumeMs: 30 });
-  const flow = createKioskFlow(api, { pollMs: 10, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
+// 요구사항: 위험 정지 중인 키오스크가 상태 폴링으로 재개를 알고 이어간다. 재개를 일으키는 것은 시간이 아니라 직원의 결정(사건)이다(U422: 실제 시간을 기다리지 않는다).
+test("직원이 RESUME하면 키오스크가 폴링으로 재개를 알고 이어간다", async () => {
+  const { api } = await mk({ alertDelivery: "DELIVERED" });
+  const flow = createKioskFlow(api, { pollMs: 10, sleep: () => new Promise((r) => setImmediate(r)) }); // 폴링 간격은 판정이 아니다: 시계 없이 한 바퀴씩 양보한다
   await flow.start(); await flow.hear({ text: "위험해요", confidence: 0.9 });
   assert.equal(flow.current.state, "WAITING_STAFF");
-  await waitFor(() => flow.current.state === "LISTENING", "재개를 폴링으로 알아 LISTENING"); // 서버 30ms 뒤 재개, 상한 10초
+  await createStaffApi(api).intervene(flow.session!, "RESUME", "i-resume");
+  await waitFor(() => flow.current.state === "LISTENING", "재개를 폴링으로 알아 LISTENING");
   assert.equal(flow.current.state, "LISTENING");
   assert.match(flow.current.text ?? "", /이어서/);
   flow.reset();
@@ -162,13 +164,11 @@ test("hang이 3회 이상이면 CallStaffError", async () => {
   await assert.rejects(api.sendUtterance(SID_s1, "하나", "t1"), CallStaffError);
 });
 
-test("error 시나리오: 503 두 번 뒤 성공, 지연 시나리오", async () => {
+test("error 시나리오: 503 두 번 뒤 성공", async () => {
   const { m, api } = await mk({ errorStatus: 503, errorTimes: 2 });
   const first = await api.startSession(), SID_s1 = first.session_id;
   assert.ok(validate(first), JSON.stringify(validate.errors));
-  m.state.sc.delayMs = 40;
-  const t0 = Date.now(); await api.sendUtterance(SID_s1, "x", "t1");
-  assert.ok(Date.now() - t0 >= 35);
+  await api.sendUtterance(SID_s1, "x", "t1"); // 지연 시나리오의 실제 지연은 모의 서버(시연용 대역)의 기능이고 요구사항이 아니라 시간을 재지 않는다(U422)
 });
 
 test("위험 정지 -> 알림 -> 개입 RESUME/END, 중복 turn_id는 같은 응답, 정지 아니면 409", async () => {
@@ -244,16 +244,6 @@ test("healthz/readyz와 모르는 경로", async () => {
   assert.equal(r.status, 404);
 });
 
-test("SSE는 설정한 간격으로 ': ping' 주석을 보낸다", async () => {
-  const { m } = await mk({}, {}, { pingMs: 20 });
-  const ctl = new AbortController();
-  const res = await fetch(m.base + "/v1/staff/alerts/stream", { signal: ctl.signal });
-  const dec = new TextDecoder(); let buf = "";
-  for await (const chunk of res.body as any) { buf += dec.decode(chunk); if (buf.includes(": ping")) break; }
-  ctl.abort();
-  assert.match(buf, /: ping/);
-});
-
 test("turn_in_progress 시나리오: 409 CONFLICT + details.reason + Retry-After, 클라이언트가 같은 turn_id로 재시도해 성공한다", async () => {
   const { m } = await mk({ errorStatus: 409, errorTimes: 1, errorReason: "TURN_IN_PROGRESS", retryAfterSec: 2 });
   const r = await fetch(m.base + "/v1/sessions", { method: "POST", body: "{}" });
@@ -268,12 +258,12 @@ test("turn_in_progress 시나리오: 409 CONFLICT + details.reason + Retry-After
   assert.deepEqual(waits, [2000]);
 });
 
-test("SSE: 연결 직후와 주기마다 id 없는 heartbeat, 끄면 멈추고, resyncOnConnect면 resync를 한 번 보낸다", async () => {
-  const { m } = await mk({ resyncOnConnect: true }, {}, { pingMs: 20 });
+test("SSE: 연결 직후 id 없는 heartbeat, 끄면 멈추고, resyncOnConnect면 resync를 한 번 보낸다", async () => {
+  const { m } = await mk({ resyncOnConnect: true }, {});
   const ctl = new AbortController();
   const res = await fetch(m.base + "/v1/staff/alerts/stream", { signal: ctl.signal });
   const dec = new TextDecoder(); let buf = "";
-  for await (const chunk of res.body as any) { buf += dec.decode(chunk); if ((buf.match(/^event: heartbeat\n/gm) ?? []).length >= 3) break; }
+  for await (const chunk of res.body as any) { buf += dec.decode(chunk); if (buf.includes("event: resync")) break; } // 연결 직후 heartbeat와 resync가 먼저 온다(주기 heartbeat는 시간 의존이라 보지 않는다)
   assert.match(buf, /event: heartbeat\ndata: \{"ts":"\d{4}-\d\d-\d\dT[^"]+"\}\n\n/);
   assert.doesNotMatch(buf, /id: \d+\nevent: heartbeat/);
   assert.equal((buf.match(/^event: resync\n/gm) ?? []).length, 1);

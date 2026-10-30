@@ -11,7 +11,7 @@ import { ApiError } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { deliveryLines, pauseLabel } from "../src/components/alert_info.ts";
-import { hang, json, ok, settle, startMock, started } from "./helpers.ts";
+import { hang, json, ok, settle, startMock, started, timesOut } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
@@ -28,7 +28,7 @@ type Route = (path: string, body: any) => Response | Promise<Response>;
 function make(route: Route, state: () => any = () => ({ state: "PAUSED_RISK", resume_text: null })) {
   const calls: Array<{ path: string; body: any }> = [];
   const clk = clock();
-  const api = createPublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, "");
     if (init.method === "GET") return json({ session_id: "s", ...state() });
     const body = JSON.parse(init.body as string); calls.push({ path, body });
@@ -71,10 +71,10 @@ test("재알림이 DELIVERED이면 안내(대기) 화면으로 바뀌고 상태 
 test("응답을 못 받은 재전송(시간 초과·네트워크)은 같은 turn_id, 화면은 유지, 버튼은 다시 켜진다", async () => {
   let n = 0;
   const m = make((p, b) => (++n === 1 ? hang() as any : retryOk("DELIVERED")));
-  (m.flow as any).api = createPublicApiClient({ timeoutMs: 20, retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  (m.flow as any).api = createPublicApiClient({ retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, ""); if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
     const body = JSON.parse(init.body as string); m.calls.push({ path, body });
-    if (path.includes("/staff-call/")) return ++n === 1 ? hang(init) : retryOk("DELIVERED");
+    if (path.includes("/staff-call/")) return ++n === 1 ? timesOut() : retryOk("DELIVERED");
     return body.kind === "SESSION_START" ? started("시작") : ok("대기", DF);
   }) as any });
   await toFailed(m);
@@ -240,9 +240,13 @@ test("M-2: 재알림 401/403은 AUTH 화면으로 바꾸지 않는다 - 직접 �
 });
 
 test("L-1: report 진행 중 '직접 알렸어요' 더블 클릭은 report를 한 번만 보낸다", async () => {
-  const m = make(async () => { await new Promise((r) => setTimeout(r, 30)); return json({ alert_id: "a", session_id: "s" }); });
+  let release!: () => void;
+  const gate = new Promise<void>((r) => { release = r; }); // report 응답을 붙잡아 '진행 중'을 만든다(시간이 아니라 사건)
+  const m = make(async () => { await gate; return json({ alert_id: "a", session_id: "s" }); });
   await toFailed(m); await m.flow.leaveCallStaff();
-  await Promise.all([m.flow.leaveCallStaff(), m.flow.leaveCallStaff()]);
+  const both = Promise.all([m.flow.leaveCallStaff(), m.flow.leaveCallStaff()]);
+  await settle(); release();
+  await both;
   assert.equal(m.sc().length, 1); assert.equal(m.flow.current.state, "IDLE");
 });
 

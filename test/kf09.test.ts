@@ -21,7 +21,7 @@ const err = (status: number, code = "UNAVAILABLE", details?: object) =>
   new Response(JSON.stringify({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message: "x", retryable: false, ...(details ? { details } : {}) }), { status, headers: { "content-type": "application/json" } });
 function make(route: (path: string, body: any) => Response) {
   const calls: Array<{ path: string; body: any }> = [];
-  const api = createPublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, "");
     if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
     const body = JSON.parse(init.body as string); calls.push({ path, body });

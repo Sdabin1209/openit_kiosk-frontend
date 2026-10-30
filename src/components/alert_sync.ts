@@ -15,7 +15,7 @@ export interface AlertSource {
   stream(
     onAlert: (a: StaffAlert) => void,
     onState: (connected: boolean, info?: { attempt: number; nextRetryMs: number | null }) => void,
-    t?: { setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void; rand?: () => number },
+    t: { setTimeout: (fn: () => void, ms: number) => unknown; clearTimeout: (h: unknown) => void; rand?: () => number },
     hooks?: { onResync?: () => void },
   ): () => void;
 }
@@ -30,8 +30,8 @@ export interface SyncDeps {
   /** 목록을 주기적으로 다시 읽는다. 스트림이 소리 없이 죽은 경우(EventSource는 `: ping` 주석을 보여 주지 않아 무음을 감지할 수 없다)의 안전망이고,
    * 읽기에 실패한 목록을 스스로 복구하는 경로이기도 하다. 기본 15초(임의 값: 직원이 놓친 알림을 늦어도 이 정도 안에 보게 한다). */
   refreshMs?: number;
-  timers?: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (h: unknown) => void };
-  streamTimers?: Parameters<AlertSource["stream"]>[2];
+  timers: { setInterval: (fn: () => void, ms: number) => unknown; clearInterval: (h: unknown) => void };
+  streamTimers: Parameters<AlertSource["stream"]>[2];
 }
 
 /**
@@ -46,7 +46,7 @@ export function isRedelivery(prev: StaffAlert | undefined, next: StaffAlert): bo
 export function createAlertSync(d: SyncDeps) {
   const alerts = new Map<string, StaffAlert>();
   const st: SyncStatus = { conn: "CONNECTING", nextRetryMs: null, listStale: false, listLoaded: false };
-  const T = d.timers ?? { setInterval: (fn, ms) => setInterval(fn, ms), clearInterval: (h) => clearInterval(h as number) };
+  const T = d.timers;
   let loading: Promise<void> | null = null, pending = false;
   const emit = () => { const s: SyncStatus = { ...st }; if (!vStatus(s)) throw new Error("SyncStatus 스키마 위반"); d.onStatus(s); }; // 내는 쪽이 검증한다
 

@@ -14,18 +14,18 @@ export interface StreamOptions {
   /** 하트비트가 이만큼 없으면 죽은 연결로 본다(ms). wiring이 config의 STAFF_HEARTBEAT로 만든다. */
   heartbeatTimeoutMs: () => number;
 }
-export type StreamTimers = { setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+export type StreamTimers = { setTimeout: (fn: () => void, ms: number) => unknown; clearTimeout: (h: unknown) => void };
 
 export function openStaffStream(
   o: StreamOptions,
   onAlert: (a: StaffAlert) => void,
   onState: (connected: boolean, info?: { attempt: number; nextRetryMs: number | null }) => void,
-  t: StreamTimers = {},
+  t: StreamTimers,
   hooks: { onResync?: () => void } = {},
 ): () => void {
   const base = (o.baseUrl ?? "/v1").replace(/\/$/, "");
   const url = base + "/staff/alerts/stream";
-  const setT = t.setTimeout ?? ((fn, ms) => setTimeout(fn, ms)), clearT = t.clearTimeout ?? ((h) => clearTimeout(h as number));
+  const setT = t.setTimeout, clearT = t.clearTimeout;
   let es: EventSource | null = null, timer: unknown = null, attempt = 0, stopped = false, hbTimer: unknown = null;
   const clearHb = () => { if (hbTimer !== null) { clearT(hbTimer); hbTimer = null; } };
   const handle = (ev: MessageEvent) => {

@@ -10,7 +10,7 @@ import { ok, settle, started } from "./helpers.ts";
 
 function make(stateValue: "ACTIVE" | "ENDED") {
   const calls: string[] = [];
-  const api = createPublicApiClient({ timeoutMs: 1000, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     calls.push(`${init.method} ${u}`);
     if (u.endsWith("/state")) return new Response(JSON.stringify({ session_id: "s-1", state: stateValue, resume_text: null }), { status: 200 });
     const b = init.body ? JSON.parse(init.body as string) : {};

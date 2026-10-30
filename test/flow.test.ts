@@ -4,7 +4,7 @@ import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import type { KioskFlow } from "../src/components/kiosk_flow.ts";
-import { asStarted, hang, json, ok, settle } from "./helpers.ts";
+import { asStarted, hang, json, ok, settle, timesOut } from "./helpers.ts";
 
 afterEach(() => { stateFn = () => ({ state: "ACTIVE", resume_text: null }); }); // 시험 간 공유 상태 초기화
 const say = (t: string) => ({ text: t, confidence: 0.9 });
@@ -15,7 +15,7 @@ const step = async (n = 1) => { for (let i = 0; i < n; i++) { await settle(); sl
 function make(handler: (body: any, init: RequestInit) => Promise<Response> | Response) {
   const calls: any[] = [];
   const polls: string[] = [];
-  const api = createPublicApiClient({ timeoutMs: 250, retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
     if (init.method === "GET") { polls.push(u); return json({ session_id: "s", ...stateFn() }); }
     const body = JSON.parse(init.body as string); calls.push(body); const res = handler(body, init); return body.kind === "SESSION_START" ? asStarted(res) : res;
   }) as any });
@@ -76,7 +76,7 @@ test("DELIVERY_FAILED는 NOT_COMMITTED보다 우선한다", async () => {
 });
 
 test("재시도 3회 실패하면 직원 호출 화면, 요청은 모두 같은 turn_id", async () => {
-  const { flow, calls } = make((b, init) => (b.kind === "UTTERANCE" ? hang(init) : ok("시작")));
+  const { flow, calls } = make((b, init) => (b.kind === "UTTERANCE" ? timesOut() : ok("시작"))); // 가짜 의존이 즉시 시간 초과를 낸다(시간을 기다리지 않는다)
   await flow.start(); await flow.hear(say("아파요"));
   assert.equal(flow.current.state, "CALL_STAFF");
   assert.equal(flow.current.callStaffReason, "RETRY_EXHAUSTED");

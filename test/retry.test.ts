@@ -10,7 +10,7 @@ const backoffMs = (n: number, _p: unknown = DEFAULT_RETRY, rand: () => number = 
 const waitMs = (n: number, retryAfterMs: number | null) => createRetryPolicy(DEFAULT_RETRY).decide({ attempt: n, retryAfterMs, elapsedMs: 0 }).waitMs;
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import type { KioskFlow } from "../src/components/kiosk_flow.ts";
-import { json, ok, settle, waitFor, started } from "./helpers.ts";
+import { json, ok, settle, waitFor, started, timesOut } from "./helpers.ts";
 
 /** 가상 시계: sleep이 시계를 앞으로 보낸다. 예산 계산을 실제 대기 없이 시험한다. */
 function clock() {
@@ -22,7 +22,7 @@ const err = (status: number, headers: Record<string, string> = {}, code = "UNAVA
 const inProgress = (headers: Record<string, string> = {}) => err(409, headers, "CONFLICT", { reason: "TURN_IN_PROGRESS" });
 function make(responses: Array<() => Response | Promise<Response>>, extra: Record<string, unknown> = {}) {
   const c = clock(); const turnIds: string[] = []; let n = 0;
-  const api = createPublicApiClient({ timeoutMs: 1000, now: c.now, sleep: c.sleep, rand: () => 0.5, ...extra, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, rand: () => 0.5, ...extra, fetch: (async (_u: string, init: RequestInit) => {
     turnIds.push(JSON.parse(init.body as string).turn_id);
     const r = responses[Math.min(n++, responses.length - 1)]!;
     return r();
@@ -121,9 +121,7 @@ test("지터를 주입하지 않으면 키오스크마다 대기가 달라진다
 
 test("무응답(타임아웃)도 예산에 들어가고 소진하면 직원 호출", async () => {
   const c = clock();
-  const api = createPublicApiClient({ timeoutMs: 5, now: c.now, sleep: c.sleep, rand: () => 1 - Number.EPSILON, fetch: ((_u: string, init: RequestInit) => new Promise((_, rej) => {
-    init.signal?.addEventListener("abort", () => rej(new DOMException("x", "AbortError")));
-  })) as any });
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, rand: () => 1 - Number.EPSILON, fetch: (() => timesOut()) as any }); // 가짜 의존이 즉시 시간 초과를 낸다(시간을 재지 않는다)
   await assert.rejects(api.sendUtterance("s1", "x", "t"), CallStaffError);
   assert.ok(c.waits.length >= 4);
 });

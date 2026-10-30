@@ -93,8 +93,10 @@ export interface ClientOptions {
   retryPolicy: RetryPolicyPort;
   /** 턴 ID 발급(wiring). 호출자가 주지 않은 발화·개입에 쓴다. */
   newTurnId: () => string;
-  sleep?: (ms: number) => Promise<void>;
-  now?: () => number;
+  /** 시계·타이머(wiring이 실제 것을 넣는다, 시험은 가짜). 컴포넌트는 시간을 직접 읽거나 기다리지 않는다(ADR 0034). */
+  sleep: (ms: number) => Promise<void>;
+  now: () => number;
+  timers: { setTimeout(fn: () => void, ms: number): unknown; clearTimeout(handle: unknown): void };
 }
 
 /** 호출마다 붙이는 선택 사항. 키오스크가 대기 표시와 직원 호출·그만하기에 쓴다. */
@@ -113,6 +115,7 @@ export class PublicApiClient {
   private retryPolicy: RetryPolicyPort;
   private newTurnId: () => string;
   private now: () => number;
+  private timers: ClientOptions["timers"];
   private sleep: (ms: number) => Promise<void>;
   private deviceToken: () => string | null;
   private queues = new Map<string, Promise<unknown>>();
@@ -124,8 +127,9 @@ export class PublicApiClient {
     this.timeoutMs = o.timeoutMs;
     this.retryPolicy = o.retryPolicy;
     this.newTurnId = o.newTurnId;
-    this.now = o.now ?? (() => Date.now());
-    this.sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.now = o.now;
+    this.sleep = o.sleep;
+    this.timers = o.timers;
   }
 
   /** subjectRef가 있으면 본문에 넣는다(없으면 필드 생략). 형식이 틀리면 보내지 않는다. */
@@ -266,7 +270,7 @@ export class PublicApiClient {
     const ctl = new AbortController();
     const onOuter = () => ctl.abort();
     outer?.addEventListener("abort", onOuter, { once: true });
-    const timer = setTimeout(() => ctl.abort(), this.timeoutMs);
+    const timer = this.timers.setTimeout(() => ctl.abort(), this.timeoutMs);
     try {
       const headers: Record<string, string> = reqBody === undefined ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" };
       const token = /^\/sessions(\/|$)/.test(path) ? this.deviceToken() : null;
@@ -294,7 +298,7 @@ export class PublicApiClient {
       throw e;
     } finally {
       outer?.removeEventListener("abort", onOuter);
-      clearTimeout(timer);
+      this.timers.clearTimeout(timer);
     }
   }
 }
