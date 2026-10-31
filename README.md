@@ -81,7 +81,7 @@ node scripts/gen-types.mjs --check   # 생성 결과와 같은지만 확인(test
   - `npm test` 단위·계약·구조 시험 275개 통과(건너뜀 0, 실패 0; 2026-10-31 실측, 새 clone, U422 시계 주입 뒤; 4개 동시 실행도 실패 0). 시험 안의 실제 시간: `test/TIMING.md`. 호스트에 jsdom이 있어 화면 구조 시험과 앱 전체 jsdom 시험(`test/kiosk-app.test.ts`: 조각 없이 `/config.json`으로 시작, 대화 말풍선)도 이 안에서 돈다.
   - `test:dom`(Docker) 화면 구조 시험 20개 통과(2026-10-30 실측, 이 PC 한 환경).
   - `test:image`(Docker) 정적 서빙·빌드 진입점 시험 15개 통과(2026-10-30 실측).
-  - 브라우저 시험 34개(Playwright 1.55.1 이미지, `npm run test:e2e`)는 2026-10-29 실측이고 U400 구조 개편 뒤에는 돌리지 않았다(E2E 금지 지시). 대화형 UI 전에는 같은 문구가 말풍선과 본문 두 곳에 있어 22개가 strict mode 위반으로 실패했고, 화면 구조 변경(ADR 0023)으로 해소됐다(로케이터는 바꾸지 않았다).
+  - 브라우저 시험 34개 통과(Playwright 1.55.1 이미지, `npm run test:e2e`; 2026-10-31 실측, 가짜 시계 `page.clock` 적용 뒤 약 42초). 대화형 UI 전에는 같은 문구가 말풍선과 본문 두 곳에 있어 22개가 strict mode 위반으로 실패했고, 화면 구조 변경(ADR 0023)으로 해소됐다(로케이터는 바꾸지 않았다).
   - `npm run smoke` 통과. `npm audit`·`--omit=dev` 모두 0건(ADR 0012).
   - 서비스끼리 도는 시험의 결과는 이 문서에 옮기지 않고 `deploy/docs/E2E_RESULTS.md`를 본다.
 - 브라우저 시험 통과, 이미지 빌드·`/healthz`·라벨·non-root 확인은 이전 작업 PC에서 했다고 기록되어 있다(`docs/runbook.md`, `docs/STATUS.md`). 이 세션에서는 다시 확인하지 않았다.

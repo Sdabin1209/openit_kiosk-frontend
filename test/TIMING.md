@@ -29,10 +29,15 @@
 | test-image 느린 클라이언트가 다른 요청을 막지 않는다 | Caddy 동작 | 지움 -> 2: Caddyfile에 `read_header 10s`, `idle 60s`를 넘겼다 | 느린 클라이언트 방어: Caddy 서버 timeout 값을 설정에 넘겼다 |
 | test-image SIGTERM에 5초 안에 정상 종료 | Docker·Caddy 신호 처리 | 지움 -> 2: CMD가 exec 형식, `grace_period 10s` | 종료 신호 설정: CMD는 exec 형식이고 grace_period는 10s다 |
 | test-image 기동 대기, 로그 줄 대기, 소켓 마감 | 컨테이너 기동·로그 | 사건 대기 + 매달림 감시(`HANG_GUARD_SECONDS`) | 로그 sleep 500 제거(마커 줄이 나올 때까지 조건 대기) |
-| test-e2e 전부 | 실제 브라우저·서버·시간으로 끝까지 맞물림 | 영역 시험(`npm test`) 밖, E2E의 몫. 화면 대기 마감은 `HANG_GUARD_SECONDS`로 통일 | 실행하지 못함(E2E 금지) |
+| test-e2e 재시도 예산 소진(503), 다시 부르기 카운트다운, 정지 사유 폴링, 직원 스트림 재연결·하트비트 무음 감지(30초+지터), 목록 15초 재읽기, 키오스크 재개 폴링 | 제품 시간(24초·30초·15초·2초)을 실제로 기다리던 것 | 1(Playwright 표준 `page.clock`: `install` 후 `runFor`로 흘리는 `runUntil`) | 같은 이름(전체 34개, 실행 약 4분 -> 약 42초) |
+| test-e2e "X초 뒤에도 없음" sleep 3곳(2500ms 정지 사유 불변, 1500ms 하트비트 도착, 1000ms 알림 부재) | 부재 확인 | 가짜 시계를 `runFor`로 흘린 뒤 없음을 확인(실제로 기다리지 않음) | 같은 이름 |
+| test-e2e 모의 서버 지연(delay) 시나리오의 마지막 대기 | 대역의 실제 지연 | 지움(지연 중 대기 화면까지만 확인) | 같은 이름 |
+| test-e2e 브라우저 안 가짜 STT 5~10ms 지연 | 비동기 모사 | `queueMicrotask`로 바꿈(시간 없음) | 같은 이름 |
+| test-e2e 화면 대기 마감과 `runUntil`의 Date.now | 매달림 감시 | 매달림 감시(`HANG_GUARD_SECONDS`) | 상수 통일 |
 
-## E2E에 남은 실제 시간 (헤드 판단 요청)
-`test-e2e/browser.e2e.test.ts`는 하트비트 30초, 재시도 예산 24초 같은 제품 시간 자체를 실제로 기다리는 시험과, "X초 뒤에도 없음"을 보는 sleep 3곳(2500ms 위험 정지 사유 불변, 1500ms 하트비트 도착, 1000ms 알림 부재)이 있다. 이것들은 영역 시험이 아니라 E2E의 몫이고, E2E 금지라 실행해 보지 못했다. Playwright `page.clock`으로 시간을 없앨 수 있으나 검증 없이 바꾸지 않았다. 브라우저 안 가짜 STT의 5ms 지연은 순서 모사이며 판정이 아니다.
+## E2E (브라우저 시험)
+`npm run test:e2e`(Docker, Playwright 1.55.1 이미지)로 34개를 돌려 확인했다: 34/34 통과(`~/openit-logs/kf422-e2e2.log`). 이 영역의 test-e2e는 영역 시험이고 deploy 전체 E2E(`scripts/e2e.sh`)가 아니다. 이 기계에서 브라우저는 컨테이너 안에서 정상 실행된다. 한 번은 하트비트 시험이 실패했다(가짜 시계를 5초씩 흘리자 재연결이 한 걸음에 끝나 '끊김' 표시를 놓침): 걸음을 250ms로 줄여 해결했고 이는 시험 쪽 문제였다.
+`test-e2e/Dockerfile`은 U400 구조 개편 이후 옛 경로(`api`, `apps`)를 복사해 빌드가 실패하는 상태였다(U400 때 돌리지 않아 놓침): `src`와 `test/helpers.ts`를 복사하도록 고쳤다.
 
 ## 정적 확인
 `test/timing.test.ts`가 `test/*.test.ts`에서 `Date.now`, `performance.now`, `hrtime`, `setInterval`, `new Date`, `mock.timers`와 숫자 `timeoutMs`가 허용 목록(가짜 시계 정의 `helpers.ts`, 가짜 타이머 큐 `sync.test.ts`, 고정 과거 `setup-env.test.ts`) 밖에 없음을 확인한다. 컴포넌트가 시간을 직접 읽는 곳 0도 같은 파일의 두 번째 시험이 확인한다.

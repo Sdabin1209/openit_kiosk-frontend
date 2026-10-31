@@ -11,12 +11,12 @@ USER pwuser
 WORKDIR /work
 COPY --chown=pwuser:pwuser package.json package-lock.json tsconfig.json ./
 RUN npm ci --ignore-scripts
-COPY --chown=pwuser:pwuser api ./api
-COPY --chown=pwuser:pwuser apps ./apps
+COPY --chown=pwuser:pwuser src ./src
 COPY --chown=pwuser:pwuser assets ./assets
 COPY --chown=pwuser:pwuser mock-server ./mock-server
 COPY --chown=pwuser:pwuser Caddyfile ./Caddyfile
 COPY --chown=pwuser:pwuser scripts ./scripts
+COPY --chown=pwuser:pwuser test/helpers.ts ./test/helpers.ts
 COPY --chown=pwuser:pwuser test-e2e ./test-e2e
 ENV CI=1
 CMD ["sh", "-c", "fc-list :lang=ko | grep -qi 'noto.*cjk' && node scripts/build.mjs && node --test --test-concurrency=1 'test-e2e/*.test.ts'"]
