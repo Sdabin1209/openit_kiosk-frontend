@@ -5,7 +5,7 @@
 import {
   InterventionRequest as vIntervention, SessionRequest as vSession, StaffCallReportInput as vReport, StaffCallRetryInput as vRetry,
   StartRequest as vStart, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
-  StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, StaffCallRetryRequest as cRetryBody, type ValidateFn,
+  StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, FrontendMessage as sMessage, InterventionDecision as sDecision, StaffCallRetryRequest as cRetryBody, type ValidateFn,
 } from "../types/validators.gen.cjs";
 import type { BoundaryError } from "../types/BoundaryError.ts";
 import type { FrontendInput } from "../types/FrontendInput.ts";
@@ -78,6 +78,11 @@ export class AbortedError extends Error {
 function accept(v: ValidateFn, what: string, data: unknown): void {
   if (!v(data)) throw new Error(`${what} 스키마 위반: ${(v.errors ?? []).map((e) => `${e.instancePath || "/"} ${e.message}`).join("; ")}`);
 }
+/** 보내는 본문을 보내기 전에 문진 스키마(FrontendMessage, InterventionDecision) 전체로 검증한다(R7). turn_id는 API 봉투 필드라 떼어 낸 나머지를 검증한다(PUBLIC_API.md, D66). */
+function acceptEnvelope(v: ValidateFn, what: string, bodyWithEnvelope: Record<string, unknown>): void {
+  const { turn_id: _envelope, ...rest } = bodyWithEnvelope;
+  accept(v, what, rest);
+}
 /** 응답 본문 검증기를 call()의 validate 인자 모양으로 바꾼다. 어기면 BadBodyError -> 일시 장애와 같이 재시도(FAULT_POLICY 원칙 10). */
 const body = (v: ValidateFn, what: string) => (r: unknown) => { if (!v(r)) throw new BadBodyError(what); };
 
@@ -138,6 +143,7 @@ export class PublicApiClient {
     const req: { kind: "SESSION_START"; subject_ref?: string } = { kind: "SESSION_START" }; // 세션 ID는 서버가 발급해 응답에 싣는다(2.2.0, D106)
     if (subjectRef !== undefined && subjectRef !== null) req.subject_ref = subjectRef;
     // 아직 ID가 없으므로 세션별 직렬 큐에 넣지 않는다(이후 요청부터 응답의 ID로 큐가 생긴다).
+    accept(sMessage, "FrontendMessage(문진 스키마)", req);
     return this.call<StartedSession>("POST", `/sessions`, req, true, co, body(vStarted, "StartedBody"));
   }
 
@@ -145,7 +151,7 @@ export class PublicApiClient {
   sendUtterance(sessionId: string, utterance: string, turnId: string = this.newTurnId(), co: CallOptions = {}): Promise<FrontendInput> {
     accept(vUtterance, "UtteranceRequest", { session_id: sessionId, utterance, turn_id: turnId }); // 빈 발화·잘못된 ID는 보내지 않는다
     return this.serial(sessionId, () =>
-      this.post(`/sessions/${sessionId}/turns`, {
+      this.post(sMessage, `/sessions/${sessionId}/turns`, {
         session_id: sessionId,
         kind: "UTTERANCE",
         utterance,
@@ -157,7 +163,7 @@ export class PublicApiClient {
   endSession(sessionId: string, co: CallOptions = {}): Promise<FrontendInput> {
     accept(vSession, "SessionRequest", { session_id: sessionId });
     return this.serial(sessionId, () =>
-      this.post(`/sessions/${sessionId}/end`, { session_id: sessionId, kind: "SESSION_END" }, co),
+      this.post(sMessage, `/sessions/${sessionId}/end`, { session_id: sessionId, kind: "SESSION_END" }, co),
     );
   }
 
@@ -191,7 +197,7 @@ export class PublicApiClient {
   intervene(sessionId: string, decision: Decision, turnId: string): Promise<FrontendInput> {
     accept(vIntervention, "InterventionRequest", { session_id: sessionId, decision, turn_id: turnId });
     return this.serial(sessionId, () =>
-      this.post(`/sessions/${sessionId}/intervention`, { session_id: sessionId, decision, turn_id: turnId }),
+      this.post(sDecision, `/sessions/${sessionId}/intervention`, { session_id: sessionId, decision, turn_id: turnId }),
     );
   }
 
@@ -231,7 +237,8 @@ export class PublicApiClient {
     return next;
   }
 
-  private post(path: string, reqBody: unknown, co: CallOptions = {}): Promise<FrontendInput> {
+  private post(schema: ValidateFn, path: string, reqBody: Record<string, unknown>, co: CallOptions = {}): Promise<FrontendInput> {
+    acceptEnvelope(schema, "요청 본문(문진 스키마)", reqBody); // 보내기 전에 본문 전체를 검증한다. 어기면 보내지 않는다(R7)
     return this.call<FrontendInput>("POST", path, reqBody, true, co, body(vFrontend, "FrontendBody"));
   }
 

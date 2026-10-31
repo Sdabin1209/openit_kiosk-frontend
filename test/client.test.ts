@@ -118,3 +118,25 @@ test("응답 대기 타이머는 wiring이 넘기는 REQUEST_TIMEOUT_MS(config.t
   assert.ok((await p) instanceof CallStaffError);
   assert.equal(timers.pending(), 0, "끝난 요청의 타이머는 지워진다");
 });
+
+// R7(U424): 실제로 보낸 요청 본문(fetch가 받은 것)을 문진 스키마 FrontendMessage·InterventionDecision 전체로 검증한다. turn_id는 API 봉투 필드라 떼어 낸 나머지를 본다(PUBLIC_API.md 30행).
+test("시작·발화·종료·개입 요청 본문은 문진 스키마(FrontendMessage, InterventionDecision) 전체를 통과한다(보낸 본문을 잡아 검증)", async () => {
+  const { FrontendMessage: vMsg, InterventionDecision: vDec } = await import("../src/types/validators.gen.cjs");
+  const sent: Array<{ path: string; body: Record<string, unknown> }> = [];
+  const c = createPublicApiClient({ retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+    const body = JSON.parse(init.body as string); sent.push({ path: new URL(u, "http://x").pathname, body });
+    return body.kind === "SESSION_START" ? started() : ok();
+  }) as any });
+  const sid = (await c.startSession("P-1")).session_id;
+  await c.startSession();
+  await c.sendUtterance(sid, "머리가 아파요", "t-1");
+  await c.endSession(sid);
+  await c.intervene(sid, "RESUME", "t-2");
+  assert.equal(sent.length, 5);
+  const strip = ({ turn_id: _t, ...rest }: Record<string, unknown>) => rest;
+  for (const s of sent) {
+    const v = s.path.endsWith("/intervention") ? vDec : vMsg;
+    assert.equal(v(strip(s.body)), true, `${s.path}: ${JSON.stringify(v.errors)}`);
+  }
+  assert.ok(sent.some((s) => s.path.endsWith("/turns") && s.body.turn_id === "t-1"), "turn_id는 봉투 필드로 그대로 나간다");
+});

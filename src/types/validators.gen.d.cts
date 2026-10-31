@@ -9,6 +9,8 @@ export const ConversationEvent: ValidateFn;
 export const DecisionRequest: ValidateFn;
 export const DeviceConfig: ValidateFn;
 export const FrontendBody: ValidateFn;
+export const FrontendMessage: ValidateFn;
+export const InterventionDecision: ValidateFn;
 export const InterventionRequest: ValidateFn;
 export const KioskStart: ValidateFn;
 export const KioskStartFragment: ValidateFn;

@@ -20,6 +20,8 @@ const CONTRACT_TYPES = ["StaffAlert", "StaffAlertPage", "SessionState", "PushCon
 const SURVEY_TYPES = ["FrontendInput", "StaffSessionView"];
 // 계약에서 검증기까지 만드는 것(경계 스키마: 읽는 쪽이 계약 그대로 검사한다, ADR 0021).
 const CONTRACT_VALIDATORS = ["DeviceConfig", "KioskStartFragment", "StaffPushPayload", "StaffCallReport", "StaffCallRetryRequest"]; // 뒤 둘: 보내는 요청 본문 전체를 보내기 전에 검증한다(R7, U424)
+// 문진 스키마(고정 태그 survey-schema-v3.0.0)에서 검증기까지 만드는 것: 보내는 요청 본문 전체(PUBLIC_API.md 24~26·46행). turn_id는 API 봉투 필드라 본문에서 떼어 낸 나머지를 검증한다(PUBLIC_API.md 30행, D66).
+const SURVEY_VALIDATORS = ["FrontendMessage", "InterventionDecision"];
 const CONTRACT_DEPS = ["SessionState"]; // 영역 스키마가 $ref로 가리키는 계약 스키마
 
 const readJson = (url) => JSON.parse(readFileSync(url, "utf8"));
@@ -67,7 +69,9 @@ const noMeta = ({ $schema, ...rest }) => rest;
 const ajv = new Ajv2020({ code: { source: true, esm: false }, allErrors: true, strict: false });
 for (const n of [...CONTRACT_DEPS, ...CONTRACT_VALIDATORS]) ajv.addSchema(noMeta(contract(n)), `${n}.schema.json`);
 for (const [n, s] of Object.entries(internal)) ajv.addSchema(noMeta(s), `${n}.json`);
-const refs = { ...Object.fromEntries(Object.keys(internal).map((n) => [n, `${n}.json`])), ...Object.fromEntries(CONTRACT_VALIDATORS.map((n) => [n, `${n}.schema.json`])) };
+const surveyRefs = {};
+for (const n of SURVEY_VALIDATORS) { const s = noMeta(surveySchemaJson(n)); ajv.addSchema(s); surveyRefs[n] = s.$id; }
+const refs = { ...Object.fromEntries(Object.keys(internal).map((n) => [n, `${n}.json`])), ...Object.fromEntries(CONTRACT_VALIDATORS.map((n) => [n, `${n}.schema.json`])), ...surveyRefs };
 files.set("validators.gen.cjs", `// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts ${CONTRACT_VALIDATORS.join(", ")} (패키지 버전 ${contractVersion()}).\n/* eslint-disable */\n` + standaloneCode(ajv, refs));
 const names = Object.keys(refs).sort();
 files.set("validators.gen.d.cts", `// validators.gen.cjs의 형. 이름은 schemas/ 파일 이름과 계약 경계 스키마 이름이다.\nexport interface ErrorObject { instancePath: string; keyword: string; params: Record<string, unknown>; message?: string }\nexport interface ValidateFn { (data: unknown): boolean; errors?: ErrorObject[] | null }\n${names.map((n) => `export const ${n}: ValidateFn;`).join("\n")}\n`);

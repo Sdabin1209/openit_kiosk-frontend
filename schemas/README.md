@@ -36,3 +36,7 @@
 | 화면 상태의 조건부 필수(CALL_STAFF는 사유 필수 등) | `KioskView`의 `allOf/if/then` |
 
 값 자체가 판단인 설정(유휴 60초, 재질문 3회, 재시도 예산 20초 등)은 스키마가 아니라 `src/config.ts`에 근거와 함께 있다. 신뢰도 0.4만 입력 조건이므로 `UsableTranscript`가 정본이다(사용자 결정 U10, 잠정, 근거 없는 임의 값, 측정하지 않았다, ADR 0008).
+
+## 보내는 요청 본문 검증 (R7, U424)
+
+보내기 전에 본문 전체를 스키마로 검증한다. 어기면 보내지 않는다. 세션 시작·발화·종료는 문진 스키마 `FrontendMessage`, 개입 결정은 `InterventionDecision`(고정 태그 survey-schema-v3.0.0, `src/types/validators.gen.cjs`로 생성, 복사본 없음), 직원 호출 재알림·보고는 계약 `StaffCallRetryRequest`·`StaffCallReport`. `turn_id`는 API 봉투 필드(PUBLIC_API.md)라 본문에서 떼어 낸 나머지를 문진 스키마로 검증한다. 시험은 fetch 가짜가 받은 실제 본문을 같은 검증기로 검증한다(`test/client.test.ts`, `test/staffcall.test.ts`).
