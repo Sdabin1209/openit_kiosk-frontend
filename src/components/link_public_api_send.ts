@@ -5,7 +5,7 @@
 import {
   InterventionRequest as vIntervention, SessionRequest as vSession, StaffCallReportInput as vReport, StaffCallRetryInput as vRetry,
   StartRequest as vStart, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
-  StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, type ValidateFn,
+  StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, StaffCallRetryRequest as cRetryBody, type ValidateFn,
 } from "../types/validators.gen.cjs";
 import type { BoundaryError } from "../types/BoundaryError.ts";
 import type { FrontendInput } from "../types/FrontendInput.ts";
@@ -172,12 +172,16 @@ export class PublicApiClient {
    */
   staffCallRetry(sessionId: string, turnId: string, co: CallOptions = {}): Promise<StaffCallRetryResult> {
     accept(vRetry, "StaffCallRetryInput", { session_id: sessionId, turn_id: turnId });
-    return this.serial(sessionId, () => this.call<StaffCallRetryResult>("POST", `/sessions/${sessionId}/staff-call/retry`, { turn_id: turnId }, false, { ...co, single: true }, body(vRetryBody, "StaffCallRetryBody")));
+    const req = { turn_id: turnId };
+    accept(cRetryBody, "StaffCallRetryRequest(계약)", req); // 보내기 전에 요청 본문 전체를 계약으로 검증한다(R7)
+    return this.serial(sessionId, () => this.call<StaffCallRetryResult>("POST", `/sessions/${sessionId}/staff-call/retry`, req, false, { ...co, single: true }, body(vRetryBody, "StaffCallRetryBody")));
   }
   /** 환자가 직접 알렸는지(2.1.0 G절)를 서버에 남긴다. 자유 문장 없음. */
   staffCallReport(sessionId: string, outcome: StaffCallOutcome, turnId: string, co: CallOptions = {}): Promise<StaffAlert> {
     accept(vReport, "StaffCallReportInput", { session_id: sessionId, outcome, turn_id: turnId });
-    return this.serial(sessionId, () => this.call<StaffAlert>("POST", `/sessions/${sessionId}/staff-call/report`, { outcome, turn_id: turnId }, false, { ...co, single: true }, body(vAlertBody, "StaffAlertBody")));
+    const req = { outcome, turn_id: turnId };
+    accept(cReportBody, "StaffCallReport(계약)", req); // 보내기 전에 요청 본문 전체를 계약으로 검증한다(R7)
+    return this.serial(sessionId, () => this.call<StaffAlert>("POST", `/sessions/${sessionId}/staff-call/report`, req, false, { ...co, single: true }, body(vAlertBody, "StaffAlertBody")));
   }
   /** vapid_public_key가 null이면 푸시는 꺼져 있고 SSE만 동작한다. */
   getPushConfig(): Promise<PushConfig> {

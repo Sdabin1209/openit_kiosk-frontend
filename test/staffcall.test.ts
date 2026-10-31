@@ -279,3 +279,19 @@ test("L-4: 카운트다운이 끝나면 READY 안내가 실리고 그때만 버�
   await m.clk.tick(); assert.equal(m.flow.current.staffCall!.waitS, 1);
   await m.clk.tick(); assert.equal(m.flow.current.staffCall!.waitS, 0); assert.equal(m.flow.current.staffCall!.notice, "READY");
 });
+
+// R7(U424): 실제로 보낸 요청 본문(손으로 쓴 리터럴이 아니라 fetch가 받은 것)을 잡아 계약 스키마 전체로 검증한다.
+test("staff-call report·retry 요청 본문은 계약 StaffCallReport·StaffCallRetryRequest 전체를 통과한다(보낸 본문을 잡아 검증)", async () => {
+  const { StaffCallReport: vReport, StaffCallRetryRequest: vRetry } = await import("../src/types/validators.gen.cjs");
+  const sent: Array<{ path: string; body: unknown }> = [];
+  const api = createPublicApiClient({ retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+    sent.push({ path: new URL(u, "http://x").pathname, body: JSON.parse(init.body as string) });
+    return json(u.endsWith("/retry") ? { alert_id: "a", staff_alert: "DELIVERED", delivery_attempts: 1, retry_after_s: 0 } : { alert_id: "a", session_id: "s" });
+  }) as any });
+  await api.staffCallRetry("s1", "t-retry");
+  await api.staffCallReport("s1", "NOT_NOTIFIED", "t-report");
+  assert.equal(sent.length, 2);
+  const retry = sent.find((x) => x.path.endsWith("/retry"))!, report = sent.find((x) => x.path.endsWith("/report"))!;
+  assert.equal(vRetry(retry.body), true, JSON.stringify(vRetry.errors));
+  assert.equal(vReport(report.body), true, JSON.stringify(vReport.errors));
+});

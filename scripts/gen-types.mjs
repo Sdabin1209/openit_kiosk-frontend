@@ -19,8 +19,8 @@ const check = process.argv.includes("--check");
 const CONTRACT_TYPES = ["StaffAlert", "StaffAlertPage", "SessionState", "PushConfig", "StaffCallRetryResult", "StaffCallReport", "StaffCallRetryRequest", "BoundaryError", "DeviceConfig", "KioskStartFragment", "StaffPushPayload"];
 const SURVEY_TYPES = ["FrontendInput", "StaffSessionView"];
 // 계약에서 검증기까지 만드는 것(경계 스키마: 읽는 쪽이 계약 그대로 검사한다, ADR 0021).
-const CONTRACT_VALIDATORS = ["DeviceConfig", "KioskStartFragment", "StaffPushPayload"];
-const CONTRACT_DEPS = ["SessionState", "StaffCallReport"]; // 영역 스키마가 $ref로 가리키는 계약 스키마
+const CONTRACT_VALIDATORS = ["DeviceConfig", "KioskStartFragment", "StaffPushPayload", "StaffCallReport", "StaffCallRetryRequest"]; // 뒤 둘: 보내는 요청 본문 전체를 보내기 전에 검증한다(R7, U424)
+const CONTRACT_DEPS = ["SessionState"]; // 영역 스키마가 $ref로 가리키는 계약 스키마
 
 const readJson = (url) => JSON.parse(readFileSync(url, "utf8"));
 const internal = Object.fromEntries(readdirSync(new URL("schemas/", ROOT)).filter((f) => f.endsWith(".json")).map((f) => [f.replace(/\.json$/, ""), readJson(new URL(`schemas/${f}`, ROOT))]));
