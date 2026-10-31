@@ -11,7 +11,7 @@ RUN node scripts/build.mjs
 # 왜 Caddy: 정적 서빙·보안 헤더·로그·종료 처리를 직접 만들지 않고 표준 도구로 한다(D111, ADR 0022). 태그 고정, 2.11.7-alpine의 digest는 ADR 0022에 적었다.
 FROM caddy:2.11.7-alpine
 ARG REVISION=n/a
-ARG BOUNDARY_CONTRACT=v3.1.1
+ARG BOUNDARY_CONTRACT=v3.1.2
 ARG APP_VERSION=0.1.0
 # 이 영역은 model-runtime을 쓰지 않는다(해당 없음). 문진 스키마 패키지도 이미지에 넣지 않으므로 survey-schema 라벨은 n/a다(계약 3.0.1: 이미지에 실제로 들어간 패키지의 주 번호).
 LABEL io.openit.service="kiosk-frontend" \
