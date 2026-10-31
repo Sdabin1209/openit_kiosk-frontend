@@ -3,7 +3,7 @@
 // 기대값의 출처: 결정표 standards-decisions-2026-10-29.md 2절 kiosk-frontend #61. 이 시험이 쓴 구현이 아니라 그 결정이 기준이다.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 const ROOT = new URL("../src/", import.meta.url);
 // 환자 화면에 글을 만드는 소스(키오스크 쪽). 직원 콘솔 문구는 환자 노출이 아니다.

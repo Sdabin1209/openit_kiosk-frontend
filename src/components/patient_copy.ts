@@ -1,6 +1,6 @@
 // 환자에게 보이는 문구는 모두 이 모듈에만 둔다(표준성 점검 2026-10-29 #61, D89 임상 문구 통제).
 // 항목마다 reviewed: 임상 검토를 받았으면 true. 지금은 받은 것이 없어 전부 false다(검토 기록이 생기면 그 항목만 true로 바꾸고 근거를 ADR 0016에 적는다).
-// 이 폴더의 다른 소스에 한글 문자열 리터럴을 두지 않는다(test/copy.test.ts가 소스를 읽어 확인한다).
+// 키오스크 화면 쪽 다른 소스에 한글 문자열 리터럴을 두지 않는다(test/copy.test.ts가 소스를 읽어 확인한다).
 // 문구 안의 {n}은 fill()이 채운다.
 export interface Msg { readonly text: string; readonly reviewed: boolean }
 const m = (text: string): Msg => ({ text, reviewed: false });

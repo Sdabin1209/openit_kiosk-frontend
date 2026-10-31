@@ -34,3 +34,18 @@ test("실패 후 다시 눌러도 같은 turn_id, 성공하면 다음엔 새 ID"
   assert.notEqual(ids[1], ids[2]);
   void ok;
 });
+
+// 목적: 확인 창이 예·아니오 말고(Esc 등) 닫혀도 약속이 끝나 눌린 버튼이 잠긴 채 남지 않는다. 가짜 대화상자를 쓴다(실제 시간 없음).
+import { makeConfirm } from "../src/ui/staff_screen.ts";
+function fakeDialog() {
+  const listeners: Array<() => void> = []; let open = false;
+  const yes = { onclick: null as unknown }, no = { onclick: null as unknown }, text = { textContent: "" as string | null };
+  const dlg = { showModal() { open = true; }, close() { if (open) { open = false; queueMicrotask(() => listeners.splice(0).forEach((f) => f())); } }, addEventListener(_t: "close", f: () => void) { listeners.push(f); } };
+  return { dlg, yes, no, text, esc: () => dlg.close() };
+}
+test("확인 창: 예는 true, 아니오는 false, Esc로 닫으면 false로 끝난다(끝나지 않는 약속을 남기지 않음)", async () => {
+  const a = fakeDialog(); const ask = makeConfirm(a.dlg, a.text, a.yes, a.no);
+  const p1 = ask("계속?"); assert.equal(a.text.textContent, "계속?"); (a.yes.onclick as () => void)(); assert.equal(await p1, true);
+  const b = fakeDialog(); const p2 = makeConfirm(b.dlg, b.text, b.yes, b.no)("계속?"); (b.no.onclick as () => void)(); assert.equal(await p2, false);
+  const c = fakeDialog(); const p3 = makeConfirm(c.dlg, c.text, c.yes, c.no)("계속?"); c.esc(); assert.equal(await p3, false);
+});

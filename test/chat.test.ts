@@ -3,9 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { ChatLog, MAX_BUBBLES, type ConversationEvent } from "../src/components/chat_log.ts";
 import { renderChat } from "../src/ui/chat_view.ts";
 import { json, ok, settle, started, asStarted } from "./helpers.ts";

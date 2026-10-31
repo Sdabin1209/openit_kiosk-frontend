@@ -27,10 +27,9 @@ export const LONG_WAIT_NOTICE_MS = 300_000;
 /** [임시] 수동 입력 한 번의 최대 글자 수. 서버 상한(8MiB)과 무관한 화면 쪽 제한이며 임의. */
 export const MAX_INPUT_CHARS = 500;
 
-/** [D88 U3] 외부 음성 인식 제공자로 음성을 보내는 것을 허용할지의 기본값. 기본 꺼짐(privacy by default): 기기 안 인식(processLocally)만 쓰고,
+/** [D88 U3] 외부 음성 인식 제공자로 음성을 보내는 것의 기본은 꺼짐(상수 없이 기기 설정 allow_remote_stt가 없으면 꺼진다). 기본 꺼짐(privacy by default): 기기 안 인식(processLocally)만 쓰고,
  * 지원하지 않으면 음성 입력을 끄고 텍스트 입력으로 안내한다. 켜려면 기기 설정(/config.json의 allow_remote_stt: true)에서만 켠다.
  * 켜면 화면에 환자 고지 문구(아래, 임시)가 보이고 음성이 Chrome이면 Google 서버 등 외부로 나간다. 임상·법무 검토 전 문구다. */
-export const ALLOW_REMOTE_STT_DEFAULT = false;
 export const REMOTE_STT_NOTICE = MSG.NOTICE_REMOTE_STT.text; // 임시 문구, 임상/법무 검토 전(components/patient_copy.ts)
 export const NO_STT_NOTICE = MSG.NOTICE_NO_STT.text; // 임시 UI 문구(components/patient_copy.ts)
 

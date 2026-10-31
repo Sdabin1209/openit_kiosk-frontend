@@ -6,10 +6,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createStartHolder } from "../src/components/start_values.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import * as clinical from "../src/config.ts";
 import { json, ok, settle, started } from "./helpers.ts";
 

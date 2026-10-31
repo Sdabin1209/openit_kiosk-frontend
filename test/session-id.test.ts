@@ -5,9 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { json, ok, settle, startMock, started, SERVER_SESSION_ID } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });

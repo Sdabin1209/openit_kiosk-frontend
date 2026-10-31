@@ -2,9 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createStaffApi } from "../src/wiring/public_api.ts";
-import type { StaffApi } from "../src/wiring/public_api.ts";
 import { STAFF_STREAM_RETRY } from "../src/config.ts";
 import type { SyncStatus } from "../src/components/alert_sync.ts";
 import { createStaffAlertSync } from "../src/wiring/staff.ts";

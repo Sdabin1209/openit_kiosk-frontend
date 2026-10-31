@@ -8,10 +8,8 @@ import assert from "node:assert/strict";
 import { SttError } from "../src/components/stt_adapter.ts";
 import { createWebSpeechStt } from "../src/wiring/kiosk.ts";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
-import { ok, started } from "./helpers.ts";
+import { started } from "./helpers.ts";
 
 const g = globalThis as any;
 afterEach(() => { delete g.SpeechRecognition; });

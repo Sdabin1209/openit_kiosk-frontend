@@ -2,9 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { REQUEST_TIMEOUT_MS } from "../src/config.ts";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { ApiError, CallStaffError } from "../src/components/link_public_api_send.ts";
-import { hang, json, ok, started, timesOut, settle, fakeTimers } from "./helpers.ts";
+import { json, ok, started, timesOut, settle, fakeTimers } from "./helpers.ts";
 
 const fast = { retry: { maxAttempts: 3 }, sleep: async () => {} };
 

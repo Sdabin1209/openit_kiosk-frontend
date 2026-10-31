@@ -1,9 +1,7 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { asStarted, hang, json, ok, settle, timesOut } from "./helpers.ts";
 
 afterEach(() => { stateFn = () => ({ state: "ACTIVE", resume_text: null }); }); // 시험 간 공유 상태 초기화

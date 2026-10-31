@@ -5,7 +5,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 
 const files = ["src/components", "src/wiring", "src/ui", "src/kiosk", "src/staff", "src/staff/sw"].flatMap((d) => readdirSync(new URL(`../${d}/`, import.meta.url)).filter((f) => /\.(ts|html)$/.test(f)).map((f) => `${d}/${f}`));
 

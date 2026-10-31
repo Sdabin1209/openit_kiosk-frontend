@@ -2,7 +2,7 @@
 // 두 스키마는 고정 계약 태그에서 읽는다(복사본 없음, ADR 0027).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { contractJson, contractList } from "../scripts/contract-source.mjs";
 import Ajv2020 from "ajv/dist/2020.js";
 
@@ -14,7 +14,7 @@ for (const f of contractList("schemas")) {
 }
 const validator = (name: string) => ajv.getSchema(`${name}.schema.json`)!;
 const dockerfile = readFileSync("Dockerfile", "utf8");
-const ex = (dir: string, n: string) => contractJson(`${dir}/${n}.json`);
+(dir: string, n: string) => contractJson(`${dir}/${n}.json`);
 
 // StaticImageInterface는 계약 3.0.0에서 없어졌다(포트·사용자·환경 변수는 OCI 이미지 설정 EXPOSE·USER·ENV가 표준이고 경로는 Exposure 라벨이 담는다, ADR 0030).
 test("이미지 설정이 정본이다: EXPOSE 8080, root가 아닌 USER, PORT·STATIC_DIR 기본값", () => {

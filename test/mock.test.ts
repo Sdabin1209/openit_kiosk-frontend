@@ -4,12 +4,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createStaffApi } from "../src/wiring/public_api.ts";
-import type { StaffApi } from "../src/wiring/public_api.ts";
 import { ApiError, CallStaffError } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { startMock, waitFor } from "./helpers.ts";
 
 const SCHEMA_DIR = new URL("../../survey-service/schema/schemas/", import.meta.url);
@@ -119,7 +116,7 @@ test("rate_limited 시나리오: 429에 Retry-After를 붙이고 클라이언트
   const waits: number[] = [];
   m.state.sc.errorTimes = 1;
   const api = createPublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
-  const SID_s2 = (await api.startSession()).session_id;
+  (await api.startSession()).session_id;
   assert.deepEqual(waits, [2000]);
 });
 
@@ -165,7 +162,7 @@ test("hang이 3회 이상이면 CallStaffError", async () => {
 });
 
 test("error 시나리오: 503 두 번 뒤 성공", async () => {
-  const { m, api } = await mk({ errorStatus: 503, errorTimes: 2 });
+  const { api } = await mk({ errorStatus: 503, errorTimes: 2 });
   const first = await api.startSession(), SID_s1 = first.session_id;
   assert.ok(validate(first), JSON.stringify(validate.errors));
   await api.sendUtterance(SID_s1, "x", "t1"); // 지연 시나리오의 실제 지연은 모의 서버(시연용 대역)의 기능이고 요구사항이 아니라 시간을 재지 않는다(U422)
@@ -254,7 +251,7 @@ test("turn_in_progress 시나리오: 409 CONFLICT + details.reason + Retry-After
   const waits: number[] = [];
   m.state.sc.errorTimes = 1;
   const api = createPublicApiClient({ baseUrl: m.base + "/v1", rand: () => 0, sleep: async (ms) => { waits.push(ms); } });
-  const SID_s3 = (await api.startSession()).session_id;
+  (await api.startSession()).session_id;
   assert.deepEqual(waits, [2000]);
 });
 

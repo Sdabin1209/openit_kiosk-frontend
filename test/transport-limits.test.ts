@@ -3,10 +3,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { ApiError } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { settle, started } from "./helpers.ts";
 
 const plain = (status: number) => new Response(`${status} transport limit`, { status, headers: { "content-type": "text/plain" } });

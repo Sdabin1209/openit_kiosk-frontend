@@ -3,13 +3,10 @@ import { contractJson } from "../scripts/contract-source.mjs";
 import { PIPELINE_SCHEMA_VERSION } from "../mock-server/app.ts";
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { ApiError } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { deliveryLines, pauseLabel } from "../src/components/alert_info.ts";
 import { hang, json, ok, settle, startMock, started, timesOut } from "./helpers.ts";
 

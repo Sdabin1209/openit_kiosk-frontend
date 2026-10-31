@@ -3,14 +3,11 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { createStaffApi } from "../src/wiring/public_api.ts";
-import type { StaffApi } from "../src/wiring/public_api.ts";
 import { ApiError } from "../src/components/link_public_api_send.ts";
 import { loadKioskStart } from "../src/wiring/kiosk.ts";
 import { parseFragment, type KioskStart } from "../src/components/start_values.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { startMock, json, ok, started } from "./helpers.ts";
 
 const TOKEN = "dev-tok-FAKE-123";
@@ -63,9 +60,9 @@ function capture() {
 test("세션 시작 본문에 subject_ref를 넣고, 없으면 필드를 생략하고, 틀리면 보내지 않는다", async () => {
   const { calls, f } = capture();
   const c = createPublicApiClient({ ...fast, fetch: f });
-  const SID_s1 = (await c.startSession(REF)).session_id;
-  const SID_s2 = (await c.startSession()).session_id;
-  const SID_s3 = (await c.startSession(null)).session_id;
+  (await c.startSession(REF)).session_id;
+  (await c.startSession()).session_id;
+  (await c.startSession(null)).session_id;
   assert.equal(calls[0].body.subject_ref, REF);
   assert.equal("subject_ref" in calls[1].body, false);
   assert.equal("subject_ref" in calls[2].body, false);
@@ -84,7 +81,7 @@ test("기기 토큰은 /sessions* 요청에만 Authorization: Bearer로 간다(�
   assert.ok(bySession.length >= 4 && bySession.every((x) => x.headers.authorization === `Bearer ${TOKEN}`));
   assert.equal(calls.find((x) => x.url.includes("/staff/"))!.headers.authorization, undefined);
   tok = null; calls.length = 0;
-  const SID_s9 = (await c.startSession()).session_id;
+  (await c.startSession()).session_id;
   assert.equal(calls[0].headers.authorization, undefined);
 });
 

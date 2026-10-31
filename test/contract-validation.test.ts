@@ -3,7 +3,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
 import { contractJson, contractList } from "../scripts/contract-source.mjs";
 import { loadKioskStart } from "../src/wiring/kiosk.ts";
 import { pushNotification } from "../src/components/push_notification.ts";

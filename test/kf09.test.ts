@@ -6,15 +6,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { ApiError } from "../src/components/link_public_api_send.ts";
 import { createRetryPolicy } from "../src/components/retry_policy.ts";
 import { DEFAULT_RETRY } from "../src/config.ts";
 const policy = createRetryPolicy(DEFAULT_RETRY);
 const retry = { isRetryable: (s: number, r: string | null) => policy.classify({ status: s, reason: r }).retryable, isOutcomeUnknown: (s: number) => policy.classify({ status: s, reason: null }).outcomeUnknown };
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
-import { json, ok, settle, started } from "./helpers.ts";
+import { json, ok, started } from "./helpers.ts";
 
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
 const err = (status: number, code = "UNAVAILABLE", details?: object) =>

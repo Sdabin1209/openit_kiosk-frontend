@@ -2,14 +2,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
-import type { PublicApiClient } from "../src/components/link_public_api_send.ts";
 import { ApiError, CallStaffError, AbortedError } from "../src/components/link_public_api_send.ts";
 import { createRetryPolicy } from "../src/components/retry_policy.ts";
 import { DEFAULT_RETRY } from "../src/config.ts";
 const backoffMs = (n: number, _p: unknown = DEFAULT_RETRY, rand: () => number = Math.random) => createRetryPolicy(DEFAULT_RETRY, rand).backoffMs(n);
 const waitMs = (n: number, retryAfterMs: number | null) => createRetryPolicy(DEFAULT_RETRY).decide({ attempt: n, retryAfterMs, elapsedMs: 0 }).waitMs;
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import type { KioskFlow } from "../src/components/kiosk_flow.ts";
 import { json, ok, settle, waitFor, started, timesOut } from "./helpers.ts";
 
 /** 가상 시계: sleep이 시계를 앞으로 보낸다. 예산 계산을 실제 대기 없이 시험한다. */
