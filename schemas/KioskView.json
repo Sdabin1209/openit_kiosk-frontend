@@ -44,6 +44,13 @@
     "retrying": {
       "type": "boolean"
     },
+    "waitHint": {
+      "enum": [
+        "THINKING",
+        "PLEASE_WAIT"
+      ],
+      "description": "SENDING 대기 중 화면 피드백 단계(D125, Nielsen): 1초 뒤 THINKING(진행 표시), 10초 뒤 PLEASE_WAIT(안내 문구). 없으면 아직 1초 전"
+    },
     "idleWarnS": {
       "type": "integer",
       "minimum": 0,

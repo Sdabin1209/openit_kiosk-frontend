@@ -11,6 +11,10 @@ callStaffReason?: ("RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILE
 repeatReason?: ("EMPTY_STT" | "NOT_COMMITTED")
 retrying?: boolean
 /**
+ * SENDING 대기 중 화면 피드백 단계(D125, Nielsen): 1초 뒤 THINKING(진행 표시), 10초 뒤 PLEASE_WAIT(안내 문구). 없으면 아직 1초 전
+ */
+waitHint?: ("THINKING" | "PLEASE_WAIT")
+/**
  * 유휴 만료 경고 중: 만료까지 남은 초(WCAG 2.2.1)
  */
 idleWarnS?: number

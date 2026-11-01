@@ -44,7 +44,7 @@ test("502·504·429·네트워크 오류도 재시도한다", async () => {
   }
 });
 
-test("504가 계속되면 예산(24초)을 넘기기 전에 CallStaffError로 끝난다", async () => {
+test("504가 계속되면 예산(120초)을 넘기기 전에 CallStaffError로 끝난다", async () => {
   const { api, c, count } = make([() => err(504)]);
   await assert.rejects(api.sendUtterance("s1", "x", "t"), (e) => e instanceof CallStaffError && e.lastCause instanceof ApiError && e.lastCause.status === 504);
   const total = c.waits.reduce((a, b) => a + b, 0);
@@ -84,8 +84,8 @@ test("409 TURN_IN_PROGRESS에 Retry-After가 없어도 백오프로 재시도한
   assert.ok(c.waits[0]! >= 250 && c.waits[0]! <= 500);
 });
 
-test("Retry-After가 남은 예산보다 길면 기다리지 않고 직원 호출로 넘긴다", async () => {
-  const { api, c, count } = make([() => err(503, { "retry-after": "60" })]);
+test("Retry-After(600초)가 남은 예산(120초)보다 길면 기다리지 않고 직원 호출로 넘긴다", async () => {
+  const { api, c, count } = make([() => err(503, { "retry-after": "600" })]);
   await assert.rejects(api.sendUtterance("s1", "x", "t"), CallStaffError);
   assert.equal(count(), 1);
   assert.deepEqual(c.waits, []);

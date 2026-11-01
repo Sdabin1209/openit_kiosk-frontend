@@ -11,7 +11,7 @@ import type { StaffCallRetryResult } from "../types/StaffCallRetryResult.ts";
 import type { StaffCallView } from "../types/StaffCallView.ts";
 import type { SttErrorKind } from "../types/SttErrorKind.ts";
 import type { SttResult } from "../types/SttResult.ts";
-import { IDLE_RESET_MS, IDLE_WARNING_MS, LONG_WAIT_NOTICE_MS, MAX_INPUT_CHARS, MAX_REPEAT } from "../config.ts";
+import { IDLE_RESET_MS, IDLE_WARNING_MS, LONG_WAIT_NOTICE_MS, MAX_INPUT_CHARS, MAX_REPEAT, WAIT_NOTICE_MS, WAIT_PROGRESS_MS } from "../config.ts";
 
 /** 시작 값(KioskStart) + 시작이 서버에 접수된 뒤 부르는 confirm(한 번 쓴 환자 참조를 비운다). */
 export type StartValues = KioskStart & { confirm?: () => void };
@@ -75,6 +75,7 @@ export class KioskFlow {
   private idleMs: number;
   private timers: { set: (fn: () => void, ms: number) => unknown; clear: (h: unknown) => void };
   private idleTimer: unknown = null;
+  private waitTimers: unknown[] = []; // 응답 대기 피드백(1초 진행 표시, 10초 안내 문구, D125)
   private callTimer: unknown = null; // 다시 부르기 카운트다운
   private retryTurnId: string | null = null; // 응답 없이 실패한 재알림은 같은 turn_id로 다시 보낸다(서버 멱등)
   private staffCallSupported = true; // 기능 감지: 404/405를 한 번 받으면 이 세션 동안 끈다
@@ -103,8 +104,16 @@ export class KioskFlow {
   private emit(e: ConversationEvent): void { if (!vConversationEvent(e)) throw new Error("ConversationEvent schema violation"); for (const l of this.convListeners) l(e); }
   private say(text: string | null | undefined, id: string): void { if (text) this.emit({ type: "SYSTEM", id, text }); }
 
+  /** 응답 대기 화면 피드백 타이머: SENDING에 들어갈 때만 걸고 떠나면 거둔다. 시계는 주입된 timers를 쓴다(ADR 0034). */
+  private armWaitHints(sending: boolean) {
+    for (const h of this.waitTimers) this.timers.clear(h);
+    this.waitTimers = [];
+    if (!sending) return;
+    const hint = (waitHint: NonNullable<KioskView["waitHint"]>) => () => { if (this.view.state === "SENDING") this.patch({ waitHint }); };
+    this.waitTimers = [this.timers.set(hint("THINKING"), WAIT_PROGRESS_MS), this.timers.set(hint("PLEASE_WAIT"), WAIT_NOTICE_MS)];
+  }
   private set(v: KioskView) {
-    this.stopCallTimer();
+    this.stopCallTimer(); this.armWaitHints(v.state === "SENDING");
     if (v.state === "IDLE" || v.state === "ENDED") this.emit({ type: "CLEAR" }); // 세션이 끝났거나 처음 화면이면 대화를 지운다
     if (v.state !== "WAITING_STAFF") this.gen++; // 대기 화면을 떠나면 폴링 종료
     if (this.notice && (v.state === "LISTENING" || v.state === "REPEAT_PROMPT" || v.state === "SENDING")) v = { ...v, startNotice: this.notice };

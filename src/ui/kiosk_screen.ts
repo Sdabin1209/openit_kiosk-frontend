@@ -43,7 +43,7 @@ async function listenOnce() {
 /** 일시 장애로 다시 보내는 중이면 환자가 직원을 부르거나 그만둘 수 있게 한다. (문구는 임상 문구가 아니며 임시 UI 문구다.) */
 function waitingButtons(v: KioskView) {
   if (!v.retrying) return;
-  text.textContent = MSG.BODY_RETRYING.text;
+  text.textContent = MSG.BODY_RETRYING.text; // 재시도 안내가 대기 피드백보다 우선한다
   action.hidden = false; action.textContent = MSG.BTN_CALL_STAFF.text; onAction = () => flow.callStaff();
   secondary.hidden = false; secondary.textContent = MSG.BTN_STOP.text; onSecondary = () => void flow.end();
 }
@@ -52,6 +52,7 @@ function waitingButtons(v: KioskView) {
 function paint() { renderChat(document, $("chat"), chat.current, text.textContent ? text.textContent : null); }
 
 function render(v: KioskView) {
+  if (v.state === "SENDING" && v.waitHint) document.body.dataset.waitHint = v.waitHint; else delete document.body.dataset.waitHint; // 진행 표시 꾸밈용
   document.body.classList.toggle("warn", v.state === "CALL_STAFF");
   // 정지 사유는 글자와 data 속성으로 구분한다(색에 의존하지 않는다). 시험·접근성 도구용.
   if (v.state === "WAITING_STAFF" && v.pauseReason) document.body.dataset.pauseReason = v.pauseReason; else delete document.body.dataset.pauseReason;
@@ -87,7 +88,10 @@ function render(v: KioskView) {
       title.textContent = MSG.TITLE_REPEAT.text; action.hidden = false; action.textContent = MSG.BTN_SPEAK.text;
       onAction = () => (useStt() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null }).then(() => { input.value = ""; }));
       secondary.hidden = false; secondary.textContent = MSG.BTN_STOP.text; onSecondary = () => void flow.end(); break;
-    case "SENDING": title.textContent = v.retrying ? MSG.TITLE_WAIT.text : MSG.TITLE_SENDING.text; action.hidden = true; waitingButtons(v); break;
+    case "SENDING":
+      title.textContent = v.retrying ? MSG.TITLE_WAIT.text : MSG.TITLE_SENDING.text; action.hidden = true;
+      if (v.waitHint) text.textContent = v.waitHint === "PLEASE_WAIT" ? MSG.BODY_WAIT_LONGER.text : MSG.BODY_THINKING.text;
+      waitingButtons(v); break;
     case "WAITING_STAFF":
       title.textContent = MSG.TITLE_WAITING_STAFF.text; action.hidden = true;
       // 서버 고정 문장(v.text)이 있으면 항상 그것을 쓴다. 없을 때만 사유별 기본 안내(REASK_LIMIT 문구는 임상 검토 필요, ADR 0014).
