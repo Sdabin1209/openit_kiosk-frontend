@@ -404,11 +404,11 @@ test("키오스크: 서버 오류가 계속되면 직원 호출 화면 (503)", a
   const { page, ctx } = await open("none");
   await page.goto(kioskUrl());
   await page.getByRole("button", { name: "시작하기" }).click();
-  // 재시도 중(예산 20초)에는 대기 문구와 직원 부르기·그만하기 버튼이 보인다.
+  // 재시도 중(예산 120초)에는 대기 문구와 직원 부르기·그만하기 버튼이 보인다.
   await page.getByRole("button", { name: "직원 부르기" }).waitFor({ timeout: HANG_GUARD_MS });
   await page.getByText("잠시만 기다려 주세요").waitFor();
   await page.getByRole("button", { name: "그만하기" }).waitFor();
-  await runUntil(page, visible(page.getByText("직원을 불러 주세요")), 5000); // 재시도 예산(24초) 소진: 가짜 시계를 흘린다
+  await runUntil(page, visible(page.getByText("직원을 불러 주세요")), 5000); // 재시도 예산(120초) 소진: 가짜 시계를 흘린다
   await page.screenshot({ path: `${SHOTS}/kiosk-7-error-call-staff.png` });
   await ctx.close();
 });
