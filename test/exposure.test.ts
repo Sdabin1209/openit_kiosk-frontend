@@ -35,3 +35,8 @@ test("선언과 이미지 라우트 규칙(Caddyfile)이 어긋나지 않는다:
   const last = exposure.routes[exposure.routes.length - 1];
   assert.deepEqual([last.paths, last.auth.kind], [["/*"], "none"]);
 });
+
+test("선언: 영역 밖으로 나가는 호출이 없어 egress는 빈 목록이고, 본문 없는 GET 화면 경로의 max_body_bytes는 1024다(ADR 0039)", () => {
+  assert.deepEqual(exposure.egress, []);
+  for (const r of exposure.routes.filter((r: any) => r.auth.kind !== "denied")) assert.equal(r.max_body_bytes, 1024, r.paths.join(","));
+});

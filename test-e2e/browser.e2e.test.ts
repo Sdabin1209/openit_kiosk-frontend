@@ -443,7 +443,7 @@ test("키오스크: 이미 열린 화면은 정적 서버가 죽어도 진행 �
   await ctx.close();
 });
 
-test("키오스크: 저장 실패(NOT_COMMITTED)는 다시 말하기 화면", async () => {
+test("키오스크: 저장 실패(NOT_COMMITTED)는 같은 turn_id로 재시도하다 예산이 끝나면 직원 호출 화면(RUNTIME R3.20)", async () => {
   await scenario("not_committed");
   const { page, ctx } = await open("none");
   await page.goto(kioskUrl());
@@ -451,7 +451,7 @@ test("키오스크: 저장 실패(NOT_COMMITTED)는 다시 말하기 화면", as
   await page.getByText("어디가 불편하신가요?").waitFor();
   await page.locator("#manual-input").fill("가짜 문장");
   await page.getByRole("button", { name: "말하기" }).click();
-  await page.getByText("다시 말씀해 주세요").first().waitFor();
+  await runUntil(page, () => page.evaluate(() => document.getElementById("title")?.textContent === "직원을 불러 주세요")); // 재시도 예산(120초)을 가짜 시계로 흘린다
   await page.screenshot({ path: `${SHOTS}/kiosk-8-repeat.png` });
   await ctx.close();
 });
