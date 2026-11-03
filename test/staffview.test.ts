@@ -148,7 +148,7 @@ test("위험 정지는 [위험 정지]로, 모르는 값은 OTHER로, 옛 서버
   const a = setup(async () => view({ pause_reason: "RISK" })); await a.v.open("s1");
   assert.match(a.doc.getElementById("record-pause")!.textContent!, /^\[위험 정지\]/);
   const b = setup(async () => view({ pause_reason: "FUTURE_VALUE" })); await b.v.open("s1");
-  assert.match(b.doc.getElementById("record-pause")!.textContent!, /^\[정지: 그 밖의 사유\]/);
+  assert.match(b.doc.getElementById("record-pause")!.textContent!, /^\[정지: 그 밖의 사유\] 코드 FUTURE_VALUE$/); // 모르는 값은 코드 그대로
   const c = setup(async () => view()); await c.v.open("s1");
   assert.equal(c.doc.getElementById("record-pause"), null);
   assert.equal(c.doc.querySelector('table[aria-label="이 세션의 알림"] tbody tr')!.children[5].textContent, "-");

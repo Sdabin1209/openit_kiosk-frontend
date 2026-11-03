@@ -20,7 +20,10 @@ export function pauseLabel(a: Pick<Info, "pause_reason">): { reason: PauseReason
   if (!vInfo(a)) throw new Error("AlertInfoInput 스키마 위반");
   const r = normalizePauseReason(a.pause_reason);
   if (!r) return null;
-  const text = r === "RISK" ? "[위험 정지] 위험 신호로 멈췄습니다. 환자 안전을 먼저 확인하세요."
+  const raw = a.pause_reason;
+  // 모르는 값(OTHER도 아닌 새 코드)은 직원이 읽을 수 있게 코드를 그대로 보인다. 분류(reason)는 OTHER다.
+  const text = r === "OTHER" && raw !== "OTHER" ? `[정지: 그 밖의 사유] 코드 ${raw}`
+    : r === "RISK" ? "[위험 정지] 위험 신호로 멈췄습니다. 환자 안전을 먼저 확인하세요."
     : r === "REASK_LIMIT" ? "[되묻기 한도 정지] 환자가 위험해서가 아니라 질문을 여러 번 되물어도 답을 못 받아 멈췄습니다. 환자 상태를 확인하고 이어갈지 정하세요."
     : "[정지: 그 밖의 사유]";
   const out: PauseLabel = { reason: r, text };
