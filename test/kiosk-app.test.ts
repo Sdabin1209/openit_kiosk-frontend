@@ -125,3 +125,26 @@ test("대화 스레드: 시간순으로 쌓이고, 마지막 시스템 말풍선
     assert.equal(t.$("action").closest("footer")?.id, "controls", "입력은 아래 고정 영역");
   } finally { await t.close(); cfg.done(); }
 });
+
+// L28: 정지 사유(pause_reason)가 키오스크 화면에 구분되어 실린다. RISK는 유지, REASK_LIMIT은 분리된 사유로 나온다.
+// 서버가 환자용 고정 문장을 주면 그것이 우선이므로(ADR 0014) 여기서는 사유 표식과 정지 화면 제목을 확인하고, 기본 문구가 서로 다른 것은 아래에서 확인한다.
+for (const [say, reason] of [["알수없음 발화", "REASK_LIMIT"], ["위험 발화", "RISK"]] as const) {
+  test(`정지 사유 ${reason}: 대기 화면 body[data-pause-reason]에 실린다`, opt, async () => {
+    const cfg = tmpConfig({ device_token: TOKEN });
+    const t = await rig(cfg.f);
+    try {
+      await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
+      t.$("action").click();
+      await waitFor(() => t.bubbles().length === 1, "시작 인사");
+      (t.$("manual-input") as HTMLInputElement).value = say;
+      t.$("action").click();
+      await waitFor(() => t.doc.body.dataset.pauseReason === reason, `정지 사유 ${reason}`);
+      assert.equal(t.$("title").textContent, "직원이 곧 도와드립니다");
+    } finally { await t.close(); cfg.done(); }
+  });
+}
+test("REASK_LIMIT 기본 안내 문구는 위험 정지 기본 문구와 다르고 '위험하지 않다'고 단정하지 않는다", async () => {
+  const { MSG } = await import("../src/components/patient_copy.ts");
+  assert.notEqual(MSG.NOTICE_REASK_LIMIT_WAIT.text, MSG.BODY_WAIT_DEFAULT.text);
+  assert.doesNotMatch(MSG.NOTICE_REASK_LIMIT_WAIT.text, /위험(하지|이) (않|없)/);
+});
