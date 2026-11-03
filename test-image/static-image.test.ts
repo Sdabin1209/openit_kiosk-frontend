@@ -156,6 +156,15 @@ test("PORT가 정수가 아니면 시작을 거부한다(비0 종료)", () => {
   assert.ok(code !== "" && code !== "0", `종료 코드 ${code}`);
 });
 
+// KIOSK_HOST(계약 KioskFrontendEnv 3.4.3): 127.0.0.1로 주면 컨테이너 안(같은 네트워크 공간의 사이드카)에서만 닿고, 컨테이너 밖에서 게시한 포트로는 닿지 않는다. 기본(0.0.0.0)은 위 plain 컨테이너가 게시 포트로 닿는 것으로 확인한다.
+test("KIOSK_HOST=127.0.0.1이면 같은 네트워크 공간에서만 닿고 게시한 포트로는 닿지 않는다", async () => {
+  const lo = run([], ["KIOSK_HOST=127.0.0.1"]);
+  let inside = false;
+  for (let i = 0; i < 25 && !inside; i++) { inside = docker("exec", lo.name, "wget", "-qO-", "http://127.0.0.1:8080/healthz").status === 0; if (!inside) spawnSync("sleep", ["0.2"]); } // 매달림 감시: 기동 대기 상한 5초, 판정은 응답 여부
+  assert.ok(inside, "컨테이너 안의 127.0.0.1에서는 응답한다");
+  assert.equal(await fetch(lo.base + "/healthz").then((r) => r.status, () => "닿지 않음"), "닿지 않음", "게시한 포트(컨테이너 외부 인터페이스)로는 닿지 않는다");
+});
+
 test("root가 아닌 사용자로 실행한다", () => {
   assert.notEqual(docker("exec", plain.name, "id", "-u").stdout.trim(), "0");
 });
