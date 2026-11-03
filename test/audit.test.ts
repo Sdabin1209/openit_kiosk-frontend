@@ -90,17 +90,15 @@ test("P4: 마이크 거부는 화면 입력으로 대체되고(textFallback) 직
   assert.equal(flow.current.callStaffReason, "REPEAT_LIMIT");
 });
 
-test("P4: 성공한 턴이 있으면 반복 횟수가 초기화되고, 저장 실패(NOT_COMMITTED) 반복도 상한을 센다", async () => {
-  let committed = false;
-  const { api } = server({ turn: () => committed ? ok("다음") : ok("저장 못 함", sig("NONE", "NOT_COMMITTED")) });
+test("P4: 성공한 턴이 있으면 반복 횟수가 초기화되고, 알아듣지 못한 반복(EMPTY_STT)은 상한을 센다", async () => {
+  const { api } = server();
   const flow = createKioskFlow(api, { idleMs: 0 });
   await flow.start();
-  for (let i = 0; i < clinical.MAX_REPEAT; i++) await flow.hear(say("배가 아파요"));
+  for (let i = 0; i < clinical.MAX_REPEAT; i++) await flow.hear(null);
   assert.equal(flow.current.state, "REPEAT_PROMPT");
-  committed = true; await flow.hear(say("배가 아파요"));
+  await flow.hear(say("배가 아파요"));
   assert.equal(flow.current.state, "LISTENING");
-  committed = false;
-  for (let i = 0; i <= clinical.MAX_REPEAT; i++) await flow.hear(say("또 말함"));
+  for (let i = 0; i <= clinical.MAX_REPEAT; i++) await flow.hear(null);
   assert.equal(flow.current.callStaffReason, "REPEAT_LIMIT");
 });
 

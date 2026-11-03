@@ -34,6 +34,10 @@ export interface PushSubscriptionJson { endpoint: string; keys: { p256dh: string
 export class BadBodyError extends Error {
   constructor(what: string) { super(`응답 본문이 올바르지 않습니다: ${what}`); this.name = "BadBodyError"; }
 }
+/** 200이지만 턴이 확정되지 못했다(turn_failure_signal.write_committed=NOT_COMMITTED, RUNTIME R3.20). 일시 장애와 같이 같은 turn_id로 재시도한다(PUBLIC_API 프론트가 지킬 것). */
+export class NotCommittedError extends Error {
+  constructor() { super("턴이 확정되지 못했습니다(NOT_COMMITTED)"); this.name = "NotCommittedError"; }
+}
 /** 전송 계층 한도 응답(본문 크기 413, 요청 줄 414, 헤더 431; RFC 9110 15.5.14·15.5.15, RFC 6585 5). */
 const TRANSPORT_LIMIT_STATUS: ReadonlySet<number> = new Set([413, 414, 431]);
 /** 서버가 응답했으나 재시도로 해결되지 않는 오류(400/401/403/404/409 등). */
@@ -164,7 +168,7 @@ export class PublicApiClient {
         kind: "UTTERANCE",
         utterance,
         turn_id: turnId,
-      }, co),
+      }, co, true),
     );
   }
 
@@ -196,6 +200,14 @@ export class PublicApiClient {
     const req = { outcome, turn_id: turnId };
     accept(cReportBody, "StaffCallReport(계약)", req); // 보내기 전에 요청 본문 전체를 계약으로 검증한다(R7)
     return this.serial(sessionId, () => this.call<StaffAlert>("POST", `/sessions/${sessionId}/staff-call/report`, req, false, { ...co, single: true }, body(vAlertBody, "StaffAlertBody")));
+  }
+  /**
+   * 스트림 탐침(PUBLIC_API 직원 콘솔 SSE): EventSource는 상태 코드를 알려 주지 않으므로 연결이 닫히면 같은 인증으로 한 번 불러 상태와 Retry-After만 읽는다.
+   * 구독이 아니고 재시도하지 않는다. 응답 본문은 쓰지 않는다. 네트워크 오류·시간 초과는 status 0.
+   */
+  async probeStaffAlerts(): Promise<{ status: number; retryAfterMs: number | null }> {
+    try { await this.call("GET", `/staff/alerts?status=OPEN&limit=1`, undefined, false, { single: true }); return { status: 200, retryAfterMs: null }; }
+    catch (e) { return e instanceof ApiError ? { status: e.status, retryAfterMs: e.retryAfterMs } : { status: 0, retryAfterMs: null }; }
   }
   /** vapid_public_key가 null이면 푸시는 꺼져 있고 SSE만 동작한다. */
   getPushConfig(): Promise<PushConfig> {
@@ -245,9 +257,16 @@ export class PublicApiClient {
     return next;
   }
 
-  private post(schema: ValidateFn, path: string, reqBody: Record<string, unknown>, co: CallOptions = {}): Promise<FrontendInput> {
+  private post(schema: ValidateFn, path: string, reqBody: Record<string, unknown>, co: CallOptions = {}, retryNotCommitted = false): Promise<FrontendInput> {
     acceptEnvelope(schema, "요청 본문(문진 스키마)", reqBody); // 보내기 전에 본문 전체를 검증한다. 어기면 보내지 않는다(R7)
-    return this.call<FrontendInput>("POST", path, reqBody, true, co, body(vFrontend, "FrontendBody"));
+    const ok = body(vFrontend, "FrontendBody");
+    // NOT_COMMITTED 재시도는 위험 정지 신호(staff_alert DELIVERED·DELIVERY_FAILED)가 없을 때만이다: 직원 호출 판단(안전)이 저장 재시도보다 먼저다.
+    const validate = (r: unknown) => {
+      ok(r);
+      const sig = (r as FrontendInput).turn_failure_signal;
+      if (retryNotCommitted && sig?.write_committed === "NOT_COMMITTED" && sig.staff_alert !== "DELIVERED" && sig.staff_alert !== "DELIVERY_FAILED") throw new NotCommittedError();
+    };
+    return this.call<FrontendInput>("POST", path, reqBody, true, co, validate);
   }
 
   /** 일시 장애(429·502·503·504·네트워크 오류·무응답, 409 details.reason=TURN_IN_PROGRESS)는 같은 요청 그대로 지수 백오프로 재시도하고,

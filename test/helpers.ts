@@ -64,3 +64,6 @@ export const qsFetch = (f: (u: string, init: RequestInit) => Promise<Response> |
 
 /** 요청 타이머를 걸지 않는 클라이언트 시계. 끝나지 않는 가짜 요청을 쓰는 시험이 실제 60초 요청 타이머를 남겨 프로세스가 멈춰 있지 않게 한다(우리 코드의 시간은 시계 주입으로 다룬다, ADR 0034). */
 export const noTimers = { setTimeout: () => 0, clearTimeout: () => {} };
+
+/** fakeTimers()를 상태 기계가 받는 시계 모양({set, clear})으로 바꾼다. */
+export const flowTimers = (t: ReturnType<typeof fakeTimers>) => ({ set: (fn: () => void, ms: number) => t.setTimeout(fn, ms), clear: (h: unknown) => t.clearTimeout(h) });

@@ -68,11 +68,10 @@ function render(v: KioskView) {
   secondary.hidden = true; onSecondary = null; action.disabled = false; text.textContent = v.text ?? "";
   const notes: string[] = [];
   if (v.startNotice === "NO_SUBJECT_REF") notes.push(MSG.NOTICE_NO_SUBJECT_REF.text);
-  if (v.chooseNotice === "QUESTION_SET_NOT_FOUND") notes.push(MSG.NOTICE_QUESTION_SET_NOT_FOUND.text);
   if (listening && stt.remote) notes.push(REMOTE_STT_NOTICE); // 외부 인식 허용 설정을 켠 기기에서만
   if (listening && !stt.available() && !stt.remote) notes.push(NO_STT_NOTICE);
   // 유휴 만료 경고(WCAG 2.2.1): 안내(role=status)와 연장 버튼. 초점을 버튼으로 옮겨 키보드·스위치 사용자가 바로 누를 수 있게 한다.
-  const warning = v.idleWarnS !== undefined && (listening || choosing);
+  const warning = v.idleWarnS !== undefined && (listening || choosing || v.state === "NOT_OPEN");
   if (warning) notes.push(fill(MSG.IDLE_WARNING, { n: v.idleWarnS! }));
   extendBtn.hidden = !warning; extendBtn.textContent = MSG.BTN_IDLE_EXTEND.text;
   if (warning && !wasWarning) extendBtn.focus();
@@ -91,6 +90,9 @@ function render(v: KioskView) {
       secondary.hidden = false; secondary.textContent = MSG.BTN_HOME.text; onSecondary = () => flow.cancelChoose();
       if (lastState !== "CHOOSING") btns[0]?.focus();
       break; }
+    case "NOT_OPEN": // 활성 릴리스 없음(503 NO_ACTIVE_RELEASE): 시작할 수 없다는 안내. Retry-After 뒤 상태 기계가 목록을 다시 받는다.
+      title.textContent = MSG.TITLE_NOT_OPEN.text; text.textContent = MSG.BODY_NOT_OPEN.text; action.hidden = true;
+      secondary.hidden = false; secondary.textContent = MSG.BTN_HOME.text; onSecondary = () => flow.cancelChoose(); break;
     case "STARTING": title.textContent = MSG.TITLE_WAIT.text; action.hidden = true; waitingButtons(v); break;
     case "LISTENING":
       if (!v.text) text.textContent = MSG.BODY_KEEP_TALKING.text; // 응답 문장이 없는 정상 응답에서 빈 화면을 막는다
@@ -115,7 +117,6 @@ function render(v: KioskView) {
     case "CALL_STAFF":
       title.textContent = MSG.TITLE_CALL_STAFF.text;
       text.textContent = v.callStaffReason === "AUTH" ? MSG.BODY_AUTH_DENIED.text
-        : v.callStaffReason === "NO_QUESTION_SET" ? MSG.BODY_NO_QUESTION_SET.text
         : v.callStaffReason === "BAD_SUBJECT_REF" ? MSG.BODY_BAD_SUBJECT_REF.text
         : v.callStaffReason === "REPEAT_LIMIT" ? MSG.BODY_REPEAT_LIMIT.text
         : MSG.BODY_CALL_STAFF_DEFAULT.text; action.hidden = false; action.textContent = MSG.BTN_HOME.text;
@@ -154,7 +155,6 @@ function render(v: KioskView) {
       break;
   }
   if (v.state === "IDLE") action.hidden = false;
-  if (v.state === "REPEAT_PROMPT" && v.repeatReason === "NOT_COMMITTED") text.textContent = v.text ?? MSG.BODY_NOT_COMMITTED.text;
   if (v.state === "LISTENING" || v.state === "REPEAT_PROMPT") speak(text.textContent);
   if (v.state !== "CALL_STAFF" || !v.staffCall) lastWaitS = 0;
   if (v.state === "CALL_STAFF" && v.busy) { action.disabled = true; secondary.disabled = true; } else secondary.disabled = false; // report 진행 중 잠금(L-1)

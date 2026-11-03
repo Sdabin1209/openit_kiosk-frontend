@@ -5,10 +5,10 @@
  * 키오스크 상태 기계의 출력(화면이 그리는 값). 환자 발화는 담지 않는다(text는 서버 응답 문장).
  */
 export type KioskView = {
-state: ("IDLE" | "CHOOSING" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING" | "WAITING_STAFF" | "CALL_STAFF" | "ENDING" | "ENDED")
+state: ("IDLE" | "CHOOSING" | "NOT_OPEN" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING" | "WAITING_STAFF" | "CALL_STAFF" | "ENDING" | "ENDED")
 text: (string | null)
-callStaffReason?: ("RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "STAFF_REQUESTED" | "BAD_SUBJECT_REF" | "REPEAT_LIMIT" | "NO_QUESTION_SET")
-repeatReason?: ("EMPTY_STT" | "NOT_COMMITTED")
+callStaffReason?: ("RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "STAFF_REQUESTED" | "BAD_SUBJECT_REF" | "REPEAT_LIMIT")
+repeatReason?: "EMPTY_STT"
 retrying?: boolean
 /**
  * SENDING 대기 중 화면 피드백 단계(D125, Nielsen): 1초 뒤 THINKING(진행 표시), 10초 뒤 PLEASE_WAIT(안내 문구). 없으면 아직 1초 전
@@ -44,10 +44,6 @@ title: string
 id: string
 title: string
 })[]]
-/**
- * 정해 둔 문진표가 활성 목록에 없어 선택 화면으로 왔다
- */
-chooseNotice?: "QUESTION_SET_NOT_FOUND"
 }
 
 /**

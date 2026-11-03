@@ -52,9 +52,9 @@ test("DELIVERY_FAILED이면 직원 호출 화면", async () => {
   assert.equal(flow.current.callStaffReason, "DELIVERY_FAILED");
 });
 
-test("DELIVERED이면 직원 대기 화면, NOT_COMMITTED이면 다시 말해 달라고 안내", async () => {
+test("DELIVERED이면 직원 대기 화면, NOT_COMMITTED이면 같은 turn_id로 다시 보내다 예산이 끝나면 직원 호출(PUBLIC_API, R3.20)", async () => {
   let sig: any;
-  const { flow } = make((b) => b.kind === "UTTERANCE" ? ok("문장", sig) : ok("시작"));
+  const { flow, calls } = make((b) => b.kind === "UTTERANCE" ? ok("문장", sig) : ok("시작"));
   await flow.start();
   sig = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERED" };
   await flow.hear(say("위험"));
@@ -62,9 +62,13 @@ test("DELIVERED이면 직원 대기 화면, NOT_COMMITTED이면 다시 말해 �
   flow.reset();
   await flow.start();
   sig = { session_id: "s", write_committed: "NOT_COMMITTED", staff_alert: "NONE" };
+  const before = calls.length;
   await flow.hear(say("다시"));
-  assert.equal(flow.current.state, "REPEAT_PROMPT");
-  assert.equal(flow.current.repeatReason, "NOT_COMMITTED");
+  const ids = calls.slice(before).map((c) => c.turn_id);
+  assert.ok(ids.length > 1, "다시 보냈다");
+  assert.equal(new Set(ids).size, 1, "모든 시도가 같은 turn_id");
+  assert.deepEqual([flow.current.state, flow.current.callStaffReason], ["CALL_STAFF", "RETRY_EXHAUSTED"]);
+  // 재시도 중 확정되면(두 번째 응답이 COMMITTED) 평소처럼 이어진다
 });
 
 test("DELIVERY_FAILED는 NOT_COMMITTED보다 우선한다", async () => {
@@ -90,11 +94,13 @@ test("턴마다 turn_id가 다르다", async () => {
   assert.notEqual(ids[0], ids[1]);
 });
 
-test("409는 직원 대기, 404는 처음 화면, 401은 직원 호출", async () => {
-  for (const [st, want] of [[409, "WAITING_STAFF"], [404, "IDLE"], [401, "CALL_STAFF"]] as const) {
-    const { flow } = make((b) => (b.kind === "UTTERANCE" ? json({ code: "X" }, st) : ok("시작")));
+test("400·401·403·404·409(TURN_IN_PROGRESS 아님)·413·414·422·431은 재시도 없이 직원 호출 화면(PUBLIC_API 프론트가 지킬 것)", async () => {
+  for (const [st, want] of [[400, "CALL_STAFF"], [401, "CALL_STAFF"], [403, "CALL_STAFF"], [404, "CALL_STAFF"], [409, "CALL_STAFF"], [413, "CALL_STAFF"], [414, "CALL_STAFF"], [422, "CALL_STAFF"], [431, "CALL_STAFF"]] as const) {
+    const { flow, calls } = make((b) => (b.kind === "UTTERANCE" ? json({ code: "X" }, st) : ok("시작")));
     await flow.start(); await flow.hear(say("x"));
-    assert.equal(flow.current.state, want);
+    assert.equal(flow.current.state, want, String(st));
+    assert.equal(calls.filter((c) => c.kind === "UTTERANCE").length, 1, `${st}: 한 번만 보낸다`);
+    assert.equal(flow.current.callStaffReason, st === 401 || st === 403 ? "AUTH" : "RETRY_EXHAUSTED", String(st));
     flow.reset();
   }
 });

@@ -16,10 +16,10 @@ const OUT = new URL("src/types/", ROOT);
 const check = process.argv.includes("--check");
 
 // 공개 API 본문 타입의 출처. 계약은 고정 태그에서, 문진 스키마는 옆 폴더에서(읽기 전용) 읽는다.
-const CONTRACT_TYPES = ["StaffAlert", "StaffAlertPage", "SessionState", "PushConfig", "StaffCallRetryResult", "StaffCallReport", "StaffCallRetryRequest", "BoundaryError", "DeviceConfig", "KioskStartFragment", "StaffPushPayload"];
+const CONTRACT_TYPES = ["StaffAlert", "StaffAlertPage", "SessionState", "PushConfig", "StaffCallRetryResult", "StaffCallReport", "StaffCallRetryRequest", "BoundaryError", "DeviceConfig", "KioskStartFragment", "StaffPushPayload", "PushSubscriptionRequest"];
 const SURVEY_TYPES = ["FrontendInput", "StaffSessionView"];
 // 계약에서 검증기까지 만드는 것(경계 스키마: 읽는 쪽이 계약 그대로 검사한다, ADR 0021).
-const CONTRACT_VALIDATORS = ["DeviceConfig", "KioskStartFragment", "StaffPushPayload", "StaffCallReport", "StaffCallRetryRequest"]; // 뒤 둘: 보내는 요청 본문 전체를 보내기 전에 검증한다(R7, U424)
+const CONTRACT_VALIDATORS = ["DeviceConfig", "KioskStartFragment", "StaffPushPayload", "StaffCallReport", "StaffCallRetryRequest", "PushSubscriptionRequest", "HealthStatus"]; // StaffCallReport·StaffCallRetryRequest·PushSubscriptionRequest(x-producers가 이 영역): 보내는 본문을 보내기 전에 검증한다. HealthStatus(x-producers *): 정적 서버가 내는 /healthz·/readyz 본문을 이미지 시험이 검증한다. 뒤 둘: 보내는 요청 본문 전체를 보내기 전에 검증한다(R7, U424)
 // 문진 스키마(고정 태그 survey-schema-v4.0.0)에서 검증기까지 만드는 것: 보내는 요청 본문 전체(PUBLIC_API.md 24~26·46행). turn_id는 API 봉투 필드라 본문에서 떼어 낸 나머지를 검증한다(PUBLIC_API.md 30행, D66).
 const SURVEY_VALIDATORS = ["FrontendMessage", "InterventionDecision"];
 const CONTRACT_DEPS = ["SessionState"]; // 영역 스키마가 $ref로 가리키는 계약 스키마

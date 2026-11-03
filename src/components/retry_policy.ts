@@ -10,8 +10,10 @@ import type { StatusQuery } from "../types/StatusQuery.ts";
 
 export type { RetryDecision, RetryPolicy, RetryQuery, StatusClass, StatusQuery };
 
-/** 재시도하는 상태 코드. 500은 서버 버그로 보고 재시도하지 않는다. 4xx(429 제외)도 하지 않는다(FAULT_POLICY 원칙 7). */
-const RETRYABLE_STATUS: ReadonlySet<number> = new Set([429, 502, 503, 504]);
+/** 재시도하는 상태 코드. 500은 서버 버그로 보고 재시도하지 않는다. 4xx는 408(요청이 한도 안에 도착하지 못함, PUBLIC_API 프론트가 지킬 것)과 429 외에는 하지 않는다(FAULT_POLICY 원칙 7). 413·414·431·400·403·404·422는 같은 요청이 같은 결과라 재시도하지 않는다. */
+const RETRYABLE_STATUS: ReadonlySet<number> = new Set([408, 429, 502, 503, 504]);
+/** 503이어도 이 reason이면 재시도 루프에 넣지 않는다: 활성 릴리스가 없다는 뜻이라 흐름(kiosk_flow)이 시작 불가 안내를 보이고 Retry-After 뒤 목록을 다시 받는다(PUBLIC_API I절). */
+const NO_ACTIVE_RELEASE = "NO_ACTIVE_RELEASE";
 /** 409(code CONFLICT) 중 details.reason이 이 값일 때만 재시도한다(처리 중인 같은 turn_id, PUBLIC_API.md 409 행). */
 const TURN_IN_PROGRESS = "TURN_IN_PROGRESS";
 
@@ -32,7 +34,7 @@ export function createRetryPolicy(policy: RetryPolicy, rand: () => number = Math
      * 두 질문은 다르다: 500은 자동 재시도하지 않지만(서버 버그로 본다) 처리 여부는 모른다(PUBLIC_API.md 125행). */
     classify(q: StatusQuery): StatusClass {
       if (!vStatusQuery(q)) throw new Error("StatusQuery 스키마 위반");
-      const out: StatusClass = { retryable: RETRYABLE_STATUS.has(q.status) || (q.status === 409 && q.reason === TURN_IN_PROGRESS), outcomeUnknown: q.status >= 500 };
+      const out: StatusClass = { retryable: (RETRYABLE_STATUS.has(q.status) && !(q.status === 503 && q.reason === NO_ACTIVE_RELEASE)) || (q.status === 409 && q.reason === TURN_IN_PROGRESS), outcomeUnknown: q.status >= 500 };
       if (!vStatusClass(out)) throw new Error("StatusClass 스키마 위반");
       return out;
     },

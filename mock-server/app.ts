@@ -159,6 +159,10 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     }
     const staffId = typeof req.headers["x-openit-user"] === "string" ? (req.headers["x-openit-user"] as string) : null; // E절: 게이트웨이가 붙이는 헤더. 본문 값은 믿지 않는다
 
+    // 활성 릴리스가 없으면(문진표 0개) 목록도 세션 시작도 빈 200이 아니라 503 UNAVAILABLE + details.reason=NO_ACTIVE_RELEASE + Retry-After다(PUBLIC_API I절, 3.4.4).
+    const noRelease = () => state.sc.questionSets.length === 0
+      ? (res.writeHead(503, { "content-type": "application/json", "retry-after": "1" }), res.end(JSON.stringify({ ...berr("UNAVAILABLE", "no active release", true), details: { reason: "NO_ACTIVE_RELEASE" } })))
+      : null;
     let body: any = {};
     if (m === "POST") { try { body = await readBody(req); } catch { return json(res, 400, berr("INVALID_RECORD", "bad json")); } }
 
@@ -170,6 +174,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       const { turn_id: _t, ...startRest } = body;
       if (Object.keys(startRest).some((k) => !["kind", "session_id", "subject_ref", "question_set_id"].includes(k))) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
       if (body.subject_ref !== undefined && (typeof body.subject_ref !== "string" || !SUBJECT_REF_RE.test(body.subject_ref))) return json(res, 400, berr("INVALID_RECORD", "bad subject_ref")); // 값은 응답·로그에 되풀이하지 않는다
+      { const nr = noRelease(); if (nr) return nr; }
       // 문진표: 활성이 하나면 생략 가능, 둘 이상이면 필수, 목록에 없으면 400 INVALID_RECORD + details.reason(계약 3.3.0 I10)
       const sets = state.sc.questionSets;
       if (body.question_set_id === undefined && sets.length > 1) return json(res, 400, { ...berr("INVALID_RECORD", "question_set_id required"), details: { reason: "QUESTION_SET_REQUIRED" } });
@@ -180,7 +185,7 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       logTurn(state.sessions.get(body.session_id)!, typeof body.turn_id === "string" ? body.turn_id : "start", null, first, "SESSION_START");
       return json(res, 200, { ...input(first), session_id: body.session_id });
     }
-    if (m === "GET" && path === "/v1/question-sets") return json(res, 200, { items: state.sc.questionSets });
+    if (m === "GET" && path === "/v1/question-sets") return noRelease() ?? json(res, 200, { items: state.sc.questionSets });
     const sm = path.match(/^\/v1\/sessions\/([^/]+)\/state$/);
     if (m === "GET" && sm) {
       const s = state.sessions.get(sm[1]);

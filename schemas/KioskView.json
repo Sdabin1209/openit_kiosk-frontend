@@ -9,6 +9,7 @@
       "enum": [
         "IDLE",
         "CHOOSING",
+        "NOT_OPEN",
         "STARTING",
         "LISTENING",
         "REPEAT_PROMPT",
@@ -33,14 +34,12 @@
         "START_FAILED",
         "STAFF_REQUESTED",
         "BAD_SUBJECT_REF",
-        "REPEAT_LIMIT",
-        "NO_QUESTION_SET"
+        "REPEAT_LIMIT"
       ]
     },
     "repeatReason": {
       "enum": [
-        "EMPTY_STT",
-        "NOT_COMMITTED"
+        "EMPTY_STT"
       ]
     },
     "retrying": {
@@ -110,10 +109,6 @@
         "additionalProperties": false
       },
       "description": "CHOOSING에서 고를 문진표(활성 목록의 ID·제목)"
-    },
-    "chooseNotice": {
-      "const": "QUESTION_SET_NOT_FOUND",
-      "description": "정해 둔 문진표가 활성 목록에 없어 선택 화면으로 왔다"
     }
   },
   "required": [
@@ -203,17 +198,8 @@
     },
     {
       "if": {
-        "anyOf": [
-          {
-            "required": [
-              "choices"
-            ]
-          },
-          {
-            "required": [
-              "chooseNotice"
-            ]
-          }
+        "required": [
+          "choices"
         ]
       },
       "then": {

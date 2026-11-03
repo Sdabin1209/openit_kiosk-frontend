@@ -1,1 +1,1 @@
-{"state":"CHOOSING","text":null,"choices":[{"id":"general","title":"일반 문진"}],"chooseNotice":"QUESTION_SET_NOT_FOUND"}
+{"state":"CHOOSING","text":null,"choices":[{"id":"general","title":"일반 문진"},{"id":"cardio","title":"심장 문진"}]}

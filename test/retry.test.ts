@@ -209,7 +209,7 @@ test("흐름: 재시도 소진까지 모든 시도가 같은 turn_id를 쓴다",
   assert.ok(new Set(ids).size === 1, "소진까지 모든 재시도가 같은 turn_id");
 });
 
-test("흐름: reason 없는 409는 WAITING_STAFF(기존), TURN_IN_PROGRESS는 대기 뒤 성공", async () => {
+test("흐름: reason 없는 409는 재시도 없이 직원 호출 화면, TURN_IN_PROGRESS는 대기 뒤 성공", async () => {
   const c = clock(); let mode: "plain" | "busy" = "plain"; let n = 0;
   const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async (u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", state: mode === "plain" ? "PAUSED_RISK" : "ACTIVE", resume_text: null });
@@ -220,7 +220,7 @@ test("흐름: reason 없는 409는 WAITING_STAFF(기존), TURN_IN_PROGRESS는 �
   }) as any) });
   const flow = createKioskFlow(api, { pollMs: 1000, sleep: () => new Promise(() => {}) });
   await flow.start(); await flow.hear(say("네"));
-  assert.equal(flow.current.state, "WAITING_STAFF");
+  assert.equal(flow.current.state, "CALL_STAFF");
   flow.reset();
   mode = "busy"; await flow.start(); await flow.hear(say("네"));
   assert.equal(flow.current.state, "LISTENING"); assert.equal(flow.current.text, "다음");

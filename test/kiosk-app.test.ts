@@ -166,14 +166,17 @@ test("문진표가 둘이면 선택 화면에 제목 버튼이 보이고, 고른
   } finally { await t.close(); cfg.done(); }
 });
 
-test("활성 문진표가 없으면 '문진표가 준비되지 않았습니다' 안내", opt, async () => {
+test("활성 릴리스가 없으면(503 NO_ACTIVE_RELEASE) 시작 불가 안내를 보이고, 처음으로 돌아가면 더 부르지 않는다", opt, async () => {
   const cfg = tmpConfig({ device_token: TOKEN });
   const t = await rig(cfg.f, false, { questionSets: [] });
   try {
     await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
     t.$("action").click();
-    await waitFor(() => t.$("title").textContent === "직원을 불러 주세요", "직원 호출 화면");
-    assert.match(t.$("chat").textContent + t.doc.body.textContent, /문진표가 준비되지 않았습니다/);
+    await waitFor(() => t.$("title").textContent === "문진을 시작할 수 없어요", "시작 불가 안내");
+    assert.match(t.doc.body.textContent!, /문진표가 준비되지 않았어요/);
+    assert.equal(t.mock.state.sessions.size, 0);
+    t.$("secondary").click(); // 처음으로: 다시 받기 타이머를 거둔다
+    await waitFor(() => t.$("title").textContent === "문진을 시작합니다", "처음 화면");
   } finally { await t.close(); cfg.done(); }
 });
 

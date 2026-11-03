@@ -201,7 +201,7 @@ test("not_committed 시나리오", async () => {
   const { api } = await mk({ notCommitted: true });
   const flow = createKioskFlow(api);
   await flow.start(); await flow.hear({ text: "아파요", confidence: 0.9 });
-  assert.equal(flow.current.repeatReason, "NOT_COMMITTED");
+  assert.deepEqual([flow.current.state, flow.current.callStaffReason], ["CALL_STAFF", "RETRY_EXHAUSTED"]); // NOT_COMMITTED는 같은 turn_id로 예산까지 재시도한 뒤 직원 호출
 });
 
 test("푸시 구독 등록은 멱등, 해지 가능", async () => {

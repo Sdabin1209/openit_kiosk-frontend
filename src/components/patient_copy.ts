@@ -8,6 +8,7 @@ const m = (text: string): Msg => ({ text, reviewed: false });
 export const MSG = {
   // 화면 제목과 버튼(임시 UI 문구, 임상 검토 전)
   TITLE_IDLE: m("문진을 시작합니다"),
+  TITLE_NOT_OPEN: m("문진을 시작할 수 없어요"),
   TITLE_CHOOSE: m("어떤 문진을 하시겠어요?"),
   TITLE_WAIT: m("잠시만 기다려 주세요"),
   TITLE_LISTENING: m("말씀해 주세요"),
@@ -39,16 +40,14 @@ export const MSG = {
   BODY_LONG_WAIT_SUFFIX: m("오래 걸리면 가까이 있는 직원에게 알려 주세요."),
   BODY_CALL_STAFF_DEFAULT: m("가까이 있는 직원에게 알려 주세요."),
   BODY_AUTH_DENIED: m("이 기기의 인증이 거부되었습니다. 가까이 있는 직원에게 알려 주세요."),
-  BODY_NO_QUESTION_SET: m("문진표가 준비되지 않았습니다. 가까이 있는 직원에게 알려 주세요."),
+  BODY_NOT_OPEN: m("지금은 문진표가 준비되지 않았어요. 잠시 뒤 다시 확인합니다. 급하시면 가까이 있는 직원에게 알려 주세요."),
   BODY_BAD_SUBJECT_REF: m("접수 정보를 확인할 수 없습니다. 가까이 있는 직원에게 알려 주세요."),
   BODY_REPEAT_LIMIT: m("여러 번 알아듣지 못했어요. 가까이 있는 직원에게 알려 주세요."),
   BODY_CONFIRM_LEAVE: m("직원에게 직접 알리셨나요? 알리지 않았다면 취소를 눌러 직원을 찾아 주세요."),
-  BODY_NOT_COMMITTED: m("저장하지 못했어요. 다시 말씀해 주세요."),
   BODY_END_FAILED: m("가까이 있는 직원에게 알려 주세요."), // 종료 실패를 숨기지 않는다
   COUNTDOWN: m("{n}초 뒤에 다시 부를 수 있어요"),
   // 안내(role=status)
   NOTICE_NO_SUBJECT_REF: m("접수 정보 없이 시작했습니다. 직원에게 알려 주세요."),
-  NOTICE_QUESTION_SET_NOT_FOUND: m("정해 둔 문진표를 지금은 쓸 수 없어요. 아래에서 골라 주세요."),
   // [임시, 임상/법무 검토 전] 외부 인식을 허용한 기기에서만 보이는 환자 고지
   NOTICE_REMOTE_STT: m("음성은 외부 음성 인식 서비스로 전송될 수 있습니다. 원치 않으시면 글자로 입력해 주세요."),
   NOTICE_NO_STT: m("이 기기에서는 음성 인식을 쓸 수 없어요. 아래에 글자로 입력해 주세요."),

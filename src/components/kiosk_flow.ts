@@ -82,7 +82,7 @@ export class KioskFlow {
   private retryTurnId: string | null = null; // 응답 없이 실패한 재알림은 같은 turn_id로 다시 보낸다(서버 멱등)
   private staffCallSupported = true; // 기능 감지: 404/405를 한 번 받으면 이 세션 동안 끈다
   private lastPause: PauseReason | undefined;
-  private pendingStart: { subjectRef: string | null; confirm?: () => void } | null = null; // 문진표 선택 화면에서 고를 때까지 쥐고 있는 시작 값(메모리만)
+  private pendingStart: { subjectRef: string | null; confirm?: () => void; fixedSet: string | null; unknownRetried: boolean } | null = null; // 문진표 선택 화면에서 고를 때까지 쥐고 있는 시작 값(메모리만)
   constructor(api: FlowApi, o: { newTurnId: () => string; isOutcomeUnknown: (status: number) => boolean; pollMs?: number; sleep: (ms: number) => Promise<void>; startValues?: () => Promise<StartValues>; idleMs?: number; timers: { set: (fn: () => void, ms: number) => unknown; clear: (h: unknown) => void } }) {
     this.idleMs = o.idleMs ?? IDLE_RESET_MS;
     this.timers = o.timers;
@@ -133,11 +133,11 @@ export class KioskFlow {
     const s = this.view.state;
     // 직원 개입을 기다리는 화면(CALL_STAFF, WAITING_STAFF, 종료 실패 안내 등)에는 걸지 않는다: 그 화면에서는 reset()이
     // 서버 세션(PAUSED_RISK 등)을 그대로 두고 다음 사람이 시작할 수 있게 되기 때문이다(재점검 K-1). 벗어나는 길은 직원 결정이나 환자의 명시적 동작뿐이다.
-    if (this.idleMs <= 0 || (s !== "LISTENING" && s !== "REPEAT_PROMPT" && s !== "CHOOSING")) return;
+    if (this.idleMs <= 0 || (s !== "LISTENING" && s !== "REPEAT_PROMPT" && s !== "CHOOSING" && s !== "NOT_OPEN")) return;
     const warnMs = Math.min(IDLE_WARNING_MS, this.idleMs); // 총 제한이 경고 구간보다 짧으면 처음부터 경고
     const expire = () => {
       this.idleTimer = null;
-      if (this.view.state === "CHOOSING") return this.reset(); // 선택 화면에는 서버 세션이 아직 없다: 종료 요청 없이 처음 화면으로
+      if (this.view.state === "CHOOSING" || this.view.state === "NOT_OPEN") return this.reset(); // 선택 화면·시작 불가 안내에는 서버 세션이 아직 없다: 종료 요청 없이 처음 화면으로
       // 서버에 종료 요청을 먼저 보내고, 성공했을 때만 처음 화면으로 돌린다. 실패하면 종료 실패 안내(ENDED, endFailed)를 유지한다.
       void this.end().then(() => { if (this.view.state === "ENDED" && !this.view.endFailed) this.reset(); });
     };
@@ -166,16 +166,8 @@ export class KioskFlow {
         subjectRef = v.subjectRef; confirm = v.confirm; fixedSet = v.questionSetId;
         if (subjectRef === null) this.notice = "NO_SUBJECT_REF"; // 참조 없이 시작한다(이전 환자 값을 쓰지 않는다)
       }
-      // 문진표는 세션마다 고른다(계약 3.3.0): 정해 둔 값(조각 > 기기 설정)이 활성 목록에 있으면 그것, 없으면 목록이 하나일 때만 자동, 둘 이상이면 환자가 고른다.
-      const ctl = this.begin();
-      const sets = await this.api.listQuestionSets(this.opts(ctl));
-      this.inflight = null;
-      if (sets.length === 0) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "NO_QUESTION_SET" });
-      this.pendingStart = { subjectRef, confirm };
-      if (fixedSet !== null && sets.some((q) => q.question_set_id === fixedSet)) return await this.launch(fixedSet);
-      if (fixedSet === null && sets.length === 1) return await this.launch(sets[0]!.question_set_id);
-      // 정해 둔 값이 목록에 없으면 안내와 함께 선택 화면으로 간다(정해 둔 값을 조용히 다른 문진표로 바꾸지 않는다).
-      this.set({ state: "CHOOSING", text: null, choices: sets.map((q) => ({ id: q.question_set_id, title: q.title })) as NonNullable<KioskView["choices"]>, ...(fixedSet !== null ? { chooseNotice: "QUESTION_SET_NOT_FOUND" as const } : {}) });
+      this.pendingStart = { subjectRef, confirm, fixedSet, unknownRetried: false };
+      await this.selectAndLaunch(false);
     } catch (e) {
       if (isAborted(e)) return; // 환자가 직원 호출·그만하기를 눌러 이미 화면이 바뀌었다
       this.inflight = null;
@@ -183,19 +175,21 @@ export class KioskFlow {
     }
   }
 
-  /** 시작 실패. 서버가 문진표를 거부했으면(400 INVALID_RECORD, details.reason UNKNOWN_QUESTION_SET·QUESTION_SET_REQUIRED: 목록을 받은 뒤 활성 세트가 바뀐 경우) 목록을 다시 받아 선택 화면으로 간다. 그 밖은 직원 호출. */
-  private async failStart(e: unknown): Promise<void> {
-    const a = asApi(e);
-    if (a?.status === 400 && (a.reason === "UNKNOWN_QUESTION_SET" || a.reason === "QUESTION_SET_REQUIRED")) {
-      try {
-        const ctl = this.begin();
-        const sets = await this.api.listQuestionSets(this.opts(ctl));
-        this.inflight = null;
-        if (sets.length === 0) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "NO_QUESTION_SET" });
-        return this.set({ state: "CHOOSING", text: null, choices: sets.map((q) => ({ id: q.question_set_id, title: q.title })) as NonNullable<KioskView["choices"]>, ...(a.reason === "UNKNOWN_QUESTION_SET" ? { chooseNotice: "QUESTION_SET_NOT_FOUND" as const } : {}) });
-      } catch (e2) { if (isAborted(e2)) return; this.inflight = null; return this.fail(e2, "START_FAILED"); }
-    }
-    this.fail(e, "START_FAILED");
+  /**
+   * 문진표를 정해 시작한다(PUBLIC_API I절, 배치된 값이 정한다). 시작 전에 활성 목록을 받는다.
+   * 정한 값(조각 > 기기 설정)이 목록에 있으면 그 값, 없거나 목록에 없으면 정한 값이 없는 경우와 같다: 하나면 그것, 둘 이상이면 선택 화면.
+   * ignoreFixed: 이미 그 값으로 보내 UNKNOWN_QUESTION_SET을 받았으면 같은 값으로 다시 보내지 않는다.
+   */
+  private async selectAndLaunch(ignoreFixed: boolean): Promise<void> {
+    const ps = this.pendingStart!;
+    const ctl = this.begin();
+    const sets = await this.api.listQuestionSets(this.opts(ctl));
+    this.inflight = null;
+    // 계약상 목록은 1개 이상이다(활성 릴리스가 없으면 503 NO_ACTIVE_RELEASE). 빈 목록이 오면 계약 위반이라 시작하지 않고 직원 호출.
+    if (sets.length === 0) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "START_FAILED" });
+    if (!ignoreFixed && ps.fixedSet !== null && sets.some((q) => q.question_set_id === ps.fixedSet)) return await this.launch(ps.fixedSet);
+    if (sets.length === 1) return await this.launch(sets[0]!.question_set_id);
+    this.set({ state: "CHOOSING", text: null, choices: sets.map((q) => ({ id: q.question_set_id, title: q.title })) as NonNullable<KioskView["choices"]> });
   }
 
   /** 선택 화면에서 문진표 하나를 고른다. 목록에 없는 ID는 무시한다. */
@@ -210,8 +204,8 @@ export class KioskFlow {
     }
   }
 
-  /** 선택 화면에서 시작하지 않고 처음 화면으로 돌아간다. */
-  cancelChoose(): void { if (this.view.state === "CHOOSING") this.reset(); }
+  /** 선택 화면·시작 불가 안내에서 시작하지 않고 처음 화면으로 돌아간다. */
+  cancelChoose(): void { if (this.view.state === "CHOOSING" || this.view.state === "NOT_OPEN") this.reset(); }
 
   /** 정해진 문진표로 세션을 시작한다. 오류는 호출한 쪽이 처리한다. */
   private async launch(questionSetId: string): Promise<void> {
@@ -223,6 +217,31 @@ export class KioskFlow {
     this.say(r.response_text, `${r.session_id}:start`);
     confirm?.(); // 시작이 서버에 접수된 뒤에만 한 번 쓴 환자 참조를 비운다(실패한 시작은 같은 참조로 다시 시작할 수 있다)
     this.handle(r);
+  }
+
+  /**
+   * 시작 실패. (1) 503 NO_ACTIVE_RELEASE: 시작 불가 안내를 보이고 Retry-After(없으면 1초) 뒤 목록을 다시 받는다(PUBLIC_API I절).
+   * (2) 400 UNKNOWN_QUESTION_SET: 목록을 다시 받아 한 번만 같은 처리를 한다(같은 값으로 다시 보내지 않는다). (3) 그 밖은 fail()의 직원 호출 규칙.
+   */
+  private async failStart(e: unknown): Promise<void> {
+    const a = asApi(e), ps = this.pendingStart;
+    if (ps && a?.status === 503 && a.reason === "NO_ACTIVE_RELEASE") {
+      this.set({ state: "NOT_OPEN", text: null });
+      this.callTimer = this.timers.set(() => {
+        this.callTimer = null;
+        if (this.view.state !== "NOT_OPEN") return;
+        this.set({ state: "STARTING", text: null });
+        void this.selectAndLaunch(false).catch((e2) => { if (isAborted(e2)) return; this.inflight = null; return this.failStart(e2); });
+      }, Math.max(1, Math.ceil((a.retryAfterMs ?? 1000) / 1000)) * 1000);
+      return;
+    }
+    if (ps && !ps.unknownRetried && a?.status === 400 && a.reason === "UNKNOWN_QUESTION_SET") {
+      ps.unknownRetried = true;
+      try { await this.selectAndLaunch(true); }
+      catch (e2) { if (isAborted(e2)) return; this.inflight = null; return this.failStart(e2); }
+      return;
+    }
+    this.fail(e, "START_FAILED");
   }
 
   /** STT 결과(또는 화면 입력)를 받는다. 쓸 수 없으면 서버로 보내지 않는다. */
@@ -260,7 +279,7 @@ export class KioskFlow {
 
   private needsStateCheck(r: FrontendInput): boolean {
     const sig = r.turn_failure_signal;
-    return !(sig?.staff_alert === "DELIVERED" || sig?.staff_alert === "DELIVERY_FAILED" || sig?.write_committed === "NOT_COMMITTED");
+    return !(sig?.staff_alert === "DELIVERED" || sig?.staff_alert === "DELIVERY_FAILED");
   }
   /** 정지 여부를 상태 조회로 확인한다. 조회에 실패하면 정지가 아닌 것으로 보고 진행한다(조회 실패가 환자 턴을 막지 않게). */
   private async sessionStateOf(ctl: AbortController): Promise<string | null> {
@@ -446,9 +465,7 @@ export class KioskFlow {
     if (sig?.staff_alert === "DELIVERED") {
       return this.waitForStaff(r.response_text);
     }
-    if (sig?.write_committed === "NOT_COMMITTED") {
-      return this.repeat({ state: "REPEAT_PROMPT", text: r.response_text, repeatReason: "NOT_COMMITTED" });
-    }
+    // write_committed=NOT_COMMITTED는 클라이언트(link_public_api_send)가 같은 turn_id로 재시도하고 예산 뒤 직원 호출로 넘긴다(RUNTIME R3.20, PUBLIC_API). 여기까지 오지 않는다.
     this.repeatStreak = 0;
     this.set({ state: "LISTENING", text: r.response_text });
   }
@@ -486,10 +503,13 @@ export class KioskFlow {
     })();
   }
 
+  /**
+   * 요청이 끝내 실패했을 때의 화면(PUBLIC_API 프론트가 지킬 것, RUNTIME R3.13): 재시도로 풀리지 않는 응답(400·401·403·404·409(TURN_IN_PROGRESS 제외)·413·414·431·422)과
+   * 재시도 예산을 넘긴 일시 장애는 모두 직원 호출 화면이다. 인증 거부(401·403)만 사유가 AUTH이고 나머지는 dflt다. 다음 환자는 새 세션으로 시작한다.
+   */
   private fail(e: unknown, dflt: CallStaffReason): void {
-    if (statusIs(e, 409)) return this.waitForStaff(null); // 위험 정지 중이거나 순서 어긋남: 상태를 폴링해 확인
-    if (statusIs(e, 404)) { this.sessionId = null; return this.set({ state: "IDLE", text: null }); } // 세션 만료
     if (asApi(e)?.auth) return this.set({ state: "CALL_STAFF", text: null, callStaffReason: "AUTH" });
-    this.set({ state: "CALL_STAFF", text: null, callStaffReason: dflt }); // 재시도 소진(CallStaffError)과 그 밖의 오류는 같은 직원 호출
+    this.set({ state: "CALL_STAFF", text: null, callStaffReason: dflt });
   }
+
 }

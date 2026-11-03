@@ -1,8 +1,8 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts KioskStartFragment (패키지 버전 3.4.3) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts KioskStartFragment (패키지 버전 3.4.6) */
 
 
 /**
- * 키오스크 시작 URL의 조각(`#device=...&subject_ref=...&question_set_id=...`)을 `key=value`로 풀어 만든 객체. 쓰는 쪽: 병원 접수(또는 시연 스크립트). 읽는 쪽: kiosk-frontend(api/device.ts parseFragment). 문법: `#` 뒤 `&`로 나눈 `key=value`, 첫 `=`에서만 나누고 값은 percent-decoding(`+`는 공백이 아니다). 쿼리 문자열(`?`)은 서버 로그에 남으므로 쓰지 않는다. 앱은 읽는 즉시 주소창과 기록에서 지운다. 조각이 DeviceConfig보다 먼저다. [ADR 0012로 변경 예정: `device`(기기 토큰) 키는 구현 때 사라진다.]
+ * 키오스크 시작 URL의 조각(`#device=...&subject_ref=...&question_set_id=...`)을 `key=value`로 풀어 만든 객체. 쓰는 쪽: 병원 접수(또는 시연 스크립트). 읽는 쪽: kiosk-frontend(api/device.ts parseFragment). 문법: `#` 뒤 `&`로 나눈 `key=value`, 첫 `=`에서만 나누고 값은 percent-decoding(`+`는 공백이 아니다). 쿼리 문자열(`?`)은 서버 로그에 남으므로 쓰지 않는다. 앱은 읽는 즉시 주소창과 기록에서 지운다. 조각이 DeviceConfig보다 먼저다. [3.4.4 검토 B-28-9: 기기 인증은 mTLS 가 기본이고(PUBLIC_API F절) 기기 토큰 필드는 F-1 호환용으로 남긴다. 제거는 다음 MAJOR 4.0.0.]
  */
 export interface KioskStartFragment {
 /**
