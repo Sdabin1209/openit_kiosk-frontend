@@ -31,3 +31,23 @@ test("모의 서버: unsubscribe로 구독이 지워지고 204를 낸다", async
     assert.equal(bad.status, 400);
   } finally { await m.close(); }
 });
+
+// 계약 3.4.0: 푸시 구독 선택 topics(alerts/results), 기본 alerts. 직원 콘솔은 topics를 보내지 않아 기본(alerts)만 받으므로 직원 서비스 워커에 RESULT_READY는 오지 않는다(results는 clinician 역할만 등록, PUBLIC_API.md).
+test("직원 콘솔의 푸시 구독 본문에는 topics(results)가 없다: 기본 alerts만 구독한다", async () => {
+  const { enablePush } = await import("../src/components/push_subscription.ts");
+  const g = globalThis as any;
+  const saved = { navigator: Object.getOwnPropertyDescriptor(g, "navigator"), window: g.window, Notification: g.Notification };
+  const sub = { endpoint: EP, keys: { p256dh: "a", auth: "b" }, toJSON() { return { endpoint: EP, expirationTime: null, keys: { p256dh: "a", auth: "b" } }; } };
+  Object.defineProperty(g, "navigator", { configurable: true, value: { serviceWorker: { register: async () => ({ pushManager: { subscribe: async () => sub } }), ready: Promise.resolve() } } });
+  g.window = { PushManager: {} }; g.Notification = { requestPermission: async () => "granted" };
+  try {
+    const sent: any[] = [];
+    await enablePush(async () => "AAAA", async (s) => { sent.push(s); });
+    assert.equal(sent.length, 1);
+    assert.equal("topics" in sent[0], false);
+    assert.ok(!JSON.stringify(sent[0]).includes("results"));
+  } finally {
+    if (saved.navigator) Object.defineProperty(g, "navigator", saved.navigator); else delete g.navigator;
+    g.window = saved.window; g.Notification = saved.Notification;
+  }
+});
