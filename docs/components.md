@@ -10,7 +10,7 @@
 
 | 컴포넌트 | 파일 | 입력 타입 | 출력 타입 | 하는 일 |
 |---|---|---|---|---|
-| 공개 API 보내기 (링크, 보내는 쪽) | `link_public_api_send.ts` | `StartRequest`, `UtteranceRequest`, `SessionRequest`, `StaffCallRetryInput`, `StaffCallReportInput`, `InterventionRequest` (+ 직원 REST 호출) | 계약 `FrontendInput`, `SessionState`, `StaffCallRetryResult`, `StaffAlertPage`, `StaffSessionView`, `PushConfig`, 실패는 `ApiFailure` | 공개 API(`/v1`)를 부른다. 세션별 순서 큐, 10초 타임아웃, 응답 본문 수용 검사(`FrontendBody` 등), 상태 코드 해석(401·403 = `auth`, `BoundaryError` -> `code`·`reason`)을 이 한 곳에서만 한다 |
+| 공개 API 보내기 (링크, 보내는 쪽) | `link_public_api_send.ts` | `StartRequest`, `UtteranceRequest`, `SessionRequest`, `StaffCallRetryInput`, `StaffCallReportInput`, `InterventionRequest` (+ 직원 REST 호출) | 계약 `FrontendInput`, `SessionState`, `StaffCallRetryResult`, `StaffAlertPage`, `StaffSessionView`, `PushConfig`, 실패는 `ApiFailure` | 공개 API(`/v1`)를 부른다. 세션별 순서 큐, 60초 타임아웃, 응답 본문 수용 검사(`FrontendBody` 등), 상태 코드 해석(401·403 = `auth`, `BoundaryError` -> `code`·`reason`)을 이 한 곳에서만 한다 |
 | 직원 스트림 받기 (링크, 받는 쪽) | `link_staff_stream_receive.ts` | 스트림 주소, 재연결·하트비트 판단 함수 | 계약 `StaffAlert` 이벤트, 연결 상태 | SSE(`GET /v1/staff/alerts/stream`)를 직접 재연결하며 받는다. 하트비트 무음 감시, resync |
 | 기기 설정 받기 (링크, 받는 쪽) | `link_device_config_receive.ts` | 창(location·history) | 조각 문자열, `/config.json` 본문 또는 null (`StartInput`의 두 칸) | 시작 URL 조각을 읽고 주소창에서 지운다. `/config.json`을 읽는다. 값 해석은 하지 않는다 |
 | 재시도 정책 | `retry_policy.ts` | `RetryPolicy`(만들 때), `RetryQuery`, `StatusQuery` | `RetryDecision`, `StatusClass` | 대기 시간(지수 백오프 + 지터, Retry-After 하한), 예산 초과 판단, 재시도 가능·처리 여부 불명 분류 |
