@@ -176,3 +176,48 @@ test("활성 문진표가 없으면 '문진표가 준비되지 않았습니다' 
     assert.match(t.$("chat").textContent + t.doc.body.textContent, /문진표가 준비되지 않았습니다/);
   } finally { await t.close(); cfg.done(); }
 });
+
+// K2(L23): 전달 실패 -> 화면의 다시 부르기 버튼 -> 재알림 API -> 성공/실패 처리 -> 직접 알림 기록(report). 화면(jsdom)에서 모의 서버까지 끝에서 끝으로 잇는다(PUBLIC_API.md G절).
+const toDeliveryFailed = async (t: Awaited<ReturnType<typeof rig>>) => {
+  await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
+  t.$("action").click();
+  await waitFor(() => t.$("title").textContent === "말씀해 주세요", "듣기 화면");
+  (t.$("manual-input") as HTMLInputElement).value = "위험해요";
+  t.$("action").click();
+  await waitFor(() => t.$("title").textContent === "직원을 불러 주세요", "전달 실패 직원 호출 화면");
+  assert.equal((t.$("staffcall") as HTMLButtonElement).hidden, false, "다시 부르기 버튼이 보인다");
+};
+const posts = (t: Awaited<ReturnType<typeof rig>>, suffix: string) => t.seen.filter((s) => s.method === "POST" && s.path.endsWith(suffix)).length;
+
+test("K2: 전달 실패에서 다시 부르기를 누르면 retry API가 나가고, 전달되면 대기 화면으로 간다", opt, async () => {
+  const cfg = tmpConfig({ device_token: TOKEN });
+  const t = await rig(cfg.f, false, { alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERED" });
+  try {
+    await toDeliveryFailed(t);
+    assert.equal(posts(t, "/staff-call/retry"), 0);
+    t.$("staffcall").click();
+    await waitFor(() => posts(t, "/staff-call/retry") === 1, "POST staff-call/retry");
+    await waitFor(() => t.$("title").textContent === "직원이 곧 도와드립니다", "재알림 성공 뒤 대기 화면");
+    assert.equal(t.mock.state.alerts.filter((a: any) => a.delivery_attempts >= 2).length, 1, "같은 알림의 시도 횟수가 늘었다");
+  } finally { await t.close(); cfg.done(); }
+});
+
+test("K2: 재알림이 또 실패하면 안내와 비활성 카운트다운이 남고, 직접 알렸다고 하면 report가 나간다", opt, async () => {
+  const cfg = tmpConfig({ device_token: TOKEN });
+  const t = await rig(cfg.f, false, { alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERY_FAILED", retryAfterS: 30 });
+  try {
+    await toDeliveryFailed(t);
+    t.$("staffcall").click();
+    await waitFor(() => posts(t, "/staff-call/retry") === 1, "POST staff-call/retry");
+    await waitFor(() => (t.$("staffcall") as HTMLButtonElement).disabled && t.$("notice").textContent !== "", "실패 안내와 비활성 버튼");
+    assert.equal(t.$("title").textContent, "직원을 불러 주세요", "화면은 끝나지 않는다");
+    assert.equal(posts(t, "/staff-call/report"), 0);
+    t.$("action").click(); // 처음으로 -> 확인 단계
+    await waitFor(() => t.$("action").textContent === "직접 알렸어요, 처음으로", "확인 단계");
+    t.$("action").click();
+    await waitFor(() => posts(t, "/staff-call/report") === 1, "POST staff-call/report");
+    const rep = t.mock.state.alerts.find((a: any) => a.manual_notice_outcome);
+    assert.equal(rep?.manual_notice_outcome, "STAFF_NOTIFIED_MANUALLY");
+    await waitFor(() => t.$("title").textContent === "문진을 시작합니다", "report 뒤 처음 화면"); // 화면이 끝까지 그려진 뒤 닫는다
+  } finally { await t.close(); cfg.done(); }
+});
