@@ -9,7 +9,7 @@ import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createStartHolder } from "../src/components/start_values.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import * as clinical from "../src/config.ts";
-import { json, ok, settle, started, qsFetch } from "./helpers.ts";
+import { json, ok, settle, started, qsFetch, noTimers } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 const RISK = "확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.";
@@ -195,7 +195,7 @@ test("임상 판단 값은 config.ts 한 곳에 있고 사용자 결정 U10 표�
 /** 가짜 서버(요청마다 제어 가능). hold가 켜지면 해당 종류 요청은 끝나지 않는다. */
 function rig(o: { hold?: "SESSION_START" | "UTTERANCE"; turn?: () => Response; endFail?: boolean } = {}) {
   const kinds: string[] = []; const t = fakeTimers();
-  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: qsFetch(((_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ timers: noTimers, now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: qsFetch(((_u: string, init: RequestInit) => {
     if (init.method === "GET") return Promise.resolve(json({ session_id: "s", state: "PAUSED_RISK", resume_text: null }));
     const b = JSON.parse(init.body as string); kinds.push(b.kind);
     if (o.hold === b.kind) return new Promise<Response>(() => {});

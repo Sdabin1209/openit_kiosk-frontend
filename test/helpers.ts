@@ -61,3 +61,6 @@ export async function asStarted(res: Response | Promise<Response>): Promise<Resp
 /** 가짜 fetch 앞에 붙인다: GET /v1/question-sets에는 활성 문진표 하나를 답하고(키오스크 시작이 먼저 부른다, 계약 3.3.0) 나머지는 그대로 넘긴다. */
 export const qsFetch = (f: (u: string, init: RequestInit) => Promise<Response> | Response) => ((u: string, init: RequestInit) =>
   String(u).endsWith("/question-sets") ? Promise.resolve(json({ items: [{ question_set_id: "general", title: "일반 문진", version: "1.0.0" }] })) : f(u, init)) as typeof fetch;
+
+/** 요청 타이머를 걸지 않는 클라이언트 시계. 끝나지 않는 가짜 요청을 쓰는 시험이 실제 60초 요청 타이머를 남겨 프로세스가 멈춰 있지 않게 한다(우리 코드의 시간은 시계 주입으로 다룬다, ADR 0034). */
+export const noTimers = { setTimeout: () => 0, clearTimeout: () => {} };
