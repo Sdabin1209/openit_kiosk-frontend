@@ -5,7 +5,7 @@
 import {
   InterventionRequest as vIntervention, SessionRequest as vSession, StaffCallReportInput as vReport, StaffCallRetryInput as vRetry,
   StartRequest as vStart, QuestionSetListBody as vQsList, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
-  StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, FrontendMessage as sMessage, InterventionDecision as sDecision, StaffCallRetryRequest as cRetryBody, type ValidateFn,
+  StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, FrontendMessage as sMessage, InterventionDecision as sDecision, StaffCallRetryRequest as cRetryBody, PushSubscriptionRequest as cPushSub, type ValidateFn,
 } from "../types/validators.gen.cjs";
 import type { BoundaryError } from "../types/BoundaryError.ts";
 import type { FrontendInput } from "../types/FrontendInput.ts";
@@ -236,7 +236,11 @@ export class PublicApiClient {
     return this.request("GET", `/staff/sessions/${encodeURIComponent(sessionId)}`);
   }
   registerPush(sub: PushSubscriptionJson): Promise<void> {
-    return this.request("POST", `/staff/push-subscriptions`, sub);
+    // 브라우저 PushSubscription.toJSON()에는 expirationTime 등 계약에 없는 키가 있다: 계약 PushSubscriptionRequest(endpoint·keys, 선택 topics) 모양으로 만들어 보내기 전에 검증한다(x-producers, R7).
+    // 직원 콘솔은 topics를 보내지 않는다(기본 alerts). endpoint가 https·443·공인 이름이 아니면 보내지 않는다(서버도 400으로 거절하는 SSRF 방지).
+    const req = { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } };
+    accept(cPushSub, "PushSubscriptionRequest(계약)", req);
+    return this.request("POST", `/staff/push-subscriptions`, req);
   }
   unregisterPush(endpoint: string): Promise<void> {
     // 푸시 엔드포인트 URL은 그 자체가 푸시 권한을 주는 값이라 URL(쿼리 문자열은 서버·게이트웨이 로그에 남는다)에 싣지 않고 본문으로 보낸다

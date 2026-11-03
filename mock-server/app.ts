@@ -126,7 +126,8 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     const path = url.pathname, m = req.method ?? "GET";
     state.log.push({ method: m, path });
 
-    if (path === "/healthz" || path === "/readyz") return json(res, 200, { ok: true });
+    if (path === "/healthz") return json(res, 200, { status: "ok" });
+    if (path === "/readyz") return json(res, 200, { status: "ready" }); // 본문은 계약 HealthStatus(R5.1)
     if (path.startsWith("/__mock/")) return control(req, res, path);
     if (!path.startsWith("/v1/")) return json(res, 404, berr("NOT_FOUND", "no route"));
 

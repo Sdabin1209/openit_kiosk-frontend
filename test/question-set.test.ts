@@ -169,3 +169,12 @@ test("시작 값: 형식이 틀린 조각 문진표 ID는 버리고(직원 호�
   assert.equal(s.questionSetId, "ok-1");
   assert.equal(s.subjectInvalid, false);
 });
+
+test("계약 위반인 빈 목록(200)은 시작하지 않고 직원 호출 화면", async () => {
+  const mock = await startMock({ questionSets: SETS }); open.push(mock.close);
+  const f = (async (u: string, init: RequestInit) => String(u).endsWith("/question-sets") ? new Response(JSON.stringify({ items: [] })) : fetch(u, init)) as any;
+  const flow = createKioskFlow(createPublicApiClient({ ...fast, baseUrl: `${mock.base}/v1`, fetch: f }), { idleMs: 0 });
+  await flow.start();
+  assert.deepEqual([flow.current.state, flow.current.callStaffReason], ["CALL_STAFF", "START_FAILED"]);
+  assert.equal(mock.state.sessions.size, 0);
+});

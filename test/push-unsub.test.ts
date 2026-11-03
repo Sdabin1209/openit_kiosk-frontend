@@ -51,3 +51,15 @@ test("직원 콘솔의 푸시 구독 본문에는 topics(results)가 없다: 기
     g.window = saved.window; g.Notification = saved.Notification;
   }
 });
+
+test("푸시 구독 등록 본문은 계약 PushSubscriptionRequest 모양이다: toJSON의 expirationTime은 빼고, https·443·공인 이름이 아닌 endpoint는 보내지 않는다", async () => {
+  const seen: any[] = [];
+  const c = createPublicApiClient({ fetch: (async (_u: string, init: RequestInit) => { seen.push(JSON.parse(init.body as string)); return new Response(null, { status: 201 }); }) as any });
+  const staff = createStaffApi(c);
+  await staff.registerPush({ endpoint: "https://push.example/abc", expirationTime: null, keys: { p256dh: "AAA", auth: "BBB" } } as any);
+  assert.deepEqual(seen, [{ endpoint: "https://push.example/abc", keys: { p256dh: "AAA", auth: "BBB" } }]);
+  for (const bad of ["http://push.example/abc", "https://127.0.0.1/abc", "https://localhost/abc", "https://push.example:8443/abc"]) {
+    await assert.rejects(async () => staff.registerPush({ endpoint: bad, keys: { p256dh: "AAA", auth: "BBB" } } as any), /PushSubscriptionRequest/, bad);
+  }
+  assert.equal(seen.length, 1, "거부된 것은 보내지 않았다");
+});

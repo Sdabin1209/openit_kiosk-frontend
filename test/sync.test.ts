@@ -47,22 +47,22 @@ test("스트림 오류(HTTP 오류로 CLOSED)면 닫고 지수 백오프로 새�
   const { sync, tm, statuses } = setup(() => []);
   assert.equal(FakeES.all.length, 1);
   const delays: number[] = [];
-  for (let i = 0; i < 7; i++) { FakeES.all.at(-1)!.error(); delays.push(tm.fire()); }
+  for (let i = 0; i < 7; i++) { FakeES.all.at(-1)!.error(); await flush(); delays.push(tm.fire()); }
   assert.deepEqual(delays, [500, 1000, 2000, 4000, 7500, 7500, 7500]); // 기준 1초 x2, 상한 15초, rand=0이면 지터 하한 50%
   assert.equal(FakeES.all.length, 8);
   assert.ok(FakeES.all.slice(0, 7).every((e) => e.closed));
   const last = statuses.at(-1)!; assert.equal(last.conn, "DISCONNECTED"); assert.equal(last.nextRetryMs, 7500);
   FakeES.all.at(-1)!.open(); await flush();
   assert.equal(sync.status().conn, "CONNECTED");
-  FakeES.all.at(-1)!.error(); assert.equal(tm.fire(), 500, "연결에 성공하면 백오프가 처음부터");
+  FakeES.all.at(-1)!.error(); await flush(); assert.equal(tm.fire(), 500, "연결에 성공하면 백오프가 처음부터");
   sync.stop();
 });
 
-test("지터: 같은 시도 번호에서도 [50%,100%] 안에서 흩어진다", () => {
+test("지터: 같은 시도 번호에서도 [50%,100%] 안에서 흩어진다", async () => {
   const seen = new Set<number>();
   for (let i = 0; i < 40; i++) {
     const { sync, tm } = setup(() => [], Math.random);
-    FakeES.all[0]!.error(); const ms = tm.fire(); seen.add(ms);
+    FakeES.all[0]!.error(); await flush(); const ms = tm.fire(); seen.add(ms);
     assert.ok(ms >= STAFF_STREAM_RETRY.baseMs * 0.5 && ms <= STAFF_STREAM_RETRY.baseMs);
     sync.stop();
   }
@@ -75,7 +75,7 @@ test("재연결 직후 목록을 다시 읽어 끊긴 사이의 알림을 보충
   FakeES.all[0]!.open(); await flush();
   assert.deepEqual([...sync.alerts.keys()], ["1"]);
   assert.deepEqual(news, [], "처음 읽을 때는 새 알림 배너 없음");
-  FakeES.all[0]!.error();
+  FakeES.all[0]!.error(); await flush();
   server = [al("1"), al("2"), al("3", "RESOLVED")]; // 끊긴 사이 생김
   tm.fire(); FakeES.all[1]!.open(); await flush();
   assert.deepEqual([...sync.alerts.keys()].sort(), ["1", "2", "3"]);
@@ -106,11 +106,11 @@ test("스트림 이벤트(alert·resolved)는 반영하고 모르는 형식은 �
   sync.stop();
 });
 
-test("stop하면 재연결 타이머를 지우고 이후 오류를 무시한다", () => {
+test("stop하면 재연결 타이머를 지우고 이후 오류를 무시한다", async () => {
   const { sync, tm } = setup(() => []);
-  const es = FakeES.all[0]!; es.error(); assert.equal(tm.q.length, 1);
+  const es = FakeES.all[0]!; es.error(); await flush(); assert.equal(tm.q.length, 1);
   sync.stop(); assert.equal(tm.q.length, 0);
-  es.error(); assert.equal(tm.q.length, 0);
+  es.error(); await flush(); assert.equal(tm.q.length, 0);
 });
 
 // ---- 하트비트 감시와 resync (PUBLIC_API.md 43행, D87) ----
@@ -130,7 +130,7 @@ test("첫 하트비트부터 감시가 켜지고, 30~35초 안에 다음 하트�
   const wd = tm.q[0]!.ms; assert.ok(wd >= 30_000 && wd <= 35_000, `${wd}`);
   es.emit({ ts: "y" } as any, "heartbeat"); // 하트비트가 오면 타이머를 새로 건다
   assert.equal(tm.q.length, 1);
-  tm.fire(); // 무음
+  tm.fire(); await flush(); // 무음
   assert.equal(es.closed, true);
   assert.equal(statuses.at(-1)!.conn, "DISCONNECTED");
   assert.equal(tm.q.length, 1, "재연결 백오프 타이머");
@@ -148,7 +148,7 @@ test("하트비트는 알림으로 처리되지 않고, 연결이 오류로 끊�
   const es = FakeES.all[0]!; es.open(); await flush();
   es.emit({ ts: "x" } as any, "heartbeat");
   assert.deepEqual([...sync.alerts.keys()], []); assert.deepEqual(news, []);
-  es.error();
+  es.error(); await flush();
   assert.equal(tm.q.length, 1, "감시 타이머는 지워지고 재연결 타이머만 남는다");
   sync.stop(); assert.equal(tm.q.length, 0);
 });
@@ -188,4 +188,50 @@ test("서비스 워커: 같은 tag의 재알림도 소리·진동을 내도록 r
   const { readFileSync } = await import("node:fs");
   const src = readFileSync(new URL("../src/staff/sw/index.ts", import.meta.url), "utf8");
   assert.match(src, /tag, renotify: true/);
+});
+
+// ---- 연결이 닫힌 뒤 탐침 GET /v1/staff/alerts?status=OPEN&limit=1 (PUBLIC_API 직원 콘솔 SSE) ----
+function probeRig(answer: () => Response) {
+  FakeES.all = [];
+  const tm = timers(); const probes: string[] = []; let logins = 0;
+  const client = createPublicApiClient({ fetch: (async (u: string, init: RequestInit) => {
+    if (u.includes("limit=1")) { probes.push(`${init.method} ${u}`); return answer(); }
+    return new Response(JSON.stringify({ items: [], next_cursor: null }));
+  }) as any, retry: { maxAttempts: 1 }, sleep: async () => {} });
+  const api = createStaffApi(client, { eventSource: (u) => new FakeES(u) as any });
+  const sync = createStaffAlertSync(api, { onChange: () => {}, onNew: () => {}, onStatus: () => {}, onLogin: () => { logins++; }, refreshMs: 0, streamTimers: { setTimeout: tm.setTimeout, clearTimeout: tm.clearTimeout, rand: () => 0 } });
+  return { sync, tm, probes, logins: () => logins };
+}
+const apiErr = (status: number, headers: Record<string, string> = {}) => () => new Response(JSON.stringify({ code: status === 401 ? "PERMISSION_DENIED" : "UNAVAILABLE", message: "x", retryable: status !== 401 }), { status, headers });
+
+test("연결이 닫히면 탐침 한 번(GET /v1/staff/alerts?status=OPEN&limit=1)으로 상태를 읽고, 401이면 다시 연결하지 않고 로그인으로 보낸다", async () => {
+  const { sync, tm, probes, logins } = probeRig(apiErr(401));
+  FakeES.all[0]!.error(); await settle();
+  assert.deepEqual(probes, ["GET /v1/staff/alerts?status=OPEN&limit=1"]);
+  assert.equal(logins(), 1);
+  assert.equal(tm.q.length, 0, "재연결 타이머가 없다");
+  assert.equal(FakeES.all.length, 1);
+  sync.stop();
+});
+
+test("탐침이 503·429 + Retry-After이면 그 초 뒤(백오프보다 짧지 않게) 새 연결, 그 밖이면 백오프", async () => {
+  for (const st of [503, 429]) {
+    const { sync, tm } = probeRig(apiErr(st, { "retry-after": "20" }));
+    FakeES.all[0]!.error(); await settle();
+    assert.equal(tm.q.length, 1);
+    assert.ok(tm.q[0]!.ms >= 20_000, `${st}: ${tm.q[0]!.ms}`);
+    tm.fire(); assert.equal(FakeES.all.length, 2, "새 연결");
+    sync.stop();
+  }
+  const { sync, tm } = probeRig(apiErr(502));
+  FakeES.all[0]!.error(); await settle();
+  assert.equal(tm.q[0]!.ms, 500, "Retry-After가 없으면 백오프(기준 1초, 지터 하한 50%)");
+  sync.stop();
+});
+
+test("탐침 자체가 네트워크로 실패해도 백오프로 다시 연결한다", async () => {
+  const { sync, tm } = probeRig(() => { throw new TypeError("Failed to fetch"); });
+  FakeES.all[0]!.error(); await settle();
+  assert.equal(tm.q.length, 1); tm.fire(); assert.equal(FakeES.all.length, 2);
+  sync.stop();
 });

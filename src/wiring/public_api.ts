@@ -36,10 +36,10 @@ export function createStaffApi(client: PublicApiClient, o: { baseUrl?: string; e
       onAlert: (a: StaffAlert) => void,
       onState: (connected: boolean, info?: { attempt: number; nextRetryMs: number | null }) => void,
       t: Partial<StreamTimers> & { rand?: () => number } = {},
-      hooks: { onResync?: () => void } = {},
+      hooks: { onResync?: () => void; onLogin?: () => void } = {},
     ): () => void {
       const policy = createRetryPolicy(STAFF_STREAM_RETRY, t.rand);
-      return openStaffStream({ ...o, backoffMs: policy.backoffMs, heartbeatTimeoutMs: () => heartbeatTimeoutMs(t.rand) }, onAlert, onState, { setTimeout: t.setTimeout ?? realTimers.setTimeout, clearTimeout: t.clearTimeout ?? realTimers.clearTimeout }, hooks);
+      return openStaffStream({ ...o, probe: () => client.probeStaffAlerts(), backoffMs: policy.backoffMs, heartbeatTimeoutMs: () => heartbeatTimeoutMs(t.rand) }, onAlert, onState, { setTimeout: t.setTimeout ?? realTimers.setTimeout, clearTimeout: t.clearTimeout ?? realTimers.clearTimeout }, hooks);
     },
   };
 }

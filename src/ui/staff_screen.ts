@@ -4,6 +4,7 @@ import type { SyncStatus } from "../components/alert_sync.ts";
 import { disablePush, enablePush, hasPush } from "../components/push_subscription.ts";
 import type { StaffAlert } from "../types/StaffAlert.ts";
 import type { StaffApi } from "../wiring/public_api.ts";
+import { LOGIN_PATH } from "../config.ts";
 import { createInterventionDeciding, createStaffAlertSync } from "../wiring/staff.ts";
 import { createRecordViewer } from "./record_view.ts";
 
@@ -94,6 +95,8 @@ createStaffAlertSync(api, {
   onNew: (a) => banner(`새 알림: ${a.kind} 세션 ${a.session_id}`),
   onRedelivery: (a) => banner(`재전달 알림(환자가 다시 불렀습니다, ${a.delivery_attempts}회째): ${a.kind} 세션 ${a.session_id}`), // role=alert 배너가 낭독된다
   onStatus: drawStatus,
+  // 스트림 탐침이 401: 로그인 세션이 끝났다 -> 로그인으로(돌아올 경로는 같은 출처의 지금 경로, 계약 HumanAuthEndpoints).
+  onLogin: () => location.assign(`${LOGIN_PATH}?rd=${encodeURIComponent(location.pathname)}`),
 });
 // 푸시 구독 실패는 알림 배너와 섞지 않는다(실시간 화면 알림은 푸시와 무관하게 동작한다).
 $("push").onclick = async () => {

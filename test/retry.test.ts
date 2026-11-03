@@ -36,6 +36,17 @@ test("503 두 번 뒤 성공: 같은 turn_id로 재시도하고 응답을 돌려
   assert.deepEqual(turnIds, ["t-same", "t-same", "t-same"]);
 });
 
+test("408(요청이 한도 안에 도착하지 못함, PUBLIC_API)은 같은 turn_id로 재시도하고, 413·414·431은 재시도하지 않는다", async () => {
+  const a = make([() => err(408), () => ok()]);
+  await a.api.sendUtterance("s1", "x", "t");
+  assert.equal(a.count(), 2); assert.deepEqual(a.turnIds, ["t", "t"]);
+  for (const st of [413, 414, 431]) {
+    const b = make([() => err(st, {}, "INVALID_RECORD"), () => ok()]);
+    await assert.rejects(b.api.sendUtterance("s1", "x", "t"), ApiError);
+    assert.equal(b.count(), 1, String(st));
+  }
+});
+
 test("502·504·429·네트워크 오류도 재시도한다", async () => {
   for (const first of [() => err(502), () => err(504), () => err(429), () => { throw new TypeError("fetch failed"); }]) {
     const { api, count } = make([first as any, () => ok()]);

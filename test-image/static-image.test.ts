@@ -8,6 +8,7 @@ import { mkdtempSync, writeFileSync, rmSync, chmodSync, readFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HANG_GUARD_SECONDS } from "../test/helpers.ts";
+import { HealthStatus as vHealth } from "../src/types/validators.gen.cjs";
 
 const docker = (...a: string[]) => spawnSync("docker", a, { encoding: "utf8" });
 const TAG = process.env.IMAGE ?? `kiosk-frontend:imgtest-${process.pid}`;
@@ -51,8 +52,13 @@ after(() => { for (const n of started) docker("rm", "-f", n); if (!process.env.I
 const SEC = ["content-security-policy", "x-content-type-options", "referrer-policy", "permissions-policy", "cross-origin-opener-policy", "cross-origin-resource-policy", "cache-control"];
 
 test("/healthz 200, /readyz 200, 화면과 서비스 워커를 낸다", async () => {
-  assert.equal((await fetch(plain.base + "/healthz")).status, 200);
-  assert.equal((await fetch(plain.base + "/readyz")).status, 200);
+  // 본문은 계약 HealthStatus(RUNTIME R5.1): 상태 코드와 함께 JSON 객체 본문을 계약 검증기로 확인한다(빈 200을 통과로 보지 않는다).
+  for (const [path, status] of [["/healthz", "ok"], ["/readyz", "ready"]] as const) {
+    const r = await fetch(plain.base + path);
+    assert.equal(r.status, 200); assert.match(r.headers.get("content-type") ?? "", /application\/json/);
+    const b = await r.json();
+    assert.equal(vHealth(b), true, JSON.stringify(vHealth.errors)); assert.equal(b.status, status);
+  }
   assert.match(await (await fetch(plain.base + "/")).text(), /문진/);
   assert.match(await (await fetch(plain.base + "/staff/")).text(), /직원 콘솔/);
   const sw = await fetch(plain.base + "/staff/sw.js");
@@ -116,7 +122,9 @@ test("잘못된 퍼센트 인코딩 400은 고정 문구의 text/plain이고 입
 test("STATIC_DIR에 화면이 없으면 /readyz는 503이고 /healthz는 200", async () => {
   const c = run([], ["STATIC_DIR=/nonexistent"]);
   await ready(c.base);
-  assert.equal((await fetch(c.base + "/readyz")).status, 503);
+  const nr = await fetch(c.base + "/readyz");
+  assert.equal(nr.status, 503);
+  const nb = await nr.json(); assert.equal(vHealth(nb), true); assert.equal(nb.status, "not_ready"); // '아님' 표기는 not_ready
   assert.equal((await fetch(c.base + "/healthz")).status, 200);
 });
 

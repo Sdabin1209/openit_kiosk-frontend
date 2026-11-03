@@ -16,7 +16,7 @@ export interface AlertSource {
     onAlert: (a: StaffAlert) => void,
     onState: (connected: boolean, info?: { attempt: number; nextRetryMs: number | null }) => void,
     t: { setTimeout: (fn: () => void, ms: number) => unknown; clearTimeout: (h: unknown) => void; rand?: () => number },
-    hooks?: { onResync?: () => void },
+    hooks?: { onResync?: () => void; onLogin?: () => void },
   ): () => void;
 }
 
@@ -27,6 +27,8 @@ export interface SyncDeps {
   /** 같은 alert_id가 다시 전달되었다(키오스크 재알림, CR-H001): 배너·소리용. 목록은 계속 한 건으로 합친다. */
   onRedelivery?: (a: StaffAlert) => void;
   onStatus: (s: SyncStatus) => void;
+  /** 스트림 탐침이 401: 로그인 세션이 끝났다. 화면이 로그인으로 보낸다. */
+  onLogin?: () => void;
   /** 목록을 주기적으로 다시 읽는다. 스트림이 소리 없이 죽은 경우(EventSource는 `: ping` 주석을 보여 주지 않아 무음을 감지할 수 없다)의 안전망이고,
    * 읽기에 실패한 목록을 스스로 복구하는 경로이기도 하다. 기본 15초(임의 값: 직원이 놓친 알림을 늦어도 이 정도 안에 보게 한다). */
   refreshMs?: number;
@@ -99,7 +101,7 @@ export function createAlertSync(d: SyncDeps) {
       if (ok) void load(); // 재연결 직후 놓친 알림 보충
     },
     d.streamTimers,
-    { onResync: () => void load() }, // 이어 받을 수 없는 재연결: 목록으로 즉시 다시 맞춘다
+    { onResync: () => void load(), onLogin: d.onLogin }, // 이어 받을 수 없는 재연결: 목록으로 즉시 다시 맞춘다
   );
   const tick = (d.refreshMs ?? 15_000) > 0 ? T.setInterval(() => void load(), d.refreshMs ?? 15_000) : null;
   void load();
