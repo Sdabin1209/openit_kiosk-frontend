@@ -1,5 +1,5 @@
 // 키오스크 앱 전체(dist/kiosk.js + 실제 index.html)를 jsdom에서 돌리는 시험. Docker 없이 호스트에서 돈다.
-// 연결: jsdom 앱 -> (같은 출처 라우터) -> 정적 파일 대역 mock-server/devstatic.ts(dist, CONFIG_FILE) 와 모의 공개 API(/v1, 기기 토큰 필요).
+// 연결: jsdom 앱 -> (같은 출처 라우터) -> 정적 파일 대역 mock-server/server.ts의 makeDevStatic(dist, CONFIG_FILE) 와 모의 공개 API(/v1, 기기 토큰 필요).
 // 확인하는 것: (1) 시작 URL 조각 없이 /config.json의 기기 토큰으로 POST /v1/sessions를 부른다. (2) 대화가 시간순 말풍선으로 보이고
 // 종료하면 지워진다. (3) 저장소·쿠키에 아무것도 남지 않는다. 기대값은 PUBLIC_API.md F절(기기 토큰은 Authorization: Bearer)과 데모 요구에서 왔다.
 import { test } from "node:test";
