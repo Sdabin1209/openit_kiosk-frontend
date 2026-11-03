@@ -6,19 +6,19 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { json, ok, settle, startMock, started, SERVER_SESSION_ID } from "./helpers.ts";
+import { json, ok, settle, startMock, started, SERVER_SESSION_ID, qsFetch } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 function rig(o: { startResp?: () => Response } = {}) {
   const calls: Array<{ method: string; url: string; body: any }> = [];
-  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (url: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: qsFetch((async (url: string, init: RequestInit) => {
     const body = init.body ? JSON.parse(init.body as string) : undefined;
     calls.push({ method: init.method ?? "GET", url, body });
     if (body?.kind === "SESSION_START") return (o.startResp ?? (() => started()))();
     if (body?.kind === "SESSION_END") return ok(null);
     if (init.method === "GET") return json({ session_id: SERVER_SESSION_ID, state: "ACTIVE", resume_text: null });
     return ok("다음 질문");
-  }) as any });
+  }) as any) });
   return { api, calls };
 }
 
@@ -56,10 +56,10 @@ test("응답에 session_id가 없거나 형식이 틀리면 시작 성공으로 
 
 test("시작 재시도 중 '그만하기': 서버가 발급한 ID를 아직 모르므로 종료 요청 없이 끝난다", async () => {
   const calls: string[] = [];
-  const api = createPublicApiClient({ now: () => 0, sleep: () => new Promise(() => {}), fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: () => new Promise(() => {}), fetch: qsFetch((async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string); calls.push(b.kind);
     return json({ code: "UNAVAILABLE" }, 503);
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api, { idleMs: 0, sleep: () => new Promise(() => {}) });
   void flow.start(); await settle();
   assert.equal(flow.current.state, "STARTING");

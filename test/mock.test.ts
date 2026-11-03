@@ -7,7 +7,7 @@ import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createStaffApi } from "../src/wiring/public_api.ts";
 import { ApiError, CallStaffError } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { startMock, waitFor } from "./helpers.ts";
+import { startMock, waitFor, qsFetch } from "./helpers.ts";
 
 const SCHEMA_DIR = new URL("../../survey-service/schema/schemas/", import.meta.url);
 const ajv = new Ajv2020({ strict: false });
@@ -37,7 +37,7 @@ const vAlert = ajv.getSchema("StaffAlert.schema.json")!, vPage = bs("StaffAlertP
 
 test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDecision을 지킨다(D66)", async () => {
   const bodies: Record<string, any>[] = [];
-  const c = createPublicApiClient({ ...fast, fetch: (async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(init.body as string)); return new Response(JSON.stringify({ response_text: null, turn_failure_signal: null, session_id: "srv-1" })); }) as any });
+  const c = createPublicApiClient({ ...fast, fetch: qsFetch((async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(init.body as string)); return new Response(JSON.stringify({ response_text: null, turn_failure_signal: null, session_id: "srv-1" })); }) as any) });
   const SID_s1 = (await c.startSession()).session_id; await c.sendUtterance(SID_s1, "x", "t1"); await c.intervene(SID_s1, "RESUME", "t2"); await c.endSession(SID_s1);
   assert.equal(bodies.length, 4);
   for (const b of bodies) {

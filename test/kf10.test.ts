@@ -9,7 +9,7 @@ import { SttError } from "../src/components/stt_adapter.ts";
 import { createWebSpeechStt } from "../src/wiring/kiosk.ts";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { started } from "./helpers.ts";
+import { started, qsFetch } from "./helpers.ts";
 
 const g = globalThis as any;
 afterEach(() => { delete g.SpeechRecognition; });
@@ -45,7 +45,7 @@ test("KF-10: 이 기기에서 음성 입력을 쓸 수 없어 거부될 때도 B
 });
 
 test("KF-10: 상태 기계는 kind만 본다 - BLOCKED는 화면 입력으로 대체, 그 밖은 다시 말하기이며 문구가 같아도 BLOCKED가 되지 않는다", async () => {
-  const mk = () => createKioskFlow(createPublicApiClient({ sleep: async () => {}, fetch: (async () => started("질문")) as any }), { idleMs: 0 });
+  const mk = () => createKioskFlow(createPublicApiClient({ sleep: async () => {}, fetch: qsFetch((async () => started("질문")) as any) }), { idleMs: 0 });
   const a = mk(); await a.start(); a.sttError("BLOCKED");
   assert.equal(a.current.state, "REPEAT_PROMPT"); assert.equal(a.current.textFallback, true);
   for (const k of ["NO_SPEECH", "OTHER", null, "STT 사용 불가", "not-allowed"]) {

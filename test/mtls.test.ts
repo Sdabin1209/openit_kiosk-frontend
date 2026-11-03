@@ -5,7 +5,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { startMock } from "./helpers.ts";
+import { startMock, qsFetch } from "./helpers.ts";
 
 const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
@@ -24,8 +24,8 @@ const viaGateway = (base: string, deviceId: string | null) => ((u: string, init:
 
 test("토큰 없이 게이트웨이(기기 ID 헤더)를 거치면 세션 시작, 발화, 종료까지 된다", async () => {
   const m = await gateway();
-  const api = createPublicApiClient({ baseUrl: m.base + "/v1", ...fast, fetch: viaGateway(m.base, "kiosk-01") });
-  const flow = createKioskFlow(api, { startValues: async () => ({ deviceToken: null, subjectRef: null, subjectInvalid: false }) });
+  const api = createPublicApiClient({ baseUrl: m.base + "/v1", ...fast, fetch: qsFetch(viaGateway(m.base, "kiosk-01")) });
+  const flow = createKioskFlow(api, { startValues: async () => ({ deviceToken: null, subjectRef: null, subjectInvalid: false, questionSetId: null }) });
   await flow.start();
   assert.equal(flow.current.state, "LISTENING");
   await flow.hear({ text: "머리가 아파요", confidence: 0.9 });

@@ -8,7 +8,7 @@ import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { ApiError } from "../src/components/link_public_api_send.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import { deliveryLines, pauseLabel } from "../src/components/alert_info.ts";
-import { hang, json, ok, settle, startMock, started, timesOut } from "./helpers.ts";
+import { hang, json, ok, settle, startMock, started, timesOut, qsFetch } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
@@ -25,14 +25,14 @@ type Route = (path: string, body: any) => Response | Promise<Response>;
 function make(route: Route, state: () => any = () => ({ state: "PAUSED_RISK", resume_text: null })) {
   const calls: Array<{ path: string; body: any }> = [];
   const clk = clock();
-  const api = createPublicApiClient({ retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: qsFetch((async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, "");
     if (init.method === "GET") return json({ session_id: "s", ...state() });
     const body = JSON.parse(init.body as string); calls.push({ path, body });
     if (path.includes("/staff-call/")) return route(path, body);
     if (body.kind === "SESSION_START") return started("시작");
     return ok("대기", DF);
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}), timers: clk });
   return { flow, calls, clk, sc: () => calls.filter((c) => c.path.includes("/staff-call/")) };
 }
@@ -68,12 +68,12 @@ test("재알림이 DELIVERED이면 안내(대기) 화면으로 바뀌고 상태 
 test("응답을 못 받은 재전송(시간 초과·네트워크)은 같은 turn_id, 화면은 유지, 버튼은 다시 켜진다", async () => {
   let n = 0;
   const m = make((p, b) => (++n === 1 ? hang() as any : retryOk("DELIVERED")));
-  (m.flow as any).api = createPublicApiClient({ retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  (m.flow as any).api = createPublicApiClient({ retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: qsFetch((async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, ""); if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
     const body = JSON.parse(init.body as string); m.calls.push({ path, body });
     if (path.includes("/staff-call/")) return ++n === 1 ? timesOut() : retryOk("DELIVERED");
     return body.kind === "SESSION_START" ? started("시작") : ok("대기", DF);
-  }) as any });
+  }) as any) });
   await toFailed(m);
   await m.flow.retryStaffCall();
   assert.equal(m.flow.current.state, "CALL_STAFF"); assert.equal(m.flow.current.staffCall!.notice, "NETWORK"); assert.equal(m.flow.current.staffCall!.sending, false);
@@ -137,11 +137,11 @@ test("report가 네트워크로 실패해도 환자를 화면에 가두지 않�
 test("pause_reason: 상태 폴링 값을 정규화한다(모르는 값=OTHER, 없음=미상) - WAITING_STAFF에 실린다", async () => {
   for (const [reason, want] of [["REASK_LIMIT", "REASK_LIMIT"], ["RISK", "RISK"], ["NEW_THING", "OTHER"], [undefined, undefined]] as const) {
     const calls: any[] = [];
-    const api = createPublicApiClient({ sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+    const api = createPublicApiClient({ sleep: async () => {}, fetch: qsFetch((async (u: string, init: RequestInit) => {
       if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null, ...(reason ? { pause_reason: reason } : {}) });
       const b = JSON.parse(init.body as string); calls.push(b);
       return b.kind === "SESSION_START" ? started("시작") : ok("서버 고정 문장", null);
-    }) as any });
+    }) as any) });
     const flow = createKioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}) });
     await flow.start(); await flow.hear(say("아무말"));
     assert.equal(flow.current.state, "WAITING_STAFF");
@@ -281,10 +281,10 @@ test("L-4: 카운트다운이 끝나면 READY 안내가 실리고 그때만 버�
 test("staff-call report·retry 요청 본문은 계약 StaffCallReport·StaffCallRetryRequest 전체를 통과한다(보낸 본문을 잡아 검증)", async () => {
   const { StaffCallReport: vReport, StaffCallRetryRequest: vRetry } = await import("../src/types/validators.gen.cjs");
   const sent: Array<{ path: string; body: unknown }> = [];
-  const api = createPublicApiClient({ retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 1 }, sleep: async () => {}, fetch: qsFetch((async (u: string, init: RequestInit) => {
     sent.push({ path: new URL(u, "http://x").pathname, body: JSON.parse(init.body as string) });
     return json(u.endsWith("/retry") ? { alert_id: "a", staff_alert: "DELIVERED", delivery_attempts: 1, retry_after_s: 0 } : { alert_id: "a", session_id: "s" });
-  }) as any });
+  }) as any) });
   await api.staffCallRetry("s1", "t-retry");
   await api.staffCallReport("s1", "NOT_NOTIFIED", "t-report");
   assert.equal(sent.length, 2);

@@ -1,6 +1,6 @@
 // schemas/(영역 내부 타입)과 계약·문진 스키마에서 src/types/를 만든다. 손으로 고치지 않는다(DESIGN.md 3절, D117).
 //   src/types/<이름>.ts            : json-schema-to-typescript가 만든 코드 타입. 영역 타입은 schemas/<이름>.json, 공개 API 본문 타입은
-//                                    문진 스키마(survey-service 리포의 고정 태그 survey-schema-v3.0.0, 읽기 전용)와 고정 태그의 계약(scripts/contract-source.mjs)에서 만든다.
+//                                    문진 스키마(survey-service 리포의 고정 태그 survey-schema-v4.0.0, 읽기 전용)와 고정 태그의 계약(scripts/contract-source.mjs)에서 만든다.
 //   src/types/validators.gen.cjs   : 위 스키마 검증기(ajv standalone). 컴포넌트의 입력 검사는 이 검증기 하나다(DESIGN.md 5절).
 //   src/types/validators.gen.d.cts : 검증기 이름 목록의 형.
 // 사용: node scripts/gen-types.mjs [--check]   (--check: 쓰지 않고 현재 파일이 생성 결과와 같은지만 본다)
@@ -20,7 +20,7 @@ const CONTRACT_TYPES = ["StaffAlert", "StaffAlertPage", "SessionState", "PushCon
 const SURVEY_TYPES = ["FrontendInput", "StaffSessionView"];
 // 계약에서 검증기까지 만드는 것(경계 스키마: 읽는 쪽이 계약 그대로 검사한다, ADR 0021).
 const CONTRACT_VALIDATORS = ["DeviceConfig", "KioskStartFragment", "StaffPushPayload", "StaffCallReport", "StaffCallRetryRequest"]; // 뒤 둘: 보내는 요청 본문 전체를 보내기 전에 검증한다(R7, U424)
-// 문진 스키마(고정 태그 survey-schema-v3.0.0)에서 검증기까지 만드는 것: 보내는 요청 본문 전체(PUBLIC_API.md 24~26·46행). turn_id는 API 봉투 필드라 본문에서 떼어 낸 나머지를 검증한다(PUBLIC_API.md 30행, D66).
+// 문진 스키마(고정 태그 survey-schema-v4.0.0)에서 검증기까지 만드는 것: 보내는 요청 본문 전체(PUBLIC_API.md 24~26·46행). turn_id는 API 봉투 필드라 본문에서 떼어 낸 나머지를 검증한다(PUBLIC_API.md 30행, D66).
 const SURVEY_VALIDATORS = ["FrontendMessage", "InterventionDecision"];
 const CONTRACT_DEPS = ["SessionState"]; // 영역 스키마가 $ref로 가리키는 계약 스키마
 

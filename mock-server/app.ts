@@ -28,9 +28,10 @@ export interface Scenario {
   retryAfterS: number;          // 재알림 응답의 retry_after_s(실서버 기본 권고 30초는 측정하지 않은 값)
   retryLimit: number;           // 세션당 재알림 상한(기본 권고 10)
   enforceInterval: boolean;     // true면 retry_after_s 안의 재요청을 429 + Retry-After
+  questionSets: { question_set_id: string; title: string; version: string }[]; // GET /v1/question-sets의 활성 목록(I10, 계약 3.3.0). 기본은 하나
   requireSubjectRef: boolean;   // SURVEY_REQUIRE_SUBJECT_REF 대역: 켜면 subject_ref 없을 때 400(A절)
 }
-const DEFAULT: Scenario = { gatewayDevice: false, delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, heartbeat: true, resyncOnConnect: false, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, staffCallApi: true, pauseReasonField: true, reaskKeyword: "알수없음", retryDelivery: "DELIVERED", retryAfterS: 30, retryLimit: 10, enforceInterval: false, requireSubjectRef: false };
+const DEFAULT: Scenario = { gatewayDevice: false, delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, heartbeat: true, resyncOnConnect: false, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, staffCallApi: true, pauseReasonField: true, reaskKeyword: "알수없음", retryDelivery: "DELIVERED", retryAfterS: 30, retryLimit: 10, enforceInterval: false, requireSubjectRef: false, questionSets: [{ question_set_id: "general", title: "일반 문진", version: "1.0.0" }] };
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
@@ -51,7 +52,7 @@ const PRESETS: Record<string, Partial<Scenario>> = {
 interface MockTurn { turn_index: number; turn_id: string; at: string; utterance: string | null; response_text: string | null; action: string | null }
 interface MockValue { key: string; value: unknown; status: string; precision: string }
 // turnLog·values는 StaffSessionView 응답용이다(모의 전용). 발화는 요청 로그(state.log)에는 남기지 않는다.
-interface Session { deviceId: string | null; id: string; turns: number; paused: boolean; pauseReason: string; retries: number; lastRetryAt: number; alertId: string | null; ended: boolean; resumeText: string | null; createdAt: string; subjectRef: string | null; endedBy: string | null; turnLog: MockTurn[]; values: MockValue[] }
+interface Session { deviceId: string | null; id: string; turns: number; paused: boolean; pauseReason: string; retries: number; lastRetryAt: number; alertId: string | null; ended: boolean; resumeText: string | null; createdAt: string; subjectRef: string | null; questionSetId: string | null; endedBy: string | null; turnLog: MockTurn[]; values: MockValue[] }
 export interface MockState {
   sc: Scenario; sessions: Map<string, Session>; alerts: any[]; subs: Map<string, any>;
   cache: Map<string, any>; events: { id: number; name: string; data: any }[]; sse: Set<ServerResponse>; seq: number; requests: number;
@@ -64,7 +65,7 @@ const SUBJECT_REF_RE = /^[A-Za-z0-9._:/#=+-]{1,128}$/; // PUBLIC_API.md A절
 const ts = (d = new Date()) => d.toISOString().replace(/\.\d+Z$/, "Z"); // 스키마 Timestamp: 초 단위, 끝에 Z
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 // 기준 계약(Dockerfile ARG BOUNDARY_CONTRACT)의 PIPELINE_SCHEMA_VERSION. 이 영역(Node)은 계약 패키지(Python)를 import할 수 없어 값을 여기 한 곳에 두고, scripts/check-schema.mjs가 계약 상수와 대조한다. 시험은 이 상수를 import한다.
-export const PIPELINE_SCHEMA_VERSION = "3.2";
+export const PIPELINE_SCHEMA_VERSION = "3.3";
 const berr = (code: string, message: string, retryable = false) => ({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message, retryable });
 
 export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: number } = {}): { server: Server; state: MockState; reset: (s?: Partial<Scenario>) => void } {
@@ -112,6 +113,8 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     status: s.ended ? (s.endedBy ?? "ENDED_USER_STOP") : s.paused ? "PAUSED_RISK" : "IN_PROGRESS",
     release_id: "rel-mock-1",
     subject_ref: s.subjectRef,
+    question_set_id: s.questionSetId,
+    question_set_title: state.sc.questionSets.find((q) => q.question_set_id === s.questionSetId)?.title ?? null,
     created_at: s.createdAt,
     turns: s.turnLog,
     values: s.values,
@@ -143,13 +146,13 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
     }
 
     // F절: 기기 토큰. /v1/sessions* 만 대상이다. 직원 경로와 개입 결정(/intervention)은 게이트웨이의 직원 인증 몫이라 기기 토큰을 보지 않는다.
-    if (state.sc.deviceToken && /^\/v1\/sessions(\/|$)/.test(path) && !path.endsWith("/intervention") && req.headers.authorization !== `Bearer ${state.sc.deviceToken}`) {
+    if (state.sc.deviceToken && /^\/v1\/(sessions|question-sets)(\/|$)/.test(path) && !path.endsWith("/intervention") && req.headers.authorization !== `Bearer ${state.sc.deviceToken}`) {
       return json(res, 401, berr("PERMISSION_DENIED", "device token required"));
     }
     // F절(2.3.0, mTLS): 게이트웨이가 인증서 CN을 X-Openit-Device로 붙인다. 앱은 기기 자격을 보내지 않는다. 헤더가 없거나 형식이 틀리면 401, 다른 기기가 만든 세션은 404.
     const devHeader = req.headers["x-openit-device"];
     const devId = typeof devHeader === "string" && DEVICE_ID_RE.test(devHeader) ? devHeader : null;
-    if (state.sc.gatewayDevice && /^\/v1\/sessions(\/|$)/.test(path) && !path.endsWith("/intervention")) {
+    if (state.sc.gatewayDevice && /^\/v1\/(sessions|question-sets)(\/|$)/.test(path) && !path.endsWith("/intervention")) {
       if (!devId) return json(res, 401, berr("PERMISSION_DENIED", "client certificate required"));
       const owner = state.sessions.get(/^\/v1\/sessions\/([^/]+)/.exec(path)?.[1] ?? "")?.deviceId;
       if (owner && owner !== devId) return json(res, 404, berr("NOT_FOUND", "no such session"));
@@ -165,14 +168,19 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       if (body.kind !== "SESSION_START" || (body.session_id !== undefined && !ID_RE.test(body.session_id))) return json(res, 400, berr("INVALID_RECORD", "bad start"));
       if (body.session_id === undefined) body.session_id = randomBytes(16).toString("base64url"); // CSPRNG 128비트, 문자 집합 [A-Za-z0-9_-]
       const { turn_id: _t, ...startRest } = body;
-      if (Object.keys(startRest).some((k) => !["kind", "session_id", "subject_ref"].includes(k))) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
+      if (Object.keys(startRest).some((k) => !["kind", "session_id", "subject_ref", "question_set_id"].includes(k))) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
       if (body.subject_ref !== undefined && (typeof body.subject_ref !== "string" || !SUBJECT_REF_RE.test(body.subject_ref))) return json(res, 400, berr("INVALID_RECORD", "bad subject_ref")); // 값은 응답·로그에 되풀이하지 않는다
+      // 문진표: 활성이 하나면 생략 가능, 둘 이상이면 필수, 목록에 없으면 400 INVALID_RECORD + details.reason(계약 3.3.0 I10)
+      const sets = state.sc.questionSets;
+      if (body.question_set_id === undefined && sets.length > 1) return json(res, 400, { ...berr("INVALID_RECORD", "question_set_id required"), details: { reason: "QUESTION_SET_REQUIRED" } });
+      if (body.question_set_id !== undefined && !sets.some((q) => q.question_set_id === body.question_set_id)) return json(res, 400, { ...berr("INVALID_RECORD", "unknown question set"), details: { reason: "UNKNOWN_QUESTION_SET" } });
       if (state.sc.requireSubjectRef && body.subject_ref === undefined) return json(res, 400, berr("INVALID_RECORD", "subject_ref required"));
-      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { deviceId: devId, id: body.session_id, turns: 0, paused: false, pauseReason: "RISK", retries: 0, lastRetryAt: 0, alertId: null, ended: false, resumeText: null, createdAt: ts(), subjectRef: body.subject_ref ?? null, endedBy: null, turnLog: [], values: [] });
+      if (!state.sessions.has(body.session_id)) state.sessions.set(body.session_id, { deviceId: devId, id: body.session_id, turns: 0, paused: false, pauseReason: "RISK", retries: 0, lastRetryAt: 0, alertId: null, ended: false, resumeText: null, createdAt: ts(), subjectRef: body.subject_ref ?? null, questionSetId: body.question_set_id ?? sets[0]?.question_set_id ?? null, endedBy: null, turnLog: [], values: [] });
       const first = "안녕하세요. 문진을 시작합니다. " + QUESTIONS[0];
       logTurn(state.sessions.get(body.session_id)!, typeof body.turn_id === "string" ? body.turn_id : "start", null, first, "SESSION_START");
       return json(res, 200, { ...input(first), session_id: body.session_id });
     }
+    if (m === "GET" && path === "/v1/question-sets") return json(res, 200, { items: state.sc.questionSets });
     const sm = path.match(/^\/v1\/sessions\/([^/]+)\/state$/);
     if (m === "GET" && sm) {
       const s = state.sessions.get(sm[1]);

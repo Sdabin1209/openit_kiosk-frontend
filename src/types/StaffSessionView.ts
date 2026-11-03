@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: survey-service survey-schema-v3.0.0 schema/schemas/StaffSessionView.json */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: survey-service survey-schema-v4.0.0 schema/schemas/StaffSessionView.json */
 
 
 export type SessionId = string
@@ -23,6 +23,14 @@ export interface StaffSessionView {
 session_id: SessionId
 status: SessionStatus
 release_id: (string | null)
+/**
+ * 문진한 문진표 ID(survey-schema 4.0.0).
+ */
+question_set_id: (string | null)
+/**
+ * 문진한 문진표 제목(survey-schema 4.0.0).
+ */
+question_set_title: (string | null)
 created_at: (Timestamp | null)
 turns: StaffTurn[]
 values: StaffValue[]

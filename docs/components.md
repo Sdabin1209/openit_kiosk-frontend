@@ -14,7 +14,7 @@
 | 직원 스트림 받기 (링크, 받는 쪽) | `link_staff_stream_receive.ts` | 스트림 주소, 재연결·하트비트 판단 함수 | 계약 `StaffAlert` 이벤트, 연결 상태 | SSE(`GET /v1/staff/alerts/stream`)를 직접 재연결하며 받는다. 하트비트 무음 감시, resync |
 | 기기 설정 받기 (링크, 받는 쪽) | `link_device_config_receive.ts` | 창(location·history) | 조각 문자열, `/config.json` 본문 또는 null (`StartInput`의 두 칸) | 시작 URL 조각을 읽고 주소창에서 지운다. `/config.json`을 읽는다. 값 해석은 하지 않는다 |
 | 재시도 정책 | `retry_policy.ts` | `RetryPolicy`(만들 때), `RetryQuery`, `StatusQuery` | `RetryDecision`, `StatusClass` | 대기 시간(지수 백오프 + 지터, Retry-After 하한), 예산 초과 판단, 재시도 가능·처리 여부 불명 분류 |
-| 시작 값 | `start_values.ts` | `StartInput` | `KioskStart` | 조각 + 기기 설정을 계약 `DeviceConfig`·`KioskStartFragment`로 검증해 기기 토큰·환자 참조·외부 STT 허용을 정한다. 환자 참조는 한 번 쓰면 비우는 보관소 |
+| 시작 값 | `start_values.ts` | `StartInput` | `KioskStart` | 조각 + 기기 설정을 계약 `DeviceConfig`·`KioskStartFragment`로 검증해 기기 토큰·환자 참조·문진표 ID(조각이 먼저)·외부 STT 허용을 정한다. 환자 참조는 한 번 쓰면 비우는 보관소 |
 | 키오스크 상태 기계 | `kiosk_flow.ts` | 환자 조작, `UsableTranscript`, 공개 API 포트(주입) | `KioskView`, `ConversationEvent` | 위의 키오스크 업무 단계 전부의 상태 전이. 유휴 경고·만료, 다시 말하기 상한, 직원 호출·재알림, 위험 정지 폴링 |
 | 음성 인식 | `stt_adapter.ts` | 마이크(`listen`) | `SttResult`, 실패는 `SttErrorKind` | 브라우저 Web Speech API(ko-KR), 기기 안 인식만 기본(D88 U3) |
 | 대화 목록 | `chat_log.ts` | `ConversationEvent` | `ChatView` | 말풍선을 메모리에만 두고 같은 id는 한 번만 만든다, 최대 100개 |

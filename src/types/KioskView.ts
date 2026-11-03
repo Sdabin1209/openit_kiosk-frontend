@@ -5,9 +5,9 @@
  * 키오스크 상태 기계의 출력(화면이 그리는 값). 환자 발화는 담지 않는다(text는 서버 응답 문장).
  */
 export type KioskView = {
-state: ("IDLE" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING" | "WAITING_STAFF" | "CALL_STAFF" | "ENDING" | "ENDED")
+state: ("IDLE" | "CHOOSING" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING" | "WAITING_STAFF" | "CALL_STAFF" | "ENDING" | "ENDED")
 text: (string | null)
-callStaffReason?: ("RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "STAFF_REQUESTED" | "BAD_SUBJECT_REF" | "REPEAT_LIMIT")
+callStaffReason?: ("RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "STAFF_REQUESTED" | "BAD_SUBJECT_REF" | "REPEAT_LIMIT" | "NO_QUESTION_SET")
 repeatReason?: ("EMPTY_STT" | "NOT_COMMITTED")
 retrying?: boolean
 /**
@@ -26,6 +26,28 @@ confirmLeave?: boolean
 pauseReason?: ("RISK" | "REASK_LIMIT" | "OTHER")
 staffCall?: StaffCallView
 busy?: boolean
+/**
+ * CHOOSING에서 고를 문진표(활성 목록의 ID·제목)
+ * 
+ * @minItems 1
+ */
+choices?: [{
+/**
+ * 3.3.0: 이 기기에 배치된 문진표 ID(ReleaseManifest.question_sets[].id). 배치한 사람(운영자, deploy 기기 설정)이 정한다. 시작 URL 조각의 question_set_id가 있으면 그것이 먼저다. 없고 활성 문진표가 둘 이상이면 키오스크가 선택 화면을 보인다(PUBLIC_API I10). 왜: 표준 임상 흐름에서 어떤 문진을 받을지는 진료 측이 정한다.
+ */
+id: string
+title: string
+}, ...({
+/**
+ * 3.3.0: 이 기기에 배치된 문진표 ID(ReleaseManifest.question_sets[].id). 배치한 사람(운영자, deploy 기기 설정)이 정한다. 시작 URL 조각의 question_set_id가 있으면 그것이 먼저다. 없고 활성 문진표가 둘 이상이면 키오스크가 선택 화면을 보인다(PUBLIC_API I10). 왜: 표준 임상 흐름에서 어떤 문진을 받을지는 진료 측이 정한다.
+ */
+id: string
+title: string
+})[]]
+/**
+ * 정해 둔 문진표가 활성 목록에 없어 선택 화면으로 왔다
+ */
+chooseNotice?: "QUESTION_SET_NOT_FOUND"
 }
 
 /**

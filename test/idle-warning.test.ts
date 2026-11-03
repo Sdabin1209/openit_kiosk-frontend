@@ -7,18 +7,18 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { json, ok, settle, started } from "./helpers.ts";
+import { json, ok, settle, started, qsFetch } from "./helpers.ts";
 
 const WCAG_MIN_WARNING_MS = 20_000, WCAG_MIN_EXTENSIONS = 10, TOTAL_MS = 60_000;
 
 function rig() {
   const q: Array<{ fn: () => void; ms: number }> = [], kinds: string[] = [];
   const timers = { set: (fn: () => void, ms: number) => { const t = { fn, ms }; q.push(t); return t; }, clear: (h: unknown) => { const i = q.indexOf(h as any); if (i >= 0) q.splice(i, 1); } };
-  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: qsFetch((async (_u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", state: "ACTIVE", resume_text: null });
     const b = JSON.parse(init.body as string); kinds.push(b.kind);
     return b.kind === "SESSION_START" ? started() : b.kind === "SESSION_END" ? ok(null) : ok("질문");
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api, { idleMs: TOTAL_MS, timers });
   return { flow, q, kinds, ends: () => kinds.filter((k) => k === "SESSION_END").length };
 }

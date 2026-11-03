@@ -17,6 +17,7 @@ export const KioskStartFragment: ValidateFn;
 export const KioskView: ValidateFn;
 export const PauseLabel: ValidateFn;
 export const PushNotification: ValidateFn;
+export const QuestionSetListBody: ValidateFn;
 export const RetryDecision: ValidateFn;
 export const RetryPolicy: ValidateFn;
 export const RetryQuery: ValidateFn;

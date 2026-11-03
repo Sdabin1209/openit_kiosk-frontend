@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts DeviceConfig (패키지 버전 3.2.0) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts DeviceConfig (패키지 버전 3.3.0) */
 
 
 /**
@@ -18,4 +18,8 @@ subject_ref?: string
  * true일 때만 기기 안 인식이 안 되는 기기에서 외부 음성 인식 제공자로 환자 음성이 나갈 수 있다(화면에 환자 고지 문구가 보인다). 없으면 false. 반드시 JSON 불리언 true여야 켜진다(문자열 "true"는 꺼짐).
  */
 allow_remote_stt?: boolean
+/**
+ * 3.3.0: 이 기기에 배치된 문진표 ID(ReleaseManifest.question_sets[].id). 배치한 사람(운영자, deploy 기기 설정)이 정한다. 시작 URL 조각의 question_set_id가 있으면 그것이 먼저다. 없고 활성 문진표가 둘 이상이면 키오스크가 선택 화면을 보인다(PUBLIC_API I10). 왜: 표준 임상 흐름에서 어떤 문진을 받을지는 진료 측이 정한다.
+ */
+question_set_id?: string
 }

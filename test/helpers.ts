@@ -57,3 +57,7 @@ export async function asStarted(res: Response | Promise<Response>): Promise<Resp
   const b = await r.clone().json().catch(() => null);
   return b && typeof b === "object" && !("session_id" in b) ? json({ ...b, session_id: SERVER_SESSION_ID }) : r;
 }
+
+/** 가짜 fetch 앞에 붙인다: GET /v1/question-sets에는 활성 문진표 하나를 답하고(키오스크 시작이 먼저 부른다, 계약 3.3.0) 나머지는 그대로 넘긴다. */
+export const qsFetch = (f: (u: string, init: RequestInit) => Promise<Response> | Response) => ((u: string, init: RequestInit) =>
+  String(u).endsWith("/question-sets") ? Promise.resolve(json({ items: [{ question_set_id: "general", title: "일반 문진", version: "1.0.0" }] })) : f(u, init)) as typeof fetch;

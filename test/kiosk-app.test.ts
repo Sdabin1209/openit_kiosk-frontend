@@ -19,9 +19,9 @@ try { ({ JSDOM } = await import(mod)); } catch { /* 호스트에 없음 */ }
 const opt = { skip: JSDOM ? false : "jsdom 없음" };
 const TOKEN = "tok-FAKE-for-test";
 
-async function rig(configFile: string | null, gateway = false) {
+async function rig(configFile: string | null, gateway = false, extra: Record<string, unknown> = {}) {
   assert.ok(existsSync("dist/kiosk.js"), "dist 없음: npm run build 먼저");
-  const mock = createMock(gateway ? { gatewayDevice: true } : { deviceToken: TOKEN });
+  const mock = createMock({ ...(gateway ? { gatewayDevice: true } : { deviceToken: TOKEN }), ...extra });
   const api = mock.server.listeners("request")[0] as (...a: any[]) => void;
   const st = makeDevStatic({ dir: "dist", configFile });
   const seen: Array<{ method: string; path: string; auth: string | undefined }> = [];
@@ -147,4 +147,32 @@ test("REASK_LIMIT 기본 안내 문구는 위험 정지 기본 문구와 다르�
   const { MSG } = await import("../src/components/patient_copy.ts");
   assert.notEqual(MSG.NOTICE_REASK_LIMIT_WAIT.text, MSG.BODY_WAIT_DEFAULT.text);
   assert.doesNotMatch(MSG.NOTICE_REASK_LIMIT_WAIT.text, /위험(하지|이) (않|없)/);
+});
+
+test("문진표가 둘이면 선택 화면에 제목 버튼이 보이고, 고른 문진표로 시작한다(계약 3.3.0, ADR 0036)", opt, async () => {
+  const cfg = tmpConfig({ device_token: TOKEN });
+  const t = await rig(cfg.f, false, { questionSets: [{ question_set_id: "general", title: "일반 문진", version: "1" }, { question_set_id: "cardio", title: "심장 문진", version: "2" }] });
+  try {
+    await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
+    t.$("action").click();
+    await waitFor(() => t.$("choices").hidden === false, "선택 화면");
+    const btns = [...t.doc.querySelectorAll("#choices button")] as HTMLElement[];
+    assert.deepEqual(btns.map((b) => b.textContent), ["일반 문진", "심장 문진"]);
+    assert.equal(t.mock.state.sessions.size, 0);
+    btns[1]!.click();
+    await waitFor(() => t.$("title").textContent === "말씀해 주세요", "고른 뒤 듣기 화면");
+    assert.equal(t.$("choices").hidden, true);
+    assert.deepEqual([...t.mock.state.sessions.values()].map((x) => x.questionSetId), ["cardio"]);
+  } finally { await t.close(); cfg.done(); }
+});
+
+test("활성 문진표가 없으면 '문진표가 준비되지 않았습니다' 안내", opt, async () => {
+  const cfg = tmpConfig({ device_token: TOKEN });
+  const t = await rig(cfg.f, false, { questionSets: [] });
+  try {
+    await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
+    t.$("action").click();
+    await waitFor(() => t.$("title").textContent === "직원을 불러 주세요", "직원 호출 화면");
+    assert.match(t.$("chat").textContent + t.doc.body.textContent, /문진표가 준비되지 않았습니다/);
+  } finally { await t.close(); cfg.done(); }
 });

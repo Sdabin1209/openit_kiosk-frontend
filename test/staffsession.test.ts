@@ -20,7 +20,7 @@ test("GET /v1/staff/sessions/{id}: 모양이 StaffSessionView와 같고 위험 �
   await c.sendUtterance(SID_s1, "가짜 문장");
   await c.sendUtterance(SID_s1, "위험해요");
   const v = await staff.getSession(SID_s1);
-  assert.deepEqual(Object.keys(v).sort(), ["alerts", "created_at", "release_id", "session_id", "status", "subject_ref", "turns", "values"]);
+  assert.deepEqual(Object.keys(v).sort(), ["alerts", "created_at", "question_set_id", "question_set_title", "release_id", "session_id", "status", "subject_ref", "turns", "values"]);
   assert.equal(v.status, "PAUSED_RISK");
   assert.deepEqual(v.turns.map((t) => t.turn_index), [0, 1, 2]);
   assert.equal(v.turns[0].utterance, null);

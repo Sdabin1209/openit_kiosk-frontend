@@ -4,16 +4,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { ok, settle, started } from "./helpers.ts";
+import { ok, settle, started, qsFetch } from "./helpers.ts";
 
 function make(stateValue: "ACTIVE" | "ENDED") {
   const calls: string[] = [];
-  const api = createPublicApiClient({ sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ sleep: async () => {}, fetch: qsFetch((async (u: string, init: RequestInit) => {
     calls.push(`${init.method} ${u}`);
     if (u.endsWith("/state")) return new Response(JSON.stringify({ session_id: "s-1", state: stateValue, resume_text: null }), { status: 200 });
     const b = init.body ? JSON.parse(init.body as string) : {};
     return b.kind === "SESSION_START" ? started("첫 질문") : ok("문진이 끝났습니다. 감사합니다.");
-  }) as any });
+  }) as any) });
   return { api, calls };
 }
 

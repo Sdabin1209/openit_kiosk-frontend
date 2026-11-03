@@ -2,7 +2,7 @@ import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { asStarted, hang, json, ok, settle, timesOut } from "./helpers.ts";
+import { asStarted, hang, json, ok, settle, timesOut, qsFetch } from "./helpers.ts";
 
 afterEach(() => { stateFn = () => ({ state: "ACTIVE", resume_text: null }); }); // 시험 간 공유 상태 초기화
 const say = (t: string) => ({ text: t, confidence: 0.9 });
@@ -13,10 +13,10 @@ const step = async (n = 1) => { for (let i = 0; i < n; i++) { await settle(); sl
 function make(handler: (body: any, init: RequestInit) => Promise<Response> | Response) {
   const calls: any[] = [];
   const polls: string[] = [];
-  const api = createPublicApiClient({ retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: qsFetch((async (u: string, init: RequestInit) => {
     if (init.method === "GET") { polls.push(u); return json({ session_id: "s", ...stateFn() }); }
     const body = JSON.parse(init.body as string); calls.push(body); const res = handler(body, init); return body.kind === "SESSION_START" ? asStarted(res) : res;
-  }) as any });
+  }) as any) });
   return { flow: createKioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) }), calls, polls };
 }
 

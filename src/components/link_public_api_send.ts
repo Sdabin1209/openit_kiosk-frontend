@@ -4,7 +4,7 @@
 // UI를 모른다. 세션 순서 큐, 응답 대기 타임아웃, 상태 코드 분기, 오류를 ApiFailure 데이터 모양으로 던진다.
 import {
   InterventionRequest as vIntervention, SessionRequest as vSession, StaffCallReportInput as vReport, StaffCallRetryInput as vRetry,
-  StartRequest as vStart, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
+  StartRequest as vStart, QuestionSetListBody as vQsList, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
   StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, FrontendMessage as sMessage, InterventionDecision as sDecision, StaffCallRetryRequest as cRetryBody, type ValidateFn,
 } from "../types/validators.gen.cjs";
 import type { BoundaryError } from "../types/BoundaryError.ts";
@@ -25,6 +25,8 @@ type Decision = "RESUME" | "END";
 type StaffCallOutcome = "STAFF_NOTIFIED_MANUALLY" | "NOT_NOTIFIED";
 /** 세션 시작 응답: FrontendInput + 서버가 발급한 session_id(PUBLIC_API.md 원칙 절, 2.2.0). */
 export type StartedSession = FrontendInput & { session_id: string };
+/** GET /v1/question-sets 항목(schemas/QuestionSetListBody.json). */
+export interface QuestionSetItem { question_set_id: string; title: string; version: string }
 export interface PushSubscriptionJson { endpoint: string; keys: { p256dh: string; auth: string }; [k: string]: unknown }
 
 // ---- 오류(데이터 모양은 schemas/ApiFailure.json). 업무 컴포넌트는 클래스를 가져오지 않고 name과 필드만 읽는다.
@@ -137,11 +139,17 @@ export class PublicApiClient {
     this.timers = o.timers;
   }
 
-  /** subjectRef가 있으면 본문에 넣는다(없으면 필드 생략). 형식이 틀리면 보내지 않는다. */
-  startSession(subjectRef?: string | null, co: CallOptions = {}): Promise<StartedSession> {
-    accept(vStart, "StartRequest", subjectRef === undefined || subjectRef === null ? {} : { subject_ref: subjectRef });
-    const req: { kind: "SESSION_START"; subject_ref?: string } = { kind: "SESSION_START" }; // 세션 ID는 서버가 발급해 응답에 싣는다(2.2.0, D106)
-    if (subjectRef !== undefined && subjectRef !== null) req.subject_ref = subjectRef;
+  /** 활성 릴리스의 문진표 목록(I10 GET /v1/question-sets, 계약 3.3.0). 기기 인증은 /sessions와 같다. 읽기라 일시 장애는 재시도한다. */
+  async listQuestionSets(co: CallOptions = {}): Promise<QuestionSetItem[]> {
+    const r = await this.call<{ items: QuestionSetItem[] }>("GET", `/question-sets`, undefined, true, co, body(vQsList, "QuestionSetListBody"));
+    return r.items;
+  }
+
+  /** subjectRef·questionSetId가 있으면 본문에 넣는다(없으면 필드 생략). 형식이 틀리면 보내지 않는다. */
+  startSession(subjectRef?: string | null, questionSetId?: string | null, co: CallOptions = {}): Promise<StartedSession> {
+    const given = { ...(subjectRef == null ? {} : { subject_ref: subjectRef }), ...(questionSetId == null ? {} : { question_set_id: questionSetId }) };
+    accept(vStart, "StartRequest", given);
+    const req: { kind: "SESSION_START"; subject_ref?: string; question_set_id?: string } = { kind: "SESSION_START", ...given }; // 세션 ID는 서버가 발급해 응답에 싣는다(2.2.0, D106)
     // 아직 ID가 없으므로 세션별 직렬 큐에 넣지 않는다(이후 요청부터 응답의 ID로 큐가 생긴다).
     accept(sMessage, "FrontendMessage(문진 스키마)", req);
     return this.call<StartedSession>("POST", `/sessions`, req, true, co, body(vStarted, "StartedBody"));
@@ -284,7 +292,7 @@ export class PublicApiClient {
     const timer = this.timers.setTimeout(() => ctl.abort(), this.timeoutMs);
     try {
       const headers: Record<string, string> = reqBody === undefined ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" };
-      const token = /^\/sessions(\/|$)/.test(path) ? this.deviceToken() : null;
+      const token = /^\/(sessions|question-sets)(\/|$)/.test(path) ? this.deviceToken() : null;
       if (token) headers.authorization = `Bearer ${token}`;
       const res = await this.f(this.base + path, {
         method,

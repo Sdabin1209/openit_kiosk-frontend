@@ -6,7 +6,7 @@ import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import { REQUEST_TIMEOUT_MS, DEFAULT_RETRY } from "../src/config.ts";
 import { MSG } from "../src/components/patient_copy.ts";
-import { fakeTimers, hang, json, settle, started } from "./helpers.ts";
+import { fakeTimers, hang, json, settle, started, qsFetch } from "./helpers.ts";
 
 const NIELSEN_PROGRESS_MS = 1_000, NIELSEN_NOTICE_MS = 10_000;
 
@@ -14,11 +14,11 @@ const NIELSEN_PROGRESS_MS = 1_000, NIELSEN_NOTICE_MS = 10_000;
 async function rig(utterance: (init: RequestInit) => Promise<Response>) {
   const q: Array<{ fn: () => void; ms: number }> = [];
   const timers = { set: (fn: () => void, ms: number) => { const t = { fn, ms }; q.push(t); return t; }, clear: (h: unknown) => { const i = q.indexOf(h as any); if (i >= 0) q.splice(i, 1); } };
-  const api = createPublicApiClient({ timers: fakeTimers(), now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ timers: fakeTimers(), now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: qsFetch((async (_u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", state: "ACTIVE", resume_text: null });
     const b = JSON.parse(init.body as string);
     return b.kind === "SESSION_START" ? started() : utterance(init);
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api, { idleMs: 0, timers });
   await flow.start();
   return { flow, q };

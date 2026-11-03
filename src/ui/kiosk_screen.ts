@@ -13,6 +13,7 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const text = document.createElement("p");
 const controls = $("controls");
 const title = $("title"), action = $("action") as HTMLButtonElement;
+const choicesBox = $("choices");
 const extendBtn = $("extend") as HTMLButtonElement, secondary = $("secondary") as HTMLButtonElement, staffBtn = $("staffcall") as HTMLButtonElement, notice = $("notice"), manual = $("manual"), countdown = $("countdown"), input = $("manual-input") as HTMLInputElement;
 
 let onAction: () => void = () => {};
@@ -57,6 +58,9 @@ function render(v: KioskView) {
   // 정지 사유는 글자와 data 속성으로 구분한다(색에 의존하지 않는다). 시험·접근성 도구용.
   if (v.state === "WAITING_STAFF" && v.pauseReason) document.body.dataset.pauseReason = v.pauseReason; else delete document.body.dataset.pauseReason;
   const listening = v.state === "LISTENING" || v.state === "REPEAT_PROMPT";
+  const choosing = v.state === "CHOOSING";
+  choicesBox.hidden = !choosing;
+  if (!choosing) choicesBox.replaceChildren();
   manual.hidden = !listening || (stt.available() && !v.textFallback);
   if (!listening) { input.value = ""; stt.cancel(); } // 미전송 입력을 남기지 않고, 듣고 있던 마이크도 멈춘다
   action.hidden = false;
@@ -64,10 +68,11 @@ function render(v: KioskView) {
   secondary.hidden = true; onSecondary = null; action.disabled = false; text.textContent = v.text ?? "";
   const notes: string[] = [];
   if (v.startNotice === "NO_SUBJECT_REF") notes.push(MSG.NOTICE_NO_SUBJECT_REF.text);
+  if (v.chooseNotice === "QUESTION_SET_NOT_FOUND") notes.push(MSG.NOTICE_QUESTION_SET_NOT_FOUND.text);
   if (listening && stt.remote) notes.push(REMOTE_STT_NOTICE); // 외부 인식 허용 설정을 켠 기기에서만
   if (listening && !stt.available() && !stt.remote) notes.push(NO_STT_NOTICE);
   // 유휴 만료 경고(WCAG 2.2.1): 안내(role=status)와 연장 버튼. 초점을 버튼으로 옮겨 키보드·스위치 사용자가 바로 누를 수 있게 한다.
-  const warning = v.idleWarnS !== undefined && listening;
+  const warning = v.idleWarnS !== undefined && (listening || choosing);
   if (warning) notes.push(fill(MSG.IDLE_WARNING, { n: v.idleWarnS! }));
   extendBtn.hidden = !warning; extendBtn.textContent = MSG.BTN_IDLE_EXTEND.text;
   if (warning && !wasWarning) extendBtn.focus();
@@ -78,6 +83,14 @@ function render(v: KioskView) {
   switch (v.state) {
     case "IDLE": void stt.recheck().then((did) => { if (did && flow.current.state === "IDLE") render(flow.current); }); // 언어 팩 설치 시간 초과였으면 새로고침 없이 다시 확인
       title.textContent = MSG.TITLE_IDLE.text; action.textContent = MSG.BTN_START.text; onAction = () => void flow.start(); break;
+    case "CHOOSING": {
+      // 문진표 선택: 제목 버튼 목록(기존 버튼과 같은 글자 크기·터치 크기, 목록 항목은 서버가 준 제목). 처음으로 돌아가는 길을 둔다.
+      title.textContent = MSG.TITLE_CHOOSE.text; action.hidden = true; text.textContent = "";
+      const btns = v.choices!.map((c) => { const b = document.createElement("button"); b.type = "button"; b.textContent = c.title; b.dataset.questionSetId = c.id; b.addEventListener("click", () => { flow.touch(); void flow.choose(c.id); }); return b; });
+      choicesBox.replaceChildren(...btns);
+      secondary.hidden = false; secondary.textContent = MSG.BTN_HOME.text; onSecondary = () => flow.cancelChoose();
+      if (lastState !== "CHOOSING") btns[0]?.focus();
+      break; }
     case "STARTING": title.textContent = MSG.TITLE_WAIT.text; action.hidden = true; waitingButtons(v); break;
     case "LISTENING":
       if (!v.text) text.textContent = MSG.BODY_KEEP_TALKING.text; // 응답 문장이 없는 정상 응답에서 빈 화면을 막는다
@@ -102,6 +115,7 @@ function render(v: KioskView) {
     case "CALL_STAFF":
       title.textContent = MSG.TITLE_CALL_STAFF.text;
       text.textContent = v.callStaffReason === "AUTH" ? MSG.BODY_AUTH_DENIED.text
+        : v.callStaffReason === "NO_QUESTION_SET" ? MSG.BODY_NO_QUESTION_SET.text
         : v.callStaffReason === "BAD_SUBJECT_REF" ? MSG.BODY_BAD_SUBJECT_REF.text
         : v.callStaffReason === "REPEAT_LIMIT" ? MSG.BODY_REPEAT_LIMIT.text
         : MSG.BODY_CALL_STAFF_DEFAULT.text; action.hidden = false; action.textContent = MSG.BTN_HOME.text;
@@ -150,7 +164,7 @@ function render(v: KioskView) {
   if (v.state === "CALL_STAFF" && lastState !== "CALL_STAFF") (action as HTMLElement).focus();
   lastState = v.state;
   // 보이는 입력·버튼·안내가 하나도 없으면 아래 영역 자체를 감춘다(빈 띠가 고장처럼 보이지 않게).
-  controls.hidden = [action, extendBtn, staffBtn, secondary].every((b) => b.hidden) && manual.hidden && countdown.hidden && notice.textContent === "";
+  controls.hidden = [action, extendBtn, staffBtn, secondary].every((b) => b.hidden) && manual.hidden && countdown.hidden && notice.textContent === "" && choicesBox.hidden;
   paint();
 }
 let wasWarning = false;

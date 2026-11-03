@@ -9,7 +9,7 @@ import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createStartHolder } from "../src/components/start_values.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import * as clinical from "../src/config.ts";
-import { json, ok, settle, started } from "./helpers.ts";
+import { json, ok, settle, started, qsFetch } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
 const RISK = "확인이 필요합니다. 직원이 도와드릴 때까지 기다려 주세요.";
@@ -18,13 +18,13 @@ const sig = (staff_alert: string, write_committed = "COMMITTED") => ({ session_i
 /** 가짜 서버. state는 GET /state 응답, turn은 발화 응답. 호출 본문을 기록한다. */
 function server(o: { turn?: () => Response; state?: () => Response; end?: () => Response } = {}) {
   const bodies: any[] = []; let gets = 0;
-  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: qsFetch((async (_u: string, init: RequestInit) => {
     if (init.method === "GET") { gets++; return (o.state ?? (() => json({ session_id: "s", state: "ACTIVE", resume_text: null })))(); }
     const b = JSON.parse(init.body as string); bodies.push(b);
     if (b.kind === "SESSION_START") return started("첫 질문");
     if (b.kind === "SESSION_END") return (o.end ?? (() => ok(null)))();
     return (o.turn ?? (() => ok("다음 질문")))();
-  }) as any });
+  }) as any) });
   return { api, bodies, gets: () => gets };
 }
 function fakeTimers() {
@@ -35,7 +35,7 @@ const manualSleep = () => { const s: Array<() => void> = []; return { sleep: () 
 
 // ---- P1 ----
 test("P1: 한 번 쓴 환자 참조는 다음 시작에 다시 쓰이지 않는다(기기 토큰은 유지)", async () => {
-  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:1", subjectInvalid: false }));
+  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:1", subjectInvalid: false, questionSetId: null }));
   const a = await h.take();
   assert.equal((await h.take()).subjectRef, "visit:1", "시작이 접수되기 전에는 비우지 않는다(실패한 시작을 같은 참조로 다시 할 수 있다)");
   a.confirm!(); // 시작이 서버에 접수됨
@@ -48,7 +48,7 @@ test("P1: 한 번 쓴 환자 참조는 다음 시작에 다시 쓰이지 않는�
 
 test("P1: 두 번째 환자 세션은 참조 없이 시작하고 화면 표시(startNotice)가 켜진다", async () => {
   const { api, bodies } = server();
-  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:1", subjectInvalid: false }));
+  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:1", subjectInvalid: false, questionSetId: null }));
   const flow = createKioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
   await flow.start();
   assert.equal(bodies[0].subject_ref, "visit:1");
@@ -195,14 +195,14 @@ test("임상 판단 값은 config.ts 한 곳에 있고 사용자 결정 U10 표�
 /** 가짜 서버(요청마다 제어 가능). hold가 켜지면 해당 종류 요청은 끝나지 않는다. */
 function rig(o: { hold?: "SESSION_START" | "UTTERANCE"; turn?: () => Response; endFail?: boolean } = {}) {
   const kinds: string[] = []; const t = fakeTimers();
-  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: ((_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: qsFetch(((_u: string, init: RequestInit) => {
     if (init.method === "GET") return Promise.resolve(json({ session_id: "s", state: "PAUSED_RISK", resume_text: null }));
     const b = JSON.parse(init.body as string); kinds.push(b.kind);
     if (o.hold === b.kind) return new Promise<Response>(() => {});
     if (b.kind === "SESSION_START") return Promise.resolve(started("첫 질문"));
     if (b.kind === "SESSION_END") return Promise.resolve(o.endFail ? json({ code: "UNAVAILABLE" }, 503) : ok(null));
     return Promise.resolve((o.turn ?? (() => ok("다음 질문")))());
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api, { idleMs: 60_000, timers: t.timers, sleep: () => new Promise(() => {}) });
   return { flow, kinds, t, ends: () => kinds.filter((k) => k === "SESSION_END").length };
 }
@@ -264,12 +264,12 @@ test("K-1: DELIVERY_FAILED 화면은 오래 두어도 IDLE로 가지 않고 서�
 // ---- K-2 ----
 test("K-2: 시작이 실패하면 환자 참조가 남아 같은 참조로 다시 시작하고, 성공한 뒤에는 다음 시작에 쓰이지 않는다", async () => {
   const bodies: any[] = []; let fail = true;
-  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: () => 0, sleep: async () => {}, retry: { maxAttempts: 1 }, fetch: qsFetch((async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string); bodies.push(b);
     if (b.kind === "SESSION_START" && fail) return json({ code: "UNAVAILABLE" }, 503);
     return b.kind === "SESSION_START" ? started("질문") : ok("질문");
-  }) as any });
-  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:9", subjectInvalid: false }));
+  }) as any) });
+  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:9", subjectInvalid: false, questionSetId: null }));
   const flow = createKioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
   await flow.start();
   assert.equal(flow.current.state, "CALL_STAFF");

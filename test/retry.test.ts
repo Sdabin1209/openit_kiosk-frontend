@@ -8,7 +8,7 @@ import { DEFAULT_RETRY } from "../src/config.ts";
 const backoffMs = (n: number, _p: unknown = DEFAULT_RETRY, rand: () => number = Math.random) => createRetryPolicy(DEFAULT_RETRY, rand).backoffMs(n);
 const waitMs = (n: number, retryAfterMs: number | null) => createRetryPolicy(DEFAULT_RETRY).decide({ attempt: n, retryAfterMs, elapsedMs: 0 }).waitMs;
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { json, ok, settle, waitFor, started, timesOut } from "./helpers.ts";
+import { json, ok, settle, waitFor, started, timesOut, qsFetch } from "./helpers.ts";
 
 /** 가상 시계: sleep이 시계를 앞으로 보낸다. 예산 계산을 실제 대기 없이 시험한다. */
 function clock() {
@@ -20,11 +20,11 @@ const err = (status: number, headers: Record<string, string> = {}, code = "UNAVA
 const inProgress = (headers: Record<string, string> = {}) => err(409, headers, "CONFLICT", { reason: "TURN_IN_PROGRESS" });
 function make(responses: Array<() => Response | Promise<Response>>, extra: Record<string, unknown> = {}) {
   const c = clock(); const turnIds: string[] = []; let n = 0;
-  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, rand: () => 0.5, ...extra, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, rand: () => 0.5, ...extra, fetch: qsFetch((async (_u: string, init: RequestInit) => {
     turnIds.push(JSON.parse(init.body as string).turn_id);
     const r = responses[Math.min(n++, responses.length - 1)]!;
     return r();
-  }) as any });
+  }) as any) });
   return { api, c, turnIds, count: () => n };
 }
 
@@ -119,14 +119,14 @@ test("지터를 주입하지 않으면 키오스크마다 대기가 달라진다
 
 test("무응답(타임아웃)도 예산에 들어가고 소진하면 직원 호출", async () => {
   const c = clock();
-  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, rand: () => 1 - Number.EPSILON, fetch: (() => timesOut()) as any }); // 가짜 의존이 즉시 시간 초과를 낸다(시간을 재지 않는다)
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, rand: () => 1 - Number.EPSILON, fetch: qsFetch((() => timesOut()) as any) }); // 가짜 의존이 즉시 시간 초과를 낸다(시간을 재지 않는다)
   await assert.rejects(api.sendUtterance("s1", "x", "t"), CallStaffError);
   assert.ok(c.waits.length >= 4);
 });
 
 test("취소 신호를 받으면 대기 중에도 바로 끝나고 더 보내지 않는다", async () => {
   const ctl = new AbortController(); let n = 0;
-  const api = createPublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: (async () => { n++; return err(503); }) as any });
+  const api = createPublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: qsFetch((async () => { n++; return err(503); }) as any) });
   const p = api.sendUtterance("s1", "x", "t", { signal: ctl.signal, onRetry: () => queueMicrotask(() => ctl.abort()) });
   await assert.rejects(p, AbortedError);
   assert.equal(n, 1);
@@ -138,11 +138,11 @@ const say = (t: string) => ({ text: t, confidence: 0.9 });
 test("흐름: 503 재시도 중에는 SENDING 상태에 retrying 표시, 성공하면 LISTENING", async () => {
   let n = 0; const seen: any[] = [];
   const c = clock();
-  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string);
     if (b.kind === "SESSION_START") return started("질문");
     return ++n < 3 ? err(503) : ok("다음");
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api);
   flow.subscribe((v) => seen.push({ ...v }));
   await flow.start(); await flow.hear(say("네"));
@@ -153,8 +153,8 @@ test("흐름: 503 재시도 중에는 SENDING 상태에 retrying 표시, 성공�
 
 test("흐름: 504 계속 -> 예산 소진 뒤 직원 호출(RETRY_EXHAUSTED)", async () => {
   const c = clock();
-  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) =>
-    JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : err(504)) as any });
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async (_u: string, init: RequestInit) =>
+    JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : err(504)) as any) });
   const flow = createKioskFlow(api);
   await flow.start(); await flow.hear(say("네"));
   assert.equal(flow.current.state, "CALL_STAFF");
@@ -163,10 +163,10 @@ test("흐름: 504 계속 -> 예산 소진 뒤 직원 호출(RETRY_EXHAUSTED)", a
 
 test("흐름: 재시도 중 환자가 직원 호출을 누르면 즉시 직원 호출 화면, 더 보내지 않는다", async () => {
   let n = 0;
-  const api = createPublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: qsFetch((async (_u: string, init: RequestInit) => {
     if (JSON.parse(init.body as string).kind === "SESSION_START") return started("질문");
     n++; return err(503);
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api);
   await flow.start();
   const p = flow.hear(say("네"));
@@ -182,11 +182,11 @@ test("흐름: 재시도 중 환자가 직원 호출을 누르면 즉시 직원 �
 
 test("흐름: 재시도 중 그만하기(end)는 재시도를 끊고 종료한다", async () => {
   const kinds: string[] = [];
-  const api = createPublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ sleep: () => new Promise<void>(() => {}), fetch: qsFetch((async (_u: string, init: RequestInit) => {
     const k = JSON.parse(init.body as string).kind; kinds.push(k);
     if (k === "UTTERANCE") return err(503);
     return k === "SESSION_START" ? started() : ok(k === "SESSION_END" ? null : "질문");
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api);
   await flow.start();
   const p = flow.hear(say("네"));
@@ -198,11 +198,11 @@ test("흐름: 재시도 중 그만하기(end)는 재시도를 끊고 종료한�
 
 test("흐름: 재시도 소진까지 모든 시도가 같은 turn_id를 쓴다", async () => {
   const c = clock(); const ids: string[] = [];
-  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async (_u: string, init: RequestInit) => {
     const b = JSON.parse(init.body as string);
     if (b.kind === "SESSION_START") return started("질문");
     ids.push(b.turn_id); return err(503);
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api);
   await flow.start(); await flow.hear(say("네"));
   assert.equal(flow.current.state, "CALL_STAFF");
@@ -211,13 +211,13 @@ test("흐름: 재시도 소진까지 모든 시도가 같은 turn_id를 쓴다",
 
 test("흐름: reason 없는 409는 WAITING_STAFF(기존), TURN_IN_PROGRESS는 대기 뒤 성공", async () => {
   const c = clock(); let mode: "plain" | "busy" = "plain"; let n = 0;
-  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async (u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", state: mode === "plain" ? "PAUSED_RISK" : "ACTIVE", resume_text: null });
     const b = JSON.parse(init.body as string);
     if (b.kind === "SESSION_START") return started("질문");
     if (mode === "plain") return err(409, {}, "CONFLICT");
     return ++n < 2 ? inProgress({ "retry-after": "1" }) : ok("다음");
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api, { pollMs: 1000, sleep: () => new Promise(() => {}) });
   await flow.start(); await flow.hear(say("네"));
   assert.equal(flow.current.state, "WAITING_STAFF");
@@ -252,8 +252,8 @@ for (const [name, mk] of bad) {
 
 test("깨진 응답이 계속되면 예산 소진 뒤 직원 호출이고, 값을 지어내 LISTENING으로 가지 않는다", async () => {
   const c = clock();
-  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async (_u: string, init: RequestInit) =>
-    JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : raw("<html>")()) as any });
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async (_u: string, init: RequestInit) =>
+    JSON.parse(init.body as string).kind === "SESSION_START" ? started("질문") : raw("<html>")()) as any) });
   const flow = createKioskFlow(api);
   await flow.start(); await flow.hear(say("네"));
   assert.equal(flow.current.state, "CALL_STAFF");
@@ -271,8 +271,8 @@ test("정상 응답 모양(신호 3종, null 응답 문장)은 그대로 통과�
 test("상태 폴링 응답이 깨졌으면 재시도하고 그래도 안 되면 실패(상태를 지어내지 않는다)", async () => {
   let n = 0;
   const c = clock();
-  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async () => (++n < 2 ? new Response("<html>") : json({ session_id: "s1", state: "ACTIVE", resume_text: null }))) as any });
+  const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async () => (++n < 2 ? new Response("<html>") : json({ session_id: "s1", state: "ACTIVE", resume_text: null }))) as any) });
   assert.equal((await api.getSessionState("s1")).state, "ACTIVE");
-  const api2 = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: (async () => json({ ok: true })) as any });
+  const api2 = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async () => json({ ok: true })) as any) });
   await assert.rejects(api2.getSessionState("s1"), CallStaffError);
 });

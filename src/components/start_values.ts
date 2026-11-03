@@ -1,4 +1,4 @@
-// 시작 값 컴포넌트: 키오스크 시작 값(환자 참조 subject_ref, 기기 토큰, 외부 음성 인식 허용)을 정한다(PUBLIC_API.md 추가 인터페이스 A, F).
+// 시작 값 컴포넌트: 키오스크 시작 값(환자 참조 subject_ref, 문진표 ID question_set_id, 기기 토큰, 외부 음성 인식 허용)을 정한다(PUBLIC_API.md 추가 인터페이스 A, F).
 // 입력 StartInput(주소창 조각 문자열 + 기기 설정 본문 또는 null) -> 출력 KioskStart. 읽어 오는 일(주소창, /config.json)은 link_device_config_receive가 한다.
 // 두 값 모두 메모리에만 둔다. 로그·콘솔·스토리지에 쓰지 않고, 쿼리 문자열은 서버 로그에 남으므로 쓰지 않는다.
 // 조각과 설정은 계약 스키마(DeviceConfig, KioskStartFragment)로 검증한다: 모르는 키가 있으면 그 출처를 통째로 쓰지 않는다. 조각이 설정보다 먼저다.
@@ -46,33 +46,36 @@ function fromFragment(hash: string) {
   const raw = parseFragment(hash);
   const frag = usableKeys(vFragment, raw);
   // 환자 참조가 있었는데 쓸 수 없게 됐으면(형식 오류, 조각 전체 거부) 참조 없이 시작하지 않고 직원을 부르게 한다.
-  return { device: frag.ok.device, subject: frag.ok.subject_ref, subjectBad: frag.bad.has("subject_ref") || (frag.whole && "subject_ref" in raw) };
+  return { device: frag.ok.device, subject: frag.ok.subject_ref, questionSet: frag.ok.question_set_id, subjectBad: frag.bad.has("subject_ref") || (frag.whole && "subject_ref" in raw) };
 }
 
-/** 조각만으로 두 값이 모두 정해졌으면 기기 설정을 읽을 필요가 없다. */
+/** 조각만으로 세 값이 모두 정해졌으면 기기 설정을 읽을 필요가 없다. */
 export function needsConfig(hash: string): boolean {
   const f = fromFragment(hash);
-  return f.device === undefined || f.subject === undefined;
+  return f.device === undefined || f.subject === undefined || f.questionSet === undefined;
 }
 
 export function resolveStart(input: StartInput): KioskStart {
   if (!vStartInput(input)) throw new Error("StartInput schema violation");
   const f = fromFragment(input.hash);
-  let { device, subject, subjectBad } = f;
+  let { device, subject, subjectBad, questionSet } = f;
   let allowRemote = false;
-  if (input.config !== null && (device === undefined || subject === undefined)) {
+  if (input.config !== null && (device === undefined || subject === undefined || questionSet === undefined)) {
     const raw = input.config, c = usableKeys(vDeviceConfig, raw);
     if (device === undefined && typeof c.ok.device_token === "string") device = c.ok.device_token;
     if (subject === undefined && !subjectBad) {
       if (typeof c.ok.subject_ref === "string") subject = c.ok.subject_ref;
       else if (c.bad.has("subject_ref") || (c.whole && typeof raw === "object" && raw !== null && "subject_ref" in raw)) subjectBad = true;
     }
+    // 문진표 ID도 조각이 먼저, 없을 때만 기기 설정(계약 3.3.0). 형식이 틀리면 그 키만 버려 활성 목록에서 정한다(환자 참조와 달리 직원을 부르지 않는다).
+    if (questionSet === undefined && typeof c.ok.question_set_id === "string") questionSet = c.ok.question_set_id;
     if (c.ok.allow_remote_stt === true) allowRemote = true;
   }
   const out: KioskStart = {
     deviceToken: typeof device === "string" ? device : null,
     subjectRef: typeof subject === "string" ? subject : null,
     subjectInvalid: subjectBad,
+    questionSetId: typeof questionSet === "string" ? questionSet : null,
     ...(allowRemote ? { allowRemoteStt: true as const } : {}),
   };
   if (!vKioskStart(out)) throw new Error("KioskStart schema violation");
@@ -86,7 +89,7 @@ export function resolveStart(input: StartInput): KioskStart {
  * 접수 연동이 기기당 고정 참조인지 환자마다 새 URL인지는 사용자 확인 대기이며, 그 전의 안전한 기본이다.
  */
 export function createStartHolder(load: () => Promise<KioskStart>) {
-  const held: KioskStart = { deviceToken: null, subjectRef: null, subjectInvalid: false };
+  const held: KioskStart = { deviceToken: null, subjectRef: null, subjectInvalid: false, questionSetId: null };
   const ready = load().then((s) => { Object.assign(held, s); return held; });
   return {
     /** 기기 설정이 읽힌 뒤 풀리는 약속(STT 설정 등에 쓴다). 환자 참조는 담지 않고 take()만 소비한다. */
@@ -99,7 +102,8 @@ export function createStartHolder(load: () => Promise<KioskStart>) {
       const ref = held.subjectRef, invalid = held.subjectInvalid;
       // 비우는 것은 시작이 서버에 접수된 뒤(confirm)다. 시작이 실패하면 같은 참조로 다시 시작할 수 있고, 성공한 시작에 쓴 값은 다음 시작에 다시 나오지 않는다.
       const confirm = () => { if (held.subjectRef === ref) held.subjectRef = null; if (held.subjectInvalid === invalid) held.subjectInvalid = false; };
-      return { deviceToken: held.deviceToken, subjectRef: ref, subjectInvalid: invalid, ...(held.allowRemoteStt ? { allowRemoteStt: true as const } : {}), confirm };
+      // 문진표 ID는 기기에 배치된 기본값이라 환자 참조와 달리 비우지 않는다(다음 환자도 같은 문진표).
+      return { deviceToken: held.deviceToken, subjectRef: ref, subjectInvalid: invalid, questionSetId: held.questionSetId, ...(held.allowRemoteStt ? { allowRemoteStt: true as const } : {}), confirm };
     },
   };
 }

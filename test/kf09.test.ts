@@ -12,20 +12,20 @@ import { DEFAULT_RETRY } from "../src/config.ts";
 const policy = createRetryPolicy(DEFAULT_RETRY);
 const retry = { isRetryable: (s: number, r: string | null) => policy.classify({ status: s, reason: r }).retryable, isOutcomeUnknown: (s: number) => policy.classify({ status: s, reason: null }).outcomeUnknown };
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { json, ok, started } from "./helpers.ts";
+import { json, ok, started, qsFetch } from "./helpers.ts";
 
 const DF = { session_id: "s", write_committed: "COMMITTED", staff_alert: "DELIVERY_FAILED" };
 const err = (status: number, code = "UNAVAILABLE", details?: object) =>
   new Response(JSON.stringify({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message: "x", retryable: false, ...(details ? { details } : {}) }), { status, headers: { "content-type": "application/json" } });
 function make(route: (path: string, body: any) => Response) {
   const calls: Array<{ path: string; body: any }> = [];
-  const api = createPublicApiClient({ retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: (async (u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 2 }, sleep: async () => {}, fetch: qsFetch((async (u: string, init: RequestInit) => {
     const path = new URL(u, "http://x").pathname.replace(/^\/v1/, "");
     if (init.method === "GET") return json({ session_id: "s", state: "PAUSED_RISK", resume_text: null });
     const body = JSON.parse(init.body as string); calls.push({ path, body });
     if (path.includes("/staff-call/")) return route(path, body);
     return body.kind === "SESSION_START" ? started("시작") : ok("대기", DF);
-  }) as any });
+  }) as any) });
   const flow = createKioskFlow(api, { pollMs: 1000, sleep: () => new Promise<void>(() => {}) });
   return { flow, sc: () => calls.filter((c) => c.path.includes("/staff-call/")) };
 }

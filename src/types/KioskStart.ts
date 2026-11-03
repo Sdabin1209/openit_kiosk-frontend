@@ -15,4 +15,8 @@ subjectInvalid: boolean
  * 기기 설정이 켠 때만 있다(기본 꺼짐, D88 U3)
  */
 allowRemoteStt?: true
+/**
+ * 시작 조각 또는 기기 설정이 정한 문진표 ID(조각이 먼저). 없으면 null: 활성 목록에서 정한다
+ */
+questionSetId: (string | null)
 }

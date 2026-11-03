@@ -8,7 +8,7 @@ import { ApiError } from "../src/components/link_public_api_send.ts";
 import { loadKioskStart } from "../src/wiring/kiosk.ts";
 import { parseFragment, type KioskStart } from "../src/components/start_values.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
-import { startMock, json, ok, started } from "./helpers.ts";
+import { startMock, json, ok, started, qsFetch } from "./helpers.ts";
 
 const TOKEN = "dev-tok-FAKE-123";
 const REF = "visit:2026/10#27=a+b.c_d-e";
@@ -22,8 +22,8 @@ const win = (hash: string, search = "") => {
 
 test("시작 URL 조각: subject_ref·device를 읽고 주소창에서 지운다('+' 보존)", async () => {
   const w = win(`#device=${TOKEN}&subject_ref=${encodeURIComponent(REF)}`, "?x=1");
-  const s = await loadKioskStart(w, (() => { throw new Error("조각이 있으면 설정을 읽지 않는다"); }) as any);
-  assert.deepEqual(s, { deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false });
+  const s = await loadKioskStart(w, (async () => json({}, 404)) as any); // 문진표 ID가 조각에 없으면 기기 설정도 읽는다(없음 404)
+  assert.deepEqual(s, { deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false, questionSetId: null });
   assert.deepEqual(w.calls, ["/?x=1"]); // 조각만 지워진다
   assert.deepEqual(parseFragment("#subject_ref=a+b=c"), { subject_ref: "a+b=c" });
 });
@@ -31,10 +31,10 @@ test("시작 URL 조각: subject_ref·device를 읽고 주소창에서 지운다
 test("조각이 없으면 /config.json(device_token, subject_ref)에서 받고, 없으면 null", async () => {
   const seen: string[] = [];
   const s = await loadKioskStart(win(""), (async (u: string) => { seen.push(u); return json({ device_token: TOKEN, subject_ref: "p1" }); }) as any);
-  assert.deepEqual(s, { deviceToken: TOKEN, subjectRef: "p1", subjectInvalid: false });
+  assert.deepEqual(s, { deviceToken: TOKEN, subjectRef: "p1", subjectInvalid: false, questionSetId: null });
   assert.deepEqual(seen, ["/config.json"]); // 쿼리 문자열 없음
   const none = await loadKioskStart(win(""), (async () => json({}, 404)) as any);
-  assert.deepEqual(none, { deviceToken: null, subjectRef: null, subjectInvalid: false });
+  assert.deepEqual(none, { deviceToken: null, subjectRef: null, subjectInvalid: false, questionSetId: null });
   const broken = await loadKioskStart(win(""), (async () => new Response("<html>")) as any);
   assert.equal(broken.deviceToken, null);
 });
@@ -59,7 +59,7 @@ function capture() {
 
 test("세션 시작 본문에 subject_ref를 넣고, 없으면 필드를 생략하고, 틀리면 보내지 않는다", async () => {
   const { calls, f } = capture();
-  const c = createPublicApiClient({ ...fast, fetch: f });
+  const c = createPublicApiClient({ ...fast, fetch: qsFetch(f) });
   (await c.startSession(REF)).session_id;
   (await c.startSession()).session_id;
   (await c.startSession(null)).session_id;
@@ -73,7 +73,7 @@ test("세션 시작 본문에 subject_ref를 넣고, 없으면 필드를 생략�
 test("기기 토큰은 /sessions* 요청에만 Authorization: Bearer로 간다(직원 경로·없을 때는 없음)", async () => {
   const { calls, f } = capture();
   let tok: string | null = TOKEN;
-  const c = createPublicApiClient({ ...fast, fetch: f, deviceToken: () => tok });
+  const c = createPublicApiClient({ ...fast, fetch: qsFetch(f), deviceToken: () => tok });
   const SID_s1 = (await c.startSession()).session_id; await c.sendUtterance(SID_s1, "가짜"); await c.getSessionState(SID_s1).catch(() => {}); await c.endSession(SID_s1);
   await createStaffApi(c).listAlerts("OPEN").catch(() => {});
   await c.intervene(SID_s1, "RESUME", "t1");
@@ -87,19 +87,19 @@ test("기기 토큰은 /sessions* 요청에만 Authorization: Bearer로 간다(�
 
 test("개입 결정 본문에 직원 ID가 없다(E절: 게이트웨이 헤더)", async () => {
   const { calls, f } = capture();
-  await createStaffApi(createPublicApiClient({ ...fast, fetch: f })).intervene("s1", "END", "t1");
+  await createStaffApi(createPublicApiClient({ ...fast, fetch: qsFetch(f) })).intervene("s1", "END", "t1");
   assert.deepEqual(Object.keys(calls[0].body).sort(), ["decision", "session_id", "turn_id"]);
   assert.equal(calls[0].headers["x-openit-user"], undefined);
 });
 
 function flowWith(start: KioskStart, handler: (b: any) => Response = (b) => b.kind === "SESSION_START" ? started("질문") : ok("질문")) {
   const calls: any[] = [];
-  const api = createPublicApiClient({ ...fast, deviceToken: () => start.deviceToken, fetch: (async (_u: string, init: RequestInit) => { calls.push({ body: JSON.parse(init.body as string), auth: (init.headers as any).authorization }); return handler(calls.at(-1).body); }) as any });
+  const api = createPublicApiClient({ ...fast, deviceToken: () => start.deviceToken, fetch: qsFetch((async (_u: string, init: RequestInit) => { calls.push({ body: JSON.parse(init.body as string), auth: (init.headers as any).authorization }); return handler(calls.at(-1).body); }) as any) });
   return { flow: createKioskFlow(api, { startValues: async () => start }), calls };
 }
 
 test("키오스크 흐름: 정상이면 subject_ref와 토큰이 시작 요청에 실린다", async () => {
-  const { flow, calls } = flowWith({ deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false });
+  const { flow, calls } = flowWith({ deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false, questionSetId: null });
   await flow.start();
   assert.equal(flow.current.state, "LISTENING");
   assert.equal(calls[0].body.subject_ref, REF);
@@ -107,7 +107,7 @@ test("키오스크 흐름: 정상이면 subject_ref와 토큰이 시작 요청�
 });
 
 test("키오스크 흐름: 기기 토큰이 없어도 세션이 시작된다(2.3.0: 기기 인증은 게이트웨이 mTLS, 자격을 보내지 않는다)", async () => {
-  const { flow, calls } = flowWith({ deviceToken: null, subjectRef: null, subjectInvalid: false });
+  const { flow, calls } = flowWith({ deviceToken: null, subjectRef: null, subjectInvalid: false, questionSetId: null });
   await flow.start();
   assert.equal(flow.current.state, "LISTENING");
   assert.equal(calls.length, 1);
@@ -115,18 +115,18 @@ test("키오스크 흐름: 기기 토큰이 없어도 세션이 시작된다(2.3
 });
 
 test("키오스크 흐름: subject_ref 형식 오류면 보내지 않고 직원 호출", async () => {
-  const { flow, calls } = flowWith({ deviceToken: TOKEN, subjectRef: null, subjectInvalid: true });
+  const { flow, calls } = flowWith({ deviceToken: TOKEN, subjectRef: null, subjectInvalid: true, questionSetId: null });
   await flow.start();
   assert.deepEqual([flow.current.state, flow.current.callStaffReason], ["CALL_STAFF", "BAD_SUBJECT_REF"]);
   assert.equal(calls.length, 0);
 });
 
 test("키오스크 흐름: 서버 401은 인증 거부, 서버가 subject_ref를 필수로 해 400이면 직원 호출", async () => {
-  const a = flowWith({ deviceToken: TOKEN, subjectRef: null, subjectInvalid: false }, () => json({ code: "PERMISSION_DENIED" }, 401));
+  const a = flowWith({ deviceToken: TOKEN, subjectRef: null, subjectInvalid: false, questionSetId: null }, () => json({ code: "PERMISSION_DENIED" }, 401));
   await a.flow.start();
   assert.deepEqual([a.flow.current.state, a.flow.current.callStaffReason], ["CALL_STAFF", "AUTH"]);
   assert.equal(a.calls.length, 1);
-  const b = flowWith({ deviceToken: TOKEN, subjectRef: null, subjectInvalid: false }, () => json({ code: "INVALID_RECORD" }, 400));
+  const b = flowWith({ deviceToken: TOKEN, subjectRef: null, subjectInvalid: false, questionSetId: null }, () => json({ code: "INVALID_RECORD" }, 400));
   await b.flow.start();
   assert.equal(b.flow.current.state, "CALL_STAFF");
 });
@@ -186,7 +186,7 @@ test("토큰과 환자 참조가 콘솔·모의 서버 로그에 남지 않는�
   for (const k of Object.keys(orig) as (keyof typeof orig)[]) console[k] = (...a: unknown[]) => { out.push(a.map(String).join(" ")); };
   try {
     const api = createPublicApiClient({ baseUrl: m.base + "/v1", ...fast, deviceToken: () => TOKEN });
-    const flow = createKioskFlow(api, { startValues: async () => ({ deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false }) });
+    const flow = createKioskFlow(api, { startValues: async () => ({ deviceToken: TOKEN, subjectRef: REF, subjectInvalid: false, questionSetId: null }) });
     await flow.start(); await flow.hear({ text: "가짜 문장", confidence: 0.9 });
     const bad = createPublicApiClient({ baseUrl: m.base + "/v1", ...fast, deviceToken: () => "wrong" });
     await bad.startSession(REF).catch(() => {});

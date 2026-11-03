@@ -6,7 +6,7 @@ import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import { ChatLog, MAX_BUBBLES, type ConversationEvent } from "../src/components/chat_log.ts";
 import { renderChat } from "../src/ui/chat_view.ts";
-import { json, ok, settle, started, asStarted } from "./helpers.ts";
+import { json, ok, settle, started, asStarted, qsFetch } from "./helpers.ts";
 
 let JSDOM: any = null;
 const mod = "jsdom";
@@ -35,10 +35,10 @@ test("ChatLog: 상한을 넘으면 가장 오래된 것부터 버린다", () => 
 });
 
 function make(handler: (b: any) => Response, stateFn: () => any = () => ({ state: "ACTIVE", resume_text: null })) {
-  const api = createPublicApiClient({ retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: (async (_u: string, init: RequestInit) => {
+  const api = createPublicApiClient({ retry: { maxAttempts: 3 }, sleep: async () => {}, fetch: qsFetch((async (_u: string, init: RequestInit) => {
     if (init.method === "GET") return json({ session_id: "s", ...stateFn() });
     const b = JSON.parse(init.body as string); const res = handler(b); return b.kind === "SESSION_START" ? asStarted(res) : res;
-  }) as any });
+  }) as any) });
   const sleepers: Array<() => void> = [];
   const flow = createKioskFlow(api, { pollMs: 2, sleep: () => new Promise<void>((r) => sleepers.push(r)) });
   const chat = new ChatLog();
