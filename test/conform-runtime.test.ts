@@ -4,12 +4,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
+import { PIPELINE_SCHEMA_VERSION } from "../mock-server/app.ts";
 import { json, ok, started, noTimers } from "./helpers.ts";
 
 function clock() { let t = 0; return { now: () => t, sleep: async (ms: number) => { t += ms; } }; }
 const say = (text: string) => ({ text, confidence: 0.9 });
 const SETS = () => json({ items: [{ question_set_id: "general", title: "일반 문진", version: "1" }] });
-const deny = () => json({ pipeline_schema_version: "3.4", code: "PERMISSION_DENIED", message: "x", retryable: false }, 401);
+const deny = () => json({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code: "PERMISSION_DENIED", message: "x", retryable: false }, 401);
 // 입구 인증서 검증 실패·게이트웨이 정지에서 브라우저 fetch는 응답 없이 TypeError("Failed to fetch")를 낸다(서버는 이를 볼 수 없다, R10.6).
 const netFail = (): never => { throw new TypeError("Failed to fetch"); };
 
