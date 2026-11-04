@@ -50,5 +50,7 @@ PKG_VER="$(node -p "require('./package.json').version")"
 IMG_VER="$("$DOCKER" inspect -f '{{ index .Config.Labels "io.openit.app-version" }}' "$TAG" | tr -d '\r')"
 [ "$IMG_VER" = "$PKG_VER" ] || fail "라벨 io.openit.app-version=$IMG_VER 이 package.json version=$PKG_VER 과 다르다(Dockerfile ARG APP_VERSION을 맞추세요)"
 echo "label io.openit.app-version=$IMG_VER (package.json과 같음)"
-"$DOCKER" logs "$CTR" 2>&1 | grep -q '"uri"' || fail "표준 출력 로그 없음"
+# 왜 변수에 받아서 찾나: `docker logs | grep -q` 는 grep 이 첫 일치에서 닫으면 docker 가 SIGPIPE(141)로 끝나고 pipefail 이 그것을 실패로 본다(로그가 있어도 간헐 실패했다)
+LOGS="$("$DOCKER" logs "$CTR" 2>&1)"
+grep -q '"uri"' <<<"$LOGS" || fail "표준 출력 로그 없음"
 echo "SMOKE OK (uid=$USER_ID)"
