@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffAlertPage (패키지 버전 3.4.9) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffAlertPage (패키지 버전 3.4.11) */
 
 
 export interface StaffAlertPage {
