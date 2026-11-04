@@ -2,6 +2,8 @@
 # jsdom DOM 시험을 node 컨테이너 안에서 돌린다(호스트에 jsdom을 설치하지 않는다). 리포는 읽기 전용으로 마운트하고 컨테이너 안에 복사해 npm ci 한다.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# 왜: 전역 ~/.docker 의 자격 도우미에 기대지 않는다(scripts/docker-env.mjs 의 설명)
+eval "$(node "scripts/docker-env.mjs" --sh)"
 DOCKER="${DOCKER:-docker}"
 "$DOCKER" run --rm --init -v "$PWD":/src:ro node:24-bookworm-slim bash -c '
 set -e

@@ -7,13 +7,14 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
+import { dockerEnv } from "../scripts/docker-env.mjs";
 
 const gen = createRequire(import.meta.url)("../scripts/build-validators.gen.cjs");
 const PIN_BOUNDARY = readFileSync("Dockerfile", "utf8").match(/^ARG BOUNDARY_CONTRACT=(\S+)/m)![1]; // 이 영역이 고정한 계약 버전(U50: 요청이 이것과 다르면 진입점이 실패한다)
 const REV = spawnSync("git", ["rev-parse", "--short=7", "HEAD"], { encoding: "utf8" }).stdout.trim();
 const TAG = `kiosk-frontend-buildimg-test/kiosk-frontend:${REV}-${process.pid}`;
 const dir = mkdtempSync(join(tmpdir(), "kf-buildimg-real-"));
-after(() => { spawnSync("docker", ["rmi", "-f", TAG]); rmSync(dir, { recursive: true, force: true }); });
+after(() => { spawnSync("docker", ["rmi", "-f", TAG], { env: dockerEnv() }); rmSync(dir, { recursive: true, force: true }); });
 
 function build() {
   const f = join(dir, "req.json");

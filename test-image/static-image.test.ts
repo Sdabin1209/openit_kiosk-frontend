@@ -8,9 +8,10 @@ import { mkdtempSync, writeFileSync, rmSync, chmodSync, readFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HANG_GUARD_SECONDS } from "../test/helpers.ts";
+import { dockerEnv } from "../scripts/docker-env.mjs";
 import { HealthStatus as vHealth } from "../src/types/validators.gen.cjs";
 
-const docker = (...a: string[]) => spawnSync("docker", a, { encoding: "utf8" });
+const docker = (...a: string[]) => spawnSync("docker", a, { encoding: "utf8", env: dockerEnv() });
 const TAG = process.env.IMAGE ?? `kiosk-frontend:imgtest-${process.pid}`;
 const started: string[] = [];
 let cfgDir = "";

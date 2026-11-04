@@ -3,6 +3,8 @@
 # 컨테이너 안에서 빌드·모의 서버(빈 포트)·헤드리스 Chromium이 돈다. 호스트 포트를 열지 않는다.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# 왜: 전역 ~/.docker 의 자격 도우미에 기대지 않는다(scripts/docker-env.mjs 의 설명)
+eval "$(node "scripts/docker-env.mjs" --sh)"
 DOCKER="${DOCKER:-docker}"
 if ! command -v "$DOCKER" >/dev/null 2>&1; then
   echo "FAIL: 전제 미충족: '$DOCKER' 명령이 없습니다. Docker를 설치하세요." >&2; exit 1

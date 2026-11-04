@@ -3,6 +3,8 @@
 # 고정 포트를 쓰지 않는다: Docker가 호스트 포트를 배정한다(-p 127.0.0.1::8080).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# 왜: 전역 ~/.docker 의 자격 도우미에 기대지 않는다(scripts/docker-env.mjs 의 설명)
+eval "$(node "scripts/docker-env.mjs" --sh)"
 # 표준 docker만 쓴다. 실행 파일 이름은 DOCKER 환경 변수로만 바꿀 수 있다.
 DOCKER="${DOCKER:-docker}"
 if ! command -v "$DOCKER" >/dev/null 2>&1; then

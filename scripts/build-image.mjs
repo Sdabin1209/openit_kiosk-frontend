@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+import { dockerEnv } from "./docker-env.mjs";
 
 const gen = createRequire(import.meta.url)("./build-validators.gen.cjs"); // 계약 스키마에서 생성(scripts/gen-validators.mjs). npm 설치가 필요 없다
 const DOCKER = process.env.DOCKER || "docker";
@@ -37,7 +38,7 @@ const expected = {
   "io.openit.contracts.boundary": pinBoundary,
   "io.openit.contracts.survey-schema": "n/a",
 };
-const run = (args, opts = {}) => spawnSync(DOCKER, args, { encoding: "utf8", ...opts });
+const run = (args, opts = {}) => spawnSync(DOCKER, args, { encoding: "utf8", env: dockerEnv(), ...opts });
 
 console.error(`build-image: ${DOCKER} build ${req.image_tag} (source ${req.source_dir})`);
 // 빌드 인자는 REVISION뿐이다(계약 버전은 Dockerfile 고정값). 빌드 출력은 표준 오류로 보낸다(표준 출력은 결과 한 줄 전용). app-version 라벨은 Dockerfile 기본값이다(ADR 0025).
