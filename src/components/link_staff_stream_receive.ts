@@ -3,7 +3,7 @@
 // 재연결은 EventSource에 맡기지 않고 직접 한다: 브라우저는 HTTP 오류(502·503·504 등)를 받으면 재연결 없이 CLOSED로 끝내고, 재연결 간격에도 백오프·지터가 없다.
 // 그래서 오류가 나면 늘 닫고 지수 백오프(+지터, 예산 없음)로 새로 연다. 새 EventSource는 Last-Event-ID를 보내지 않으므로 놓친 알림은 호출자가 onState(true) 때 목록 API로 보충해야 한다.
 // 모르는 형식의 이벤트는 무시한다(죽지 않음).
-import type { StaffAlert } from "../types/StaffAlert.ts";
+import type { StaffAlert } from "../types/contract/StaffAlert.ts";
 
 export interface StreamOptions {
   /** 같은 출처의 /v1. */

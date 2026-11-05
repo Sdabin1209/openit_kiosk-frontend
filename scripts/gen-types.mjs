@@ -55,7 +55,8 @@ async function ts(name, schema, src) {
 
 const files = new Map();
 for (const [n, s] of Object.entries(internal)) files.set(`${n}.ts`, await ts(n, s, `schemas/${n}.json`));
-for (const n of CONTRACT_TYPES) files.set(`${n}.ts`, await ts(n, contract(n), `boundary-contracts ${n} (패키지 버전 ${contractVersion()})`));
+// 계약에서 생성한 타입은 src/types/contract/ 에만 둔다(헤드 배치 규칙 2026-11-05: schemas/ 는 영역 내부 전용, types/contract/ 는 계약 생성물만)
+for (const n of CONTRACT_TYPES) files.set(`contract/${n}.ts`, await ts(n, contract(n), `boundary-contracts ${n} (패키지 버전 ${contractVersion()})`));
 for (const n of SURVEY_TYPES) {
   const s = surveySchemaJson(n); // 고정 태그에서 읽는다(옆 폴더 작업 트리가 아님)
   const dup = files.has(`${n}.ts`);
@@ -76,7 +77,7 @@ files.set("validators.gen.cjs", `// 생성 파일: node scripts/gen-types.mjs (�
 const names = Object.keys(refs).sort();
 files.set("validators.gen.d.cts", `// validators.gen.cjs의 형. 이름은 schemas/ 파일 이름과 계약 경계 스키마 이름이다.\nexport interface ErrorObject { instancePath: string; keyword: string; params: Record<string, unknown>; message?: string }\nexport interface ValidateFn { (data: unknown): boolean; errors?: ErrorObject[] | null }\n${names.map((n) => `export const ${n}: ValidateFn;`).join("\n")}\n`);
 
-mkdirSync(OUT, { recursive: true });
+mkdirSync(OUT, { recursive: true }); mkdirSync(new URL("contract/", OUT), { recursive: true });
 let bad = false;
 const want = new Set(files.keys());
 for (const f of readdirSync(OUT)) if ((f.endsWith(".ts") || f.endsWith(".cjs") || f.endsWith(".cts")) && !want.has(f)) { if (check) { console.error(`gen-types --check: 남는 파일 ${f}`); bad = true; } else rmSync(new URL(f, OUT)); }

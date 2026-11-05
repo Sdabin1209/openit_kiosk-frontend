@@ -3,7 +3,7 @@
 import { PublicApiClient, type ClientOptions } from "../components/link_public_api_send.ts";
 import { openStaffStream, type StreamTimers } from "../components/link_staff_stream_receive.ts";
 import { createRetryPolicy, type RetryPolicy } from "../components/retry_policy.ts";
-import type { StaffAlert } from "../types/StaffAlert.ts";
+import type { StaffAlert } from "../types/contract/StaffAlert.ts";
 import { DEFAULT_RETRY, REQUEST_TIMEOUT_MS, STAFF_STREAM_RETRY, heartbeatTimeoutMs } from "../config.ts";
 import { newTurnId } from "./ids.ts";
 import { realNow, realSleep, realTimers } from "./clock.ts";

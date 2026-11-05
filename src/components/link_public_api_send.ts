@@ -7,13 +7,13 @@ import {
   StartRequest as vStart, QuestionSetListBody as vQsList, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
   StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, FrontendMessage as sMessage, InterventionDecision as sDecision, StaffCallRetryRequest as cRetryBody, PushSubscriptionRequest as cPushSub, type ValidateFn,
 } from "../types/validators.gen.cjs";
-import type { BoundaryError } from "../types/BoundaryError.ts";
+import type { BoundaryError } from "../types/contract/BoundaryError.ts";
 import type { FrontendInput } from "../types/FrontendInput.ts";
-import type { PushConfig } from "../types/PushConfig.ts";
-import type { SessionState } from "../types/SessionState.ts";
-import type { StaffAlert } from "../types/StaffAlert.ts";
-import type { StaffAlertPage } from "../types/StaffAlertPage.ts";
-import type { StaffCallRetryResult } from "../types/StaffCallRetryResult.ts";
+import type { PushConfig } from "../types/contract/PushConfig.ts";
+import type { SessionState } from "../types/contract/SessionState.ts";
+import type { StaffAlert } from "../types/contract/StaffAlert.ts";
+import type { StaffAlertPage } from "../types/contract/StaffAlertPage.ts";
+import type { StaffCallRetryResult } from "../types/contract/StaffCallRetryResult.ts";
 import type { StaffSessionView } from "../types/StaffSessionView.ts";
 
 /** 재시도 판단 포트(입력·출력 스키마는 schemas/RetryQuery·RetryDecision·StatusQuery·StatusClass). wiring이 retry_policy의 함수를 넣는다. */

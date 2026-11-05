@@ -2,7 +2,7 @@
 import { deliveryLines, pauseLabel } from "../components/alert_info.ts";
 import type { SyncStatus } from "../components/alert_sync.ts";
 import { disablePush, enablePush, hasPush } from "../components/push_subscription.ts";
-import type { StaffAlert } from "../types/StaffAlert.ts";
+import type { StaffAlert } from "../types/contract/StaffAlert.ts";
 import type { StaffApi } from "../wiring/public_api.ts";
 import { LOGIN_PATH } from "../config.ts";
 import { createInterventionDeciding, createStaffAlertSync } from "../wiring/staff.ts";

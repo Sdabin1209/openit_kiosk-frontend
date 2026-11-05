@@ -7,7 +7,7 @@ import { STAFF_STREAM_RETRY } from "../src/config.ts";
 import type { SyncStatus } from "../src/components/alert_sync.ts";
 import { createStaffAlertSync } from "../src/wiring/staff.ts";
 import { settle } from "./helpers.ts";
-import type { StaffAlert } from "../src/types/StaffAlert.ts";
+import type { StaffAlert } from "../src/types/contract/StaffAlert.ts";
 
 class FakeES {
   static all: FakeES[] = [];

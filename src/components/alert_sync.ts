@@ -3,8 +3,8 @@
 // 연결·목록 상태를 항상 밖으로 알린다(조용히 비어 있는 화면 금지).
 // 입력: 공개 API의 알림 목록(listAlerts)과 실시간 스트림(stream)을 함수 모양으로 받는다(wiring이 두 링크를 이어 넣는다). 출력: SyncStatus(schemas/SyncStatus.json)와 알림 맵.
 import { SyncStatus as vStatus } from "../types/validators.gen.cjs";
-import type { StaffAlert } from "../types/StaffAlert.ts";
-import type { StaffAlertPage } from "../types/StaffAlertPage.ts";
+import type { StaffAlert } from "../types/contract/StaffAlert.ts";
+import type { StaffAlertPage } from "../types/contract/StaffAlertPage.ts";
 import type { SyncStatus } from "../types/SyncStatus.ts";
 
 export type { SyncStatus };
