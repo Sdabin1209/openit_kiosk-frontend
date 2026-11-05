@@ -1,3 +1,4 @@
+import { bundleStandalone, createAjv } from "./standalone.mjs";
 // 계약(../boundary-contracts/schemas)의 이 영역 경계 스키마에서 검증기 코드를 만들어 생성 파일에 쓴다.
 //   (화면 번들이 쓰는 검증기는 scripts/gen-types.mjs가 src/types/validators.gen.cjs로 만든다.)
 //   scripts/build-validators.gen.cjs : 빌드 진입점(scripts/build-image.mjs)이 쓰는 BuildImageRequest, BuildImageResult (계약 2.5.0, ADR 0026), setup-env.sh 보고를 시험하는 SetupEnvReport (계약 2.6.0, ADR 0028), 노출 선언 Exposure (ADR 0029)
@@ -16,14 +17,14 @@ const load = (n) => contractJson(`schemas/${n}.schema.json`);
 
 // USED: 내보내는 검증기. DEPS: 참조를 풀기 위해 등록만 하는 스키마.
 const TARGETS = [
-  { out: new URL("./build-validators.gen.cjs", import.meta.url), rel: "scripts/build-validators.gen.cjs", used: ["BuildImageRequest", "BuildImageResult", "SetupEnvReport", "Exposure"], deps: ["ImageLabels", "_common", "JobsDeclaration"], unicode: false },
+  { out: new URL("./build-validators.gen.cjs", import.meta.url), rel: "scripts/build-validators.gen.cjs", used: ["BuildImageRequest", "BuildImageResult", "SetupEnvReport", "Exposure"], deps: ["ImageLabels", "_common", "JobsDeclaration"] },
 ];
 
 function generate(t) {
-  const ajv = new Ajv2020({ code: { source: true, esm: false }, allErrors: true, strict: false, unicode: t.unicode ?? true }); // unicode:false = 문자열 길이를 .length로 센다: 생성 코드가 ajv 런타임(ucs2length)을 require하지 않아 npm 설치 없이 돈다(경로·태그는 ASCII)
+  const ajv = createAjv({ code: { source: true, esm: false }, allErrors: true });
   for (const n of [...t.deps, ...t.used]) ajv.addSchema(load(n), `${n}.schema.json`);
   const refs = Object.fromEntries(t.used.map((n) => [n, `${n}.schema.json`]));
-  return `// 생성 파일: node scripts/gen-validators.mjs (직접 고치지 않는다). 출처: boundary-contracts ${t.used.join(", ")} (패키지 버전 ${version}).\n/* eslint-disable */\n` + standaloneCode(ajv, refs);
+  return `// 생성 파일: node scripts/gen-validators.mjs (직접 고치지 않는다). 출처: boundary-contracts ${t.used.join(", ")} (패키지 버전 ${version}).\n/* eslint-disable */\n` + bundleStandalone(standaloneCode(ajv, refs));
 }
 
 const check = process.argv.includes("--check");

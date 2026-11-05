@@ -68,3 +68,18 @@ import { contractVersion, pinnedTag } from "../scripts/contract-source.mjs";
 test("계약은 고정 태그에서 읽는다: 읽은 패키지 버전이 Dockerfile 고정 태그와 같다(옆 폴더 작업 트리의 버전이 아니다)", () => {
   assert.equal(`v${contractVersion()}`, pinnedTag());
 });
+
+test("독립 생성 산출물이 표준 date-time 검증도 포함한다", async () => {
+  const { createAjv, bundleStandalone } = await import("../scripts/standalone.mjs");
+  const { default: standaloneCode } = await import("ajv/dist/standalone/index.js");
+  const { runInNewContext } = await import("node:vm");
+  const ajv = createAjv({ code: { source: true } });
+  const schema = contractJson("schemas/_common.schema.json").$defs.Timestamp;
+  const validate = ajv.compile(schema);
+  const context = { module: { exports: {} as any }, exports: {} };
+  runInNewContext(bundleStandalone(standaloneCode(ajv, validate)), context);
+  const fn = context.module.exports;
+  assert.equal(fn("2026-11-06T00:00:00Z"), true);
+  assert.equal(fn("2026-02-30T00:00:00Z"), false);
+  assert.equal(fn("not-a-timestamp"), false);
+});

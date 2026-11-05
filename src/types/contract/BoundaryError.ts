@@ -1,10 +1,10 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts BoundaryError (패키지 버전 3.4.18) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts BoundaryError (패키지 버전 3.4.19) */
 
 
 /**
  * 경계 호출(SDK·서비스 API)의 모든 실패는 이 형식이다. 호출자는 code와 retryable만으로 다음 행동을 정할 수 있어야 한다.
  */
-export interface BoundaryError {
+export type BoundaryError = {
 pipeline_schema_version: string
 code: ("NOT_FOUND" | "INVALID_RECORD" | "UNSUPPORTED_VERSION" | "CONFLICT" | "INTEGRITY_ERROR" | "FAILED_PRECONDITION" | "PERMISSION_DENIED" | "UNAVAILABLE")
 message: string

@@ -1,3 +1,4 @@
+import { bundleStandalone, createAjv } from "./standalone.mjs";
 // schemas/(영역 내부 타입)과 계약·문진 스키마에서 src/types/를 만든다. 손으로 고치지 않는다(DESIGN.md 3절, D117).
 //   src/types/<이름>.ts            : json-schema-to-typescript가 만든 코드 타입. 영역 타입은 schemas/<이름>.json, 공개 API 본문 타입은
 //                                    문진 스키마(survey-service 리포의 고정 태그 survey-schema-v4.0.0, 읽기 전용)와 고정 태그의 계약(scripts/contract-source.mjs)에서 만든다.
@@ -67,13 +68,13 @@ for (const n of SURVEY_TYPES) {
 // 검증기: 영역 스키마 전부 + 계약 경계 스키마.
 // 왜 $schema를 뺀다: 생성 코드에 스키마 본문이 그대로 실려 화면 번들에 들어가는데, 메타스키마 주소(https://...)가 번들에 외부 URL로 남으면 "외부 URL 없음" 검사(test/static.test.ts)와 섞인다. Ajv2020은 기본이 2020-12라 뺀다.
 const noMeta = ({ $schema, ...rest }) => rest;
-const ajv = new Ajv2020({ code: { source: true, esm: false }, allErrors: true, strict: false });
+const ajv = createAjv({ code: { source: true, esm: false }, allErrors: true, strict: false });
 for (const n of [...CONTRACT_DEPS, ...CONTRACT_VALIDATORS]) ajv.addSchema(noMeta(contract(n)), `${n}.schema.json`);
 for (const [n, s] of Object.entries(internal)) ajv.addSchema(noMeta(s), `${n}.json`);
 const surveyRefs = {};
 for (const n of SURVEY_VALIDATORS) { const s = noMeta(surveySchemaJson(n)); ajv.addSchema(s); surveyRefs[n] = s.$id; }
 const refs = { ...Object.fromEntries(Object.keys(internal).map((n) => [n, `${n}.json`])), ...Object.fromEntries(CONTRACT_VALIDATORS.map((n) => [n, `${n}.schema.json`])), ...surveyRefs };
-files.set("validators.gen.cjs", `// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts ${CONTRACT_VALIDATORS.join(", ")} (패키지 버전 ${contractVersion()}).\n/* eslint-disable */\n` + standaloneCode(ajv, refs));
+files.set("validators.gen.cjs", `// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts ${CONTRACT_VALIDATORS.join(", ")} (패키지 버전 ${contractVersion()}).\n/* eslint-disable */\n` + bundleStandalone(standaloneCode(ajv, refs)));
 const names = Object.keys(refs).sort();
 files.set("validators.gen.d.cts", `// validators.gen.cjs의 형. 이름은 schemas/ 파일 이름과 계약 경계 스키마 이름이다.\nexport interface ErrorObject { instancePath: string; keyword: string; params: Record<string, unknown>; message?: string }\nexport interface ValidateFn { (data: unknown): boolean; errors?: ErrorObject[] | null }\n${names.map((n) => `export const ${n}: ValidateFn;`).join("\n")}\n`);
 

@@ -1,3 +1,4 @@
+import addFormats from "ajv-formats";
 // 문진 스키마(고정 태그)의 이 영역의 표기(계약 버전, 모의 서버 pipeline 버전)와 서버 스키마(StaffSessionView)를 대조한다. 스키마 복사본은 두지 않는다.
 import { existsSync, readFileSync } from "node:fs";
 import { contractFile, surveySchemaJson } from "./contract-source.mjs";
@@ -18,7 +19,7 @@ const svSchema = surveySchemaJson("StaffSessionView");   // 고정 태그에 있
 if (svSchema) {
   const { Ajv2020 } = await import("ajv/dist/2020.js");
   const { createMock } = await import("../mock-server/app.ts");
-  const validateSv = new Ajv2020({ strict: false }).compile(svSchema);
+  const validateSv = addFormats(new Ajv2020({ strict: false })).compile(svSchema);
   const m = createMock({}); await new Promise((r) => m.server.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${m.server.address().port}`;
   const post = (p, b, h = {}) => fetch(base + p, { method: "POST", headers: h, body: JSON.stringify(b) }).then((r) => r.json());
