@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# deploy 와 같은 실행 조건으로 띄운다(읽기 전용 루트, /tmp tmpfs, cap_drop ALL, no-new-privileges, 쓸 수 있는 경로는 deploy compose 와 같게): 2026-11-06 E2E 기동에서야 드러난 쓰기 경로 결함을 스모크에서 잡는다
 # 이미지를 빌드해 띄우고 /healthz, /readyz, 화면, 라벨, non-root를 확인한다.
 # 고정 포트를 쓰지 않는다: Docker가 호스트 포트를 배정한다(-p 127.0.0.1::8080).
 set -euo pipefail
@@ -23,7 +24,7 @@ cleanup() { "$DOCKER" rm -f "$CTR" >/dev/null 2>&1 || true; "$DOCKER" rmi -f "$T
 trap cleanup EXIT
 
 "$DOCKER" build -q -t "$TAG" --build-arg "REVISION=$REV" .
-"$DOCKER" run -d --name "$CTR" -p 127.0.0.1::8080 "$TAG" >/dev/null
+"$DOCKER" run -d --name "$CTR" --read-only --tmpfs /tmp --cap-drop ALL --cap-add NET_BIND_SERVICE --security-opt no-new-privileges:true -p 127.0.0.1::8080 "$TAG" >/dev/null
 HOSTPORT="$("$DOCKER" port "$CTR" 8080/tcp | head -1 | tr -d '\r' | sed 's/.*://')"
 echo "host port: $HOSTPORT"
 
