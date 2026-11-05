@@ -1,14 +1,7 @@
-// ../survey-service/schema/schemas(읽기 전용)의 이 영역의 표기(계약 버전, 모의 서버 pipeline 버전)와 서버 스키마(StaffSessionView)를 대조한다. 스키마 복사본은 두지 않는다.
+// 문진 스키마(고정 태그)의 이 영역의 표기(계약 버전, 모의 서버 pipeline 버전)와 서버 스키마(StaffSessionView)를 대조한다. 스키마 복사본은 두지 않는다.
 import { existsSync, readFileSync } from "node:fs";
-import { contractFile } from "./contract-source.mjs";
-// 왜: 이 대조는 이웃 폴더(문진 스키마, 계약)를 읽기 전용으로 읽는다. 없을 때 ENOENT 스택 대신 이유와 해결을 내고 비0으로 끝낸다.
-for (const rel of ["../../survey-service/schema/schemas/", "../../boundary-contracts/schemas/"]) { // 계약은 git 태그에서 읽고 폴더는 그 저장소가 있는지 보려는 것이다
-  if (!existsSync(new URL(rel, import.meta.url))) {
-    console.error(`check-schema: 필요한 이웃 폴더가 없습니다 (이 리포 기준 ${rel.slice(3)}). 워크스페이스 구조(survey-service, boundary-contracts가 이 리포와 같은 상위 폴더에 있음)에서 실행하세요.`);
-    process.exit(1);
-  }
-}
-const dir = new URL("../../survey-service/schema/schemas/", import.meta.url);
+import { contractFile, surveySchemaJson } from "./contract-source.mjs";
+// 문진 스키마와 계약은 고정 태그에서 읽는다(contract-source.mjs: 환경 변수 → 옆 폴더 → 원격 태그 캐시). 옆 폴더의 작업 트리는 읽지 않는다.
 // 열거값 대조는 하지 않는다: 공개 API 본문 타입은 문진 스키마와 계약에서 생성한다(scripts/gen-types.mjs --check가 최신인지 본다, D117).
 let bad = 0;
 // 계약 버전 대조: 기준 계약(../boundary-contracts)의 패키지 버전과 pipeline_schema_version이 이 영역의 표기와 같아야 한다.
@@ -21,11 +14,11 @@ if (docker !== `v${ver}`) { console.error(`불일치 Dockerfile BOUNDARY_CONTRAC
 if (mock !== pipe) { console.error(`불일치 모의 서버 pipeline_schema_version=${mock} 계약=${pipe}`); bad++; }
 // StaffSessionView: 서버 스키마가 아직 없으면 대조하지 않는다. PASS로 세지 않는다.
 let sessionViewNote = "StaffSessionView: 대상 아님(서버 스키마 대기) - PASS로 세지 않음";
-const svUrl = new URL("StaffSessionView.json", dir);
-if (existsSync(svUrl)) {
+const svSchema = surveySchemaJson("StaffSessionView");   // 고정 태그에 있다. 읽지 못하면 오류로 끝난다(조용히 건너뛰지 않는다)
+if (svSchema) {
   const { Ajv2020 } = await import("ajv/dist/2020.js");
   const { createMock } = await import("../mock-server/app.ts");
-  const validateSv = new Ajv2020({ strict: false }).compile(JSON.parse(readFileSync(svUrl, "utf8")));
+  const validateSv = new Ajv2020({ strict: false }).compile(svSchema);
   const m = createMock({}); await new Promise((r) => m.server.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${m.server.address().port}`;
   const post = (p, b, h = {}) => fetch(base + p, { method: "POST", headers: h, body: JSON.stringify(b) }).then((r) => r.json());

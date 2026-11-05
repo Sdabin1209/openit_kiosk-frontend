@@ -9,10 +9,11 @@ import { ApiError, CallStaffError } from "../src/components/link_public_api_send
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import { startMock, waitFor, qsFetch } from "./helpers.ts";
 
-const SCHEMA_DIR = new URL("../../survey-service/schema/schemas/", import.meta.url);
+// 문진 스키마는 고정 태그(contract-source.mjs SURVEY_SCHEMA_TAG)에서 읽는다. 옆 폴더의 작업 트리를 읽지 않는다
+import { surveySchemaJson } from "../scripts/contract-source.mjs";
 const ajv = new Ajv2020({ strict: false });
-const validate = ajv.compile(JSON.parse(readFileSync(new URL("FrontendInput.json", SCHEMA_DIR), "utf8")));
-const validateMsg = ajv.compile(JSON.parse(readFileSync(new URL("FrontendMessage.json", SCHEMA_DIR), "utf8")));
+const validate = ajv.compile(surveySchemaJson("FrontendInput"));
+const validateMsg = ajv.compile(surveySchemaJson("FrontendMessage"));
 const fast = { retry: { maxAttempts: 3 }, sleep: async () => {} };
 const open: Array<() => Promise<void>> = [];
 after(async () => { for (const c of open) await c(); });
@@ -30,7 +31,7 @@ test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진
   assert.equal(m.state.log.some((l) => l.path.includes("secret")), false);
 });
 
-const validateDecision = ajv.compile(JSON.parse(readFileSync(new URL("InterventionDecision.json", SCHEMA_DIR), "utf8")));
+const validateDecision = ajv.compile(surveySchemaJson("InterventionDecision"));
 const bs = (n: string) => ajv.compile(contractJson(`schemas/${n}`)); // 고정 태그의 계약(ADR 0027)
 ajv.addSchema(contractJson("schemas/StaffAlert.schema.json"), "StaffAlert.schema.json"); // StaffAlertPage가 $ref로 참조(계약 2ec2849)
 const vAlert = ajv.getSchema("StaffAlert.schema.json")!, vPage = bs("StaffAlertPage.schema.json"), vState = bs("SessionState.schema.json"), vPush = bs("PushConfig.schema.json");
@@ -274,7 +275,7 @@ test("StaffSessionView: 모의 서버의 세션 보기가 survey-service 스키�
   const { api } = await mk({ alertDelivery: "DELIVERED" });
   const sid = (await api.startSession()).session_id; await api.sendUtterance(sid, "위험해요");
   const v = await createStaffApi(api).getSession(sid);
-  const vView = ajv.compile(JSON.parse(readFileSync(new URL("StaffSessionView.json", SCHEMA_DIR), "utf8")));
+  const vView = ajv.compile(surveySchemaJson("StaffSessionView"));
   assert.ok(vView(v), JSON.stringify(vView.errors));
   assert.equal(v.alerts[0].kind, "RISK_STOP");
 });
