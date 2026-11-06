@@ -17,7 +17,7 @@ const load = (n) => contractJson(`schemas/${n}.schema.json`);
 
 // USED: 내보내는 검증기. DEPS: 참조를 풀기 위해 등록만 하는 스키마.
 const TARGETS = [
-  { out: new URL("./build-validators.gen.cjs", import.meta.url), rel: "scripts/build-validators.gen.cjs", used: ["BuildImageRequest", "BuildImageResult", "SetupEnvReport", "Exposure"], deps: ["ImageLabels", "_common", "JobsDeclaration"] },
+  { out: new URL("./build-validators.gen.cjs", import.meta.url), rel: "scripts/build-validators.gen.cjs", used: ["BuildImageRequest", "BuildImageResult", "SetupEnvReport", "Exposure", "ContainerInputs"], deps: ["ImageLabels", "_common", "JobsDeclaration"] },
 ];
 
 function generate(t) {

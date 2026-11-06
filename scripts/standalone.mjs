@@ -5,7 +5,7 @@ import addFormats from "ajv-formats";
 import { buildSync } from "esbuild";
 import { fileURLToPath } from "node:url";
 export function bundleStandalone(contents) {
-  return buildSync({ stdin: { contents, resolveDir: fileURLToPath(new URL("../", import.meta.url)),
+  return buildSync({ absWorkingDir: fileURLToPath(new URL("../", import.meta.url)), stdin: { contents, resolveDir: fileURLToPath(new URL("../", import.meta.url)),
     sourcefile: "validators.cjs", loader: "js" }, bundle: true, platform: "browser", format: "cjs",
     write: false, legalComments: "inline" }).outputFiles[0].text;
 }

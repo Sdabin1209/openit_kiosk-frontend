@@ -35,6 +35,9 @@ test("이미지 라벨이 계약 ImageLabels를 지킨다(Dockerfile LABEL에 AR
   const block = dockerfile.match(/LABEL ([\s\S]*?)\n[A-Z]/)![1];
   const labels: Record<string, string> = {};
   for (const m of block.matchAll(/(io\.openit\.[\w.-]+)="([^"]*)"/g)) labels[m[1]] = m[2].replace(/\$\{(\w+)\}/g, (_, a) => args[a]);
+  // 진입점(scripts/build-image.mjs)이 --label 로 다는 선언 라벨: 노출·주입(계약 ContainerInputs 3.5.0 필수). Dockerfile 만으로는 계약 이미지가 아니다
+  labels["io.openit.exposure"] = JSON.stringify(JSON.parse(readFileSync("deploy-exposure.json", "utf8")));
+  labels["io.openit.inputs"] = JSON.stringify(JSON.parse(readFileSync("deploy-inputs.json", "utf8")));
   const v = validator("ImageLabels");
   assert.equal(v(labels), true, JSON.stringify(v.errors) + JSON.stringify(labels));
   // 기본 REVISION(빌드 인자 없이 빌드)은 revision이 hex가 아니므로 계약이 거부한다: 게시 이미지는 항상 커밋을 넘겨야 한다.

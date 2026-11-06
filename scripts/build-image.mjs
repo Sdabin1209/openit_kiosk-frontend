@@ -31,8 +31,15 @@ try { exposure = JSON.parse(readFileSync(join(req.source_dir, "deploy-exposure.j
 if (!gen.Exposure(exposure)) fail(`deploy-exposure.json이 계약 Exposure를 어깁니다: ${JSON.stringify(gen.Exposure.errors)}`);
 const exposureLabel = JSON.stringify(exposure);
 
+// 주입 선언(계약 ContainerInputs 3.5.0, 라벨 io.openit.inputs): 정본은 영역 소스의 deploy-inputs.json. 배치 영역은 이 선언과 정확히 같게 주입한다.
+let inputs;
+try { inputs = JSON.parse(readFileSync(join(req.source_dir, "deploy-inputs.json"), "utf8")); } catch (e) { fail(`deploy-inputs.json을 읽지 못했습니다: ${e.message}`); }
+if (inputs.image !== "kiosk-frontend" || !gen.ContainerInputs(inputs)) fail(`deploy-inputs.json이 계약 ContainerInputs를 어깁니다: ${JSON.stringify(gen.ContainerInputs.errors)}`);
+const inputsLabel = JSON.stringify(inputs);
+
 const expected = {
   "io.openit.exposure": exposureLabel,
+  "io.openit.inputs": inputsLabel,
   "io.openit.service": "kiosk-frontend",
   "io.openit.revision": req.revision,
   "io.openit.contracts.boundary": pinBoundary,
@@ -42,8 +49,13 @@ const run = (args, opts = {}) => spawnSync(DOCKER, args, { encoding: "utf8", env
 
 console.error(`build-image: ${DOCKER} build ${req.image_tag} (source ${req.source_dir})`);
 // 빌드 인자는 REVISION뿐이다(계약 버전은 Dockerfile 고정값). 빌드 출력은 표준 오류로 보낸다(표준 출력은 결과 한 줄 전용). app-version 라벨은 Dockerfile 기본값이다(ADR 0025).
-const b = run(["build", "-t", req.image_tag, "--build-arg", `REVISION=${req.revision}`, "--label", `io.openit.exposure=${exposureLabel}`, req.source_dir], { stdio: ["ignore", 2, 2], encoding: undefined });
+const b = run(["build", "-t", req.image_tag, "--build-arg", `REVISION=${req.revision}`, "--label", `io.openit.exposure=${exposureLabel}`, "--label", `io.openit.inputs=${inputsLabel}`, req.source_dir], { stdio: ["ignore", 2, 2], encoding: undefined });
 if (b.status !== 0) fail(`docker build 실패(종료 ${b.status})`);
+// 주입 선언 정직성: 이미지 실행 사용자(숫자 uid:gid)가 선언의 process 와 같아야 한다. 다르면 배치 영역이 파일·쓰기 권한을 틀리게 준다(이미지를 지우고 실패)
+const uid = run(["run", "--rm", "--network", "none", "--entrypoint", "id", req.image_tag, "-u"]), gid = run(["run", "--rm", "--network", "none", "--entrypoint", "id", req.image_tag, "-g"]);
+const runAs = [Number(uid.stdout?.trim()), Number(gid.stdout?.trim())];
+const wrong = [...Object.entries(inputs.roles), ...Object.entries(inputs.jobs)].filter(([, st]) => st.process.uid !== runAs[0] || st.process.gid !== runAs[1]).map(([k]) => k);
+if (uid.status !== 0 || gid.status !== 0 || wrong.length) { run(["rmi", "-f", req.image_tag]); fail(`주입 선언의 process 가 이미지 실행 사용자 ${runAs.join(":")} 와 다릅니다: ${wrong.join(", ") || "실행 사용자를 읽지 못함"}`); }
 
 const id = run(["inspect", "-f", "{{.Id}}", req.image_tag]);
 const lab = run(["inspect", "-f", "{{json .Config.Labels}}", req.image_tag]);

@@ -16,6 +16,7 @@ const REPO = process.cwd();
 
 // 노출 선언 라벨의 기대값: 정본 파일(deploy-exposure.json)을 한 줄로 줄인 JSON(ADR 0029).
 const EXPOSURE_LABEL = JSON.stringify(JSON.parse(readFileSync("deploy-exposure.json", "utf8")));
+const INPUTS_LABEL = JSON.stringify(JSON.parse(readFileSync("deploy-inputs.json", "utf8")));   // 주입 선언 라벨(계약 ContainerInputs 3.5.0): 진입점이 deploy-inputs.json 을 그대로 단다
 // 이 영역이 실제로 쓰는(고정한) 버전: Dockerfile의 ARG 기본값이다. 요청 버전이 이것과 다르면 진입점은 라벨을 찍지 않고 실패한다(U50, 라벨이 거짓이 되지 않게).
 const DOCKERFILE = readFileSync("Dockerfile", "utf8");
 const PIN_BOUNDARY = DOCKERFILE.match(/^ARG BOUNDARY_CONTRACT=(\S+)/m)![1];
@@ -24,11 +25,13 @@ const REQ = { source_dir: REPO, revision: "bad876c", versions: { boundary: PIN_B
 /** 가짜 docker: build 인자를 기록하고, inspect는 요청과 같은 라벨을 돌려준다(labelsOverride로 어긋난 이미지를 흉내 낸다). */
 function fakeDocker(dir: string, labelsOverride?: Record<string, string>) {
   const log = join(dir, "docker.log"), bin = join(dir, "docker");
-  const labels = JSON.stringify({ "io.openit.service": "kiosk-frontend", "io.openit.revision": REQ.revision, "io.openit.contracts.boundary": PIN_BOUNDARY, "io.openit.contracts.survey-schema": "n/a", "io.openit.app-version": "0.1.0", "io.openit.exposure": EXPOSURE_LABEL, "org.opencontainers.image.base.name": "x", ...labelsOverride });
+  const labels = JSON.stringify({ "io.openit.service": "kiosk-frontend", "io.openit.revision": REQ.revision, "io.openit.contracts.boundary": PIN_BOUNDARY, "io.openit.contracts.survey-schema": "n/a", "io.openit.app-version": "0.1.0", "io.openit.exposure": EXPOSURE_LABEL, "io.openit.inputs": INPUTS_LABEL, "org.opencontainers.image.base.name": "x", ...labelsOverride });
   writeFileSync(bin, `#!/usr/bin/env bash
 echo "$@" >> '${log}'
 case "$1" in
   build) echo "step 1/9 (가짜 빌드 진행 기록)"; exit 0 ;;
+  run) case "$*" in *" id "*) case "\${@: -1}" in -u) echo "\${FAKE_UID:-10001}" ;; *) echo 101 ;; esac ;; esac ;;   # 이미지 실행 사용자(주입 선언 정직성, 계약 ContainerInputs.process)
+  rmi) exit 0 ;;
   inspect) case "$*" in *"{{.Id}}"*) echo sha256:d81e5d2a92c016cc5802856d9e2a698ea89d7d0e41919adb6238e948090f94cd ;; *) echo '${labels}' ;; esac ;;
 esac
 `);
