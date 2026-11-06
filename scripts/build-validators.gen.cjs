@@ -1,4 +1,4 @@
-// 생성 파일: node scripts/gen-validators.mjs (직접 고치지 않는다). 출처: boundary-contracts BuildImageRequest, BuildImageResult, SetupEnvReport, Exposure, ContainerInputs (패키지 버전 3.6.2).
+// 생성 파일: node scripts/gen-validators.mjs (직접 고치지 않는다). 출처: boundary-contracts BuildImageRequest, BuildImageResult, SetupEnvReport, Exposure, ContainerInputs (패키지 버전 3.6.3).
 /* eslint-disable */
 "use strict";
 var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -1281,7 +1281,7 @@ function validate25(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate25.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.Exposure = validate26;
-var schema38 = { "type": "object", "properties": { "paths": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^/" } }, "methods": { "type": "array", "uniqueItems": true, "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] }, "description": "\uBE44\uC6B0\uBA74 \uBAA8\uB4E0 \uBA54\uC11C\uB4DC" }, "auth": { "type": "object", "properties": { "kind": { "enum": ["device-token", "account", "authenticated", "machine-token", "none", "denied"], "description": "device-token: \uD0A4\uC624\uC2A4\uD06C \uAE30\uAE30(mTLS/\uAE30\uAE30 \uD1A0\uD070). account: \uC0AC\uB78C \uACC4\uC815(roles \uD544\uC218). authenticated: \uB85C\uADF8\uC778\uD55C \uC0AC\uB78C \uACC4\uC815\uC774\uBA74 \uC5ED\uD560\uACFC \uBB34\uAD00\uD558\uAC8C \uC5F0\uB2E4(3.4.0, U82: \uB370\uC774\uD130 \uC5C6\uB294 \uD654\uBA74 \uC815\uC801 \uD30C\uC77C \u2014 \uAC00\uC785 \uC2B9\uC778 \uB300\uAE30 \uACC4\uC815\uC5D0\uAC8C \uC548\uB0B4\uB97C \uBCF4\uC774\uB824\uBA74 \uD654\uBA74\uC774 \uC5F4\uB824\uC57C \uD55C\uB2E4; roles \uB97C \uC4F0\uC9C0 \uC54A\uB294\uB2E4). machine-token: (3.4.7 \uC815\uC815) \uBE44\uC0AC\uB78C \uD638\uCD9C\uC790\uC758 \uACBD\uB85C. \uAC8C\uC774\uD2B8\uC6E8\uC774\uB294 \uD1A0\uD070\uC744 \uB300\uC870\uD558\uC9C0 \uC54A\uACE0 \uBC1B\uB294 \uC11C\uBE44\uC2A4\uAC00 \uB300\uC870\uD55C\uB2E4(RUNTIME R3.23). platform \uACF5\uAC1C \uC785\uAD6C\uB294 \uC774 \uACBD\uB85C\uB97C \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4(denied \uC640 \uAC19\uB2E4): compose \uBC16 \uD638\uCD9C\uC790\uB294 R1.5 \uC758 hosts \uD45C\uB85C \uBC1B\uB294 \uC601\uC5ED\uC758 \uAC8C\uC774\uD2B8\uC6E8\uC774\uC5D0 \uBC14\uB85C \uAC04\uB2E4. \uAC12\uC740 4.0.0 \uC5D0\uC11C \uBE80\uB2E4. none: \uC778\uC99D \uC5C6\uC74C(/healthz \uB4F1). (3.4.9) \uC601\uC5ED\uC758 /healthz\xB7/readyz\xB7/metrics \uB294 \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC6A9\uC774\uACE0 platform \uACF5\uAC1C \uC785\uAD6C\uB294 \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4(CONVENTIONS 2\uC808 \uC0C1\uD0DC \uACBD\uB85C \uADDC\uCE59). denied: \uBC16\uC5D0\uC11C \uB2FF\uC744 \uC218 \uC5C6\uC74C" }, "roles": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z-]*$" } } }, "required": ["kind"], "if": { "properties": { "kind": { "const": "account" } } }, "then": { "required": ["roles"], "properties": { "roles": { "minItems": 1 } } }, "additionalProperties": false }, "upstream_token": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "gateway \uAC00 \uC0C1\uB958\uC5D0 \uBD99\uC774\uB294 \uC11C\uBE44\uC2A4 \uD1A0\uD070\uC758 \uBE44\uBC00 \uC774\uB984(\uAC12 \uC544\uB2D8)" }, "user_header": { "enum": ["set", "strip"], "description": "set=\uC778\uC99D\uB41C \uACC4\uC815 ID \uB97C X-Openit-User \uB85C \uBD99\uC784(\uD074\uB77C\uC774\uC5B8\uD2B8 \uAC12\uC740 \uB36E\uC5B4\uC500), strip=\uC9C0\uC6C0" }, "streaming": { "type": "boolean" }, "timeouts_ms": { "type": "object", "properties": { "dial": { "type": "integer", "minimum": 1 }, "response_header": { "type": "integer", "minimum": 1 }, "read": { "type": "integer", "minimum": 1 } }, "additionalProperties": false }, "max_body_bytes": { "type": "integer", "minimum": 1, "maximum": 8589934592, "description": "3.4.7(RUNTIME R3.5\xB7R10.13): \uC774 \uACBD\uB85C\uC758 \uC694\uCCAD \uBCF8\uBB38 \uC0C1\uD55C(\uBC14\uC774\uD2B8). platform \uACF5\uAC1C \uC785\uAD6C\uC640 \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 \uB458 \uB2E4 \uC774 \uAC12\uC73C\uB85C 413 \uC744 \uB0B8\uB2E4(\uC571\uC5D0 \uB2FF\uAE30 \uC804). \uC5C6\uC73C\uBA74 8MiB(8388608, \uC9C0\uAE08\uAE4C\uC9C0\uC758 \uACF5\uAC1C \uC785\uAD6C \uAE30\uBCF8, \uC2DC\uC791\uAC12\xB7\uCE21\uC815 \uC548 \uD568). \uC0C1\uD55C\uC740 \uD074\uB77C\uC774\uC5B8\uD2B8 max_tar_bytes 8GiB. \uAC12\uC740 \uBC1B\uB294 \uC601\uC5ED\uC774 ADR \uB85C \uADFC\uAC70\uC640 \uD568\uAED8 \uC815\uD55C\uB2E4" }, "upstream_port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "3.4.7: \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 \uC774 \uACBD\uB85C\uB97C \uB118\uAE38 \uC601\uC5ED \uC548 \uCEF4\uD3EC\uB10C\uD2B8\uC758 loopback \uD3EC\uD2B8(\uAC19\uC740 \uB124\uD2B8\uC6CC\uD06C \uACF5\uAC04 127.0.0.1). \uC5C6\uC73C\uBA74 \uADF8 \uC601\uC5ED \uC11C\uBE44\uC2A4 \uD558\uB098(\uBC30\uD3EC \uC124\uC815\uC758 \uC571 \uD3EC\uD2B8)\uB85C \uB118\uAE34\uB2E4. \uC601\uC5ED \uC548 \uAD6C\uC131\uC740 \uC601\uC5ED\uC774 \uC815\uD558\uACE0, \uC774 \uAC12\uC740 \uBC30\uD3EC \uB54C \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC124\uC815\uC744 \uB9CC\uB4DC\uB294 \uC785\uB825\uC774\uB2E4(CONVENTIONS 13\uC808 \uC608\uC678)" } }, "required": ["paths", "auth"], "additionalProperties": false };
+var schema38 = { "type": "object", "properties": { "paths": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^/" } }, "methods": { "type": "array", "uniqueItems": true, "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] }, "description": "\uBE44\uC6B0\uBA74 \uBAA8\uB4E0 \uBA54\uC11C\uB4DC" }, "auth": { "type": "object", "properties": { "kind": { "enum": ["device-token", "account", "authenticated", "machine-token", "none", "denied"], "description": "device-token: \uD0A4\uC624\uC2A4\uD06C \uAE30\uAE30(mTLS/\uAE30\uAE30 \uD1A0\uD070). account: \uC0AC\uB78C \uACC4\uC815(roles \uD544\uC218). authenticated: \uB85C\uADF8\uC778\uD55C \uC0AC\uB78C \uACC4\uC815\uC774\uBA74 \uC5ED\uD560\uACFC \uBB34\uAD00\uD558\uAC8C \uC5F0\uB2E4(3.4.0, U82: \uB370\uC774\uD130 \uC5C6\uB294 \uD654\uBA74 \uC815\uC801 \uD30C\uC77C \u2014 \uAC00\uC785 \uC2B9\uC778 \uB300\uAE30 \uACC4\uC815\uC5D0\uAC8C \uC548\uB0B4\uB97C \uBCF4\uC774\uB824\uBA74 \uD654\uBA74\uC774 \uC5F4\uB824\uC57C \uD55C\uB2E4; roles \uB97C \uC4F0\uC9C0 \uC54A\uB294\uB2E4). machine-token: (3.4.7 \uC815\uC815) \uBE44\uC0AC\uB78C \uD638\uCD9C\uC790\uC758 \uACBD\uB85C. \uAC8C\uC774\uD2B8\uC6E8\uC774\uB294 \uD1A0\uD070\uC744 \uB300\uC870\uD558\uC9C0 \uC54A\uACE0 \uBC1B\uB294 \uC11C\uBE44\uC2A4\uAC00 \uB300\uC870\uD55C\uB2E4(RUNTIME R3.23). platform \uACF5\uAC1C \uC785\uAD6C\uB294 \uC774 \uACBD\uB85C\uB97C \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4(denied \uC640 \uAC19\uB2E4): compose \uBC16 \uD638\uCD9C\uC790\uB294 R1.5 \uC758 hosts \uD45C\uB85C \uBC1B\uB294 \uC601\uC5ED\uC758 \uAC8C\uC774\uD2B8\uC6E8\uC774\uC5D0 \uBC14\uB85C \uAC04\uB2E4. \uAC12\uC740 4.0.0 \uC5D0\uC11C \uBE80\uB2E4. none: \uC778\uC99D \uC5C6\uC74C(/healthz \uB4F1). (3.4.9) \uC601\uC5ED\uC758 /healthz\xB7/readyz\xB7/metrics \uB294 \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC6A9\uC774\uACE0 platform \uACF5\uAC1C \uC785\uAD6C\uB294 \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4(CONVENTIONS 2\uC808 \uC0C1\uD0DC \uACBD\uB85C \uADDC\uCE59). denied: \uBC16\uC5D0\uC11C \uB2FF\uC744 \uC218 \uC5C6\uC74C denied \uB294 platform \uACF5\uAC1C \uC785\uAD6C\uC5D0\uC11C \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4\uB294 \uB73B\uC774\uB2E4. \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uC5D0\uC11C \uC774 \uACBD\uB85C\uB97C \uC81C\uAC70\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC601\uC5ED \uAC04 \uC694\uCCAD\uC758 \uC11C\uBE44\uC2A4 \uD1A0\uD070\uC740 \uBC1B\uB294 \uC11C\uBE44\uC2A4\uAC00 \uAC80\uC0AC\uD55C\uB2E4(R3.23)." }, "roles": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z-]*$" } } }, "required": ["kind"], "if": { "properties": { "kind": { "const": "account" } } }, "then": { "required": ["roles"], "properties": { "roles": { "minItems": 1 } } }, "additionalProperties": false }, "upstream_token": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "gateway \uAC00 \uC0C1\uB958\uC5D0 \uBD99\uC774\uB294 \uC11C\uBE44\uC2A4 \uD1A0\uD070\uC758 \uBE44\uBC00 \uC774\uB984(\uAC12 \uC544\uB2D8)" }, "user_header": { "enum": ["set", "strip"], "description": "set=\uC778\uC99D\uB41C \uACC4\uC815 ID \uB97C X-Openit-User \uB85C \uBD99\uC784(\uD074\uB77C\uC774\uC5B8\uD2B8 \uAC12\uC740 \uB36E\uC5B4\uC500), strip=\uC9C0\uC6C0" }, "streaming": { "type": "boolean" }, "timeouts_ms": { "type": "object", "properties": { "dial": { "type": "integer", "minimum": 1 }, "response_header": { "type": "integer", "minimum": 1 }, "read": { "type": "integer", "minimum": 1 } }, "additionalProperties": false }, "max_body_bytes": { "type": "integer", "minimum": 1, "maximum": 8589934592, "description": "3.4.7(RUNTIME R3.5\xB7R10.13): \uC774 \uACBD\uB85C\uC758 \uC694\uCCAD \uBCF8\uBB38 \uC0C1\uD55C(\uBC14\uC774\uD2B8). platform \uACF5\uAC1C \uC785\uAD6C\uC640 \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 \uB458 \uB2E4 \uC774 \uAC12\uC73C\uB85C 413 \uC744 \uB0B8\uB2E4(\uC571\uC5D0 \uB2FF\uAE30 \uC804). \uC5C6\uC73C\uBA74 8MiB(8388608, \uC9C0\uAE08\uAE4C\uC9C0\uC758 \uACF5\uAC1C \uC785\uAD6C \uAE30\uBCF8, \uC2DC\uC791\uAC12\xB7\uCE21\uC815 \uC548 \uD568). \uC0C1\uD55C\uC740 \uD074\uB77C\uC774\uC5B8\uD2B8 max_tar_bytes 8GiB. \uAC12\uC740 \uBC1B\uB294 \uC601\uC5ED\uC774 ADR \uB85C \uADFC\uAC70\uC640 \uD568\uAED8 \uC815\uD55C\uB2E4" }, "upstream_port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "3.4.7: \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 \uC774 \uACBD\uB85C\uB97C \uB118\uAE38 \uC601\uC5ED \uC548 \uCEF4\uD3EC\uB10C\uD2B8\uC758 loopback \uD3EC\uD2B8(\uAC19\uC740 \uB124\uD2B8\uC6CC\uD06C \uACF5\uAC04 127.0.0.1). \uC5C6\uC73C\uBA74 \uADF8 \uC601\uC5ED \uC11C\uBE44\uC2A4 \uD558\uB098(\uBC30\uD3EC \uC124\uC815\uC758 \uC571 \uD3EC\uD2B8)\uB85C \uB118\uAE34\uB2E4. \uC601\uC5ED \uC548 \uAD6C\uC131\uC740 \uC601\uC5ED\uC774 \uC815\uD558\uACE0, \uC774 \uAC12\uC740 \uBC30\uD3EC \uB54C \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC124\uC815\uC744 \uB9CC\uB4DC\uB294 \uC785\uB825\uC774\uB2E4(CONVENTIONS 13\uC808 \uC608\uC678)" } }, "required": ["paths", "auth"], "additionalProperties": false };
 var pattern28 = new RegExp("^[a-z][a-z-]*$", "u");
 var func0 = require_equal().default;
 var func9 = Object.prototype.hasOwnProperty;
@@ -2012,13 +2012,15 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate26.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.ContainerInputs = validate27;
-var schema39 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://openit.example/schemas/ContainerInputs.schema.json", "title": "ContainerInputs", "description": "3.5.0(2026-11-06): \uC601\uC5ED \uC774\uBBF8\uC9C0\uAC00 \uCEE8\uD14C\uC774\uB108 \uBC16(\uBC30\uCE58 \uC601\uC5ED)\uC5D0\uC11C \uC8FC\uC785\uBC1B\uC544\uC57C \uD558\uB294 \uAC83 \uC804\uBD80. \uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4DC\uB294 \uC601\uC5ED\uC774 \uC120\uC5B8\uD558\uACE0(\uB77C\uBCA8 io.openit.inputs), \uB744\uC6B0\uB294 \uC601\uC5ED(deploy)\uC740 \uC774 \uC120\uC5B8\uACFC \uC815\uD655\uD788 \uAC19\uAC8C \uC8FC\uC785\uD55C\uB2E4. \uD658\uACBD \uBCC0\uC218\uC758 \uC774\uB984\xB7\uAC12\uC740 env_schema \uAC00 \uAC00\uB9AC\uD0A4\uB294 \uACC4\uC57D Env \uAC00 \uC815\uD55C\uB2E4. \uC774 \uC120\uC5B8\uC5D0 \uC5C6\uB294 \uC8FC\uC785(\uD30C\uC77C\xB7\uC4F0\uAE30 \uB9C8\uC6B4\uD2B8\xB7\uAD8C\uD55C)\uC740 \uD558\uC9C0 \uC54A\uACE0, \uC120\uC5B8\uB41C \uAC83\uC740 \uBE60\uB728\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uC65C: \uD30C\uC77C \uAD8C\uD55C\xB7\uC4F0\uAE30 \uACBD\uB85C\xB7\uC2E4\uD589 \uC0AC\uC6A9\uC790\xB7argv \uAC00 \uBB38\uC7A5 \uADDC\uCE59(CLAUDE.md '\uC774\uBBF8\uC9C0\uB294 \uB2E4\uC74C\uC744 \uC9C0\uD0A8\uB2E4')\uBFD0\uC774\uB77C \uB450 \uC601\uC5ED\uC774 \uAC01\uC790 \uD574\uC11D\uD588\uACE0, 2026-11-06 E2E \uAE30\uB3D9 \uC2E4\uD328 \uB124 \uAC74(DB \uBE44\uBC00 \uC77D\uAE30, TLS \uC0AC\uBCF8 \uACBD\uB85C, \uC7A1 argv, \uD1A0\uD070 \uC774\uB984)\uC774 \uBAA8\uB450 \uADF8 \uC5B4\uAE0B\uB0A8\uC774\uC5C8\uB2E4.", "x-producers": ["*"], "x-consumers": ["deploy"], "type": "object", "additionalProperties": false, "required": ["schema_version", "image", "read_only_root", "exec_absolute_argv", "role_env", "roles", "jobs"], "properties": { "schema_version": { "const": 1 }, "image": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "\uAC8C\uC2DC \uC774\uBBF8\uC9C0 \uC774\uB984(\uB77C\uBCA8 io.openit.service \uC640 \uAC19\uB2E4)" }, "read_only_root": { "const": true, "description": "\uB8E8\uD2B8 \uD30C\uC77C \uC2DC\uC2A4\uD15C\uC740 \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uB744\uC6B4\uB2E4. \uC4F0\uAE30\uB294 roles.*.writable \uC5D0 \uC120\uC5B8\uD55C \uACBD\uB85C\uB9CC" }, "exec_absolute_argv": { "const": true, "description": "\uBA85\uB839\uC758 \uCCAB \uC778\uC790\uAC00 \uC808\uB300 \uACBD\uB85C\uBA74 \uC774\uBBF8\uC9C0 \uC9C4\uC785\uC810\uC740 \uC11C\uBC84 \uC900\uBE44 \uC5C6\uC774 \uADF8 argv \uB97C \uADF8\uB300\uB85C \uC2E4\uD589\uD55C\uB2E4(\uC7A1 \uC120\uC5B8 JobsDeclaration.argv \uC758 \uC2E4\uD589 \uADDC\uCE59, Docker \uD45C\uC900 \uC9C4\uC785\uC810 \uAD00\uB840)" }, "role_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$", "description": "\uC5ED\uD560\uC744 \uACE0\uB974\uB294 \uD658\uACBD \uBCC0\uC218 \uC774\uB984(\uC608: STEP_ROLE). \uC5ED\uD560\uC774 \uD558\uB098\uBA74 null \uC774\uACE0 roles \uC758 \uD0A4\uB294 default \uD558\uB098\uB2E4" }, "roles": { "type": "object", "minProperties": 1, "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" }, "additionalProperties": { "$ref": "#/$defs/InputSet" } }, "jobs": { "type": "object", "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" }, "additionalProperties": { "$ref": "#/$defs/InputSet" }, "description": "\uC7A1\uB9C8\uB2E4(\uD0A4 = \uC774 \uC774\uBBF8\uC9C0 \uB77C\uBCA8 io.openit.jobs \uC758 \uC7A1 \uC774\uB984, argv \uB85C \uACE0\uB978\uB2E4) \uADF8 \uC7A1 \uCEE8\uD14C\uC774\uB108\uAC00 \uBC1B\uB294 \uAC83. \uC7A1\uC774 \uC5C6\uC73C\uBA74 \uBE48 \uAC1D\uCCB4" } }, "allOf": [{ "if": { "properties": { "role_env": { "type": "null" } } }, "then": { "properties": { "roles": { "required": ["default"], "maxProperties": 1 } } } }], "$defs": { "Process": { "type": "object", "additionalProperties": false, "required": ["uid", "gid"], "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC744 \uC77D\uACE0 \uC120\uC5B8\uB41C \uACBD\uB85C\uC5D0 \uC4F0\uB294 \uD504\uB85C\uC138\uC2A4\uC758 \uC22B\uC790 \uC0AC\uC6A9\uC790\xB7\uADF8\uB8F9. \uC774\uB984(app, postgres)\uC774 \uC544\uB2C8\uB77C \uC22B\uC790\uB2E4: \uBC30\uCE58 \uC601\uC5ED\uC740 \uC774\uBBF8\uC9C0 \uC548\uC758 /etc/passwd \uB97C \uBAA8\uB978\uB2E4(\uAD6C\uC870 \uADDC\uCE59 1)", "properties": { "uid": { "type": "integer", "minimum": 0, "maximum": 2147483647 }, "gid": { "type": "integer", "minimum": 0, "maximum": 2147483647 } } }, "File": { "type": "object", "additionalProperties": false, "required": ["path", "kind", "required", "opened_by"], "properties": { "path_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$", "description": "\uACBD\uB85C\uB97C \uC8FC\uB294 \uD658\uACBD \uBCC0\uC218(\uC608: DB_PASSWORD_FILE). null \uC774\uBA74 path \uACE0\uC815" }, "path": { "type": "string", "pattern": "^/[^\\s]*$", "description": "path_env \uAC00 \uC5C6\uC744 \uB54C \uC774\uBBF8\uC9C0\uAC00 \uC77D\uB294 \uACBD\uB85C(path_env \uAC00 \uC788\uC73C\uBA74 \uADF8 \uAE30\uBCF8\uAC12)" }, "directory": { "type": "boolean", "default": false, "description": "\uCC38\uC774\uBA74 \uD3F4\uB354(\uADF8 \uC548\uC758 \uD30C\uC77C \uC804\uBD80\uB97C \uC77D\uB294\uB2E4)" }, "kind": { "enum": ["secret", "config", "certificate", "ca-bundle", "declaration"], "description": "secret \uC740 \uAC12\uC774 \uBE44\uBC00\uC774\uB2E4(D84): \uBC30\uCE58 \uC601\uC5ED\uC740 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC77D\uC9C0 \uBABB\uD558\uAC8C \uC8FC\uB418 read_by \uB294 \uC77D\uC744 \uC218 \uC788\uC5B4\uC57C \uD55C\uB2E4" }, "schema": { "type": ["string", "null"], "pattern": "^[A-Z][A-Za-z0-9]*$", "description": "\uB0B4\uC6A9\uC774 \uB530\uB974\uB294 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984(\uC788\uC73C\uBA74)" }, "required": { "type": "boolean" }, "opened_by": { "const": "start-process", "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC740 \uCEE8\uD14C\uC774\uB108\uC758 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4(process \uC758 uid, \uBC30\uCE58 \uC601\uC5ED\uC774 \uBD99\uC778 \uBCF4\uC870 \uADF8\uB8F9 \uD3EC\uD568)\uAC00 \uC5F0\uB2E4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uD30C\uC77C\uC744 0640\xB7\uADF8\uB8F9 SECRETS_GID \uB85C \uB450\uACE0 \uADF8 \uADF8\uB8F9\uC744 \uBCF4\uC870 \uADF8\uB8F9\uC73C\uB85C \uBD99\uC778\uB2E4. \uC0AC\uC6A9\uC790\uB97C \uBC14\uAFBC(gosu\xB7setpriv) \uB4A4\uC5D0\uB294 \uBCF4\uC870 \uADF8\uB8F9\uC774 \uC0AC\uB77C\uC9C0\uBBC0\uB85C \uADF8 \uC804\uC5D0 \uC5F4\uAC70\uB098 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4\uAC00 \uC790\uAE30 \uC0AC\uBCF8\uC744 \uB9CC\uB4E4\uC5B4 \uB118\uAE34\uB2E4(2026-11-06 DB \uBE44\uBC00 \uC77D\uAE30 \uC2E4\uD328\uC758 \uC6D0\uC778)" } } }, "Writable": { "type": "object", "additionalProperties": false, "required": ["path", "persist", "written_by"], "properties": { "path": { "type": "string", "pattern": "^/[^\\s]*$" }, "persist": { "type": "boolean", "description": "\uCC38\uC774\uBA74 \uB2E4\uC2DC \uC2DC\uC791\uD574\uB3C4 \uB0A8\uC544\uC57C \uD55C\uB2E4(\uC774\uB984 \uC788\uB294 \uBCFC\uB968). \uAC70\uC9D3\uC774\uBA74 tmpfs \uB85C \uCDA9\uBD84\uD558\uB2E4" }, "written_by": { "$ref": "#/$defs/Process", "description": "\uC774 \uACBD\uB85C\uC5D0 \uC4F0\uB294 \uD504\uB85C\uC138\uC2A4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uC774 \uC0AC\uC6A9\uC790\uAC00 \uC4F8 \uC218 \uC788\uAC8C \uC900\uB2E4(tmpfs uid/gid/mode \uB610\uB294 \uBCFC\uB968 \uC18C\uC720)" } } }, "InputSet": { "type": "object", "additionalProperties": false, "required": ["env_schema", "process", "files", "writable", "capabilities", "sysctls"], "properties": { "env_schema": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Env$", "description": "\uC774 \uC5ED\uD560\uC774 \uBC1B\uB294 \uD658\uACBD \uBCC0\uC218\uC758 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984" }, "process": { "$ref": "#/$defs/Process", "description": "\uCEE8\uD14C\uC774\uB108\uAC00 \uC2DC\uC791\uD558\uB294 \uC0AC\uC6A9\uC790(\uC774\uBBF8\uC9C0 USER \uC758 \uC22B\uC790). \uBC30\uCE58 \uC601\uC5ED\uC740 user \uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4" }, "files": { "type": "array", "items": { "$ref": "#/$defs/File" } }, "writable": { "type": "array", "items": { "$ref": "#/$defs/Writable" } }, "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"] }, "description": "cap_drop ALL \uB4A4\uC5D0 \uB354\uD574\uC57C \uD558\uB294 \uAC83\uB9CC. \uBE44\uC5B4 \uC788\uC73C\uBA74 \uB354\uD558\uC9C0 \uC54A\uB294\uB2E4" }, "sysctls": { "type": "object", "propertyNames": { "enum": ["net.ipv4.ip_unprivileged_port_start"] }, "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "\uBC30\uCE58 \uC601\uC5ED\uC774 \uC774 \uAC12\uC73C\uB85C \uC918\uC57C \uD558\uB294 \uCEE4\uB110 \uB9E4\uAC1C\uBCC0\uC218(\uC774\uB984 \uACF5\uAC04 \uC548). \uC5C6\uC73C\uBA74 \uC8FC\uC9C0 \uC54A\uB294\uB2E4. \uC608: root \uAC00 \uC544\uB2CC \uC0AC\uC6A9\uC790\uAC00 1024 \uC544\uB798 \uD3EC\uD2B8\uB97C \uC5F4 \uB54C net.ipv4.ip_unprivileged_port_start=0" } } } }, "examples": [{ "schema_version": 1, "image": "survey-service", "read_only_root": true, "exec_absolute_argv": true, "role_env": null, "roles": { "default": { "env_schema": "SurveyServiceEnv", "process": { "uid": 10001, "gid": 10001 }, "capabilities": [], "files": [{ "path_env": "SURVEY_DB_PASSWORD_FILE", "path": "/run/secrets/survey-db-password", "kind": "secret", "schema": null, "required": true, "opened_by": "start-process" }], "writable": [{ "path": "/data", "persist": true, "written_by": { "uid": 10001, "gid": 10001 } }, { "path": "/tmp", "persist": false, "written_by": { "uid": 10001, "gid": 10001 } }], "sysctls": {} } }, "jobs": {} }] };
+var schema39 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://openit.example/schemas/ContainerInputs.schema.json", "title": "ContainerInputs", "description": "3.5.0(2026-11-06): \uC601\uC5ED \uC774\uBBF8\uC9C0\uAC00 \uCEE8\uD14C\uC774\uB108 \uBC16(\uBC30\uCE58 \uC601\uC5ED)\uC5D0\uC11C \uC8FC\uC785\uBC1B\uC544\uC57C \uD558\uB294 \uAC83 \uC804\uBD80. \uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4DC\uB294 \uC601\uC5ED\uC774 \uC120\uC5B8\uD558\uACE0(\uB77C\uBCA8 io.openit.inputs), \uB744\uC6B0\uB294 \uC601\uC5ED(deploy)\uC740 \uC774 \uC120\uC5B8\uACFC \uC815\uD655\uD788 \uAC19\uAC8C \uC8FC\uC785\uD55C\uB2E4. \uD658\uACBD \uBCC0\uC218\uC758 \uC774\uB984\xB7\uAC12\uC740 env_schema \uAC00 \uAC00\uB9AC\uD0A4\uB294 \uACC4\uC57D Env \uAC00 \uC815\uD55C\uB2E4. \uC774 \uC120\uC5B8\uC5D0 \uC5C6\uB294 \uC8FC\uC785(\uD30C\uC77C\xB7\uC4F0\uAE30 \uB9C8\uC6B4\uD2B8\xB7\uAD8C\uD55C)\uC740 \uD558\uC9C0 \uC54A\uACE0, \uC120\uC5B8\uB41C \uAC83\uC740 \uBE60\uB728\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uC65C: \uD30C\uC77C \uAD8C\uD55C\xB7\uC4F0\uAE30 \uACBD\uB85C\xB7\uC2E4\uD589 \uC0AC\uC6A9\uC790\xB7argv \uAC00 \uBB38\uC7A5 \uADDC\uCE59(CLAUDE.md '\uC774\uBBF8\uC9C0\uB294 \uB2E4\uC74C\uC744 \uC9C0\uD0A8\uB2E4')\uBFD0\uC774\uB77C \uB450 \uC601\uC5ED\uC774 \uAC01\uC790 \uD574\uC11D\uD588\uACE0, 2026-11-06 E2E \uAE30\uB3D9 \uC2E4\uD328 \uB124 \uAC74(DB \uBE44\uBC00 \uC77D\uAE30, TLS \uC0AC\uBCF8 \uACBD\uB85C, \uC7A1 argv, \uD1A0\uD070 \uC774\uB984)\uC774 \uBAA8\uB450 \uADF8 \uC5B4\uAE0B\uB0A8\uC774\uC5C8\uB2E4.", "x-producers": ["*"], "x-consumers": ["deploy"], "type": "object", "additionalProperties": false, "required": ["schema_version", "image", "read_only_root", "exec_absolute_argv", "role_env", "roles", "jobs"], "properties": { "schema_version": { "const": 1 }, "image": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "\uAC8C\uC2DC \uC774\uBBF8\uC9C0 \uC774\uB984(\uB77C\uBCA8 io.openit.service \uC640 \uAC19\uB2E4)" }, "read_only_root": { "const": true, "description": "\uB8E8\uD2B8 \uD30C\uC77C \uC2DC\uC2A4\uD15C\uC740 \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uB744\uC6B4\uB2E4. \uC4F0\uAE30\uB294 roles.*.writable \uC5D0 \uC120\uC5B8\uD55C \uACBD\uB85C\uB9CC" }, "exec_absolute_argv": { "const": true, "description": "\uBA85\uB839\uC758 \uCCAB \uC778\uC790\uAC00 \uC808\uB300 \uACBD\uB85C\uBA74 \uC774\uBBF8\uC9C0 \uC9C4\uC785\uC810\uC740 \uC11C\uBC84 \uC900\uBE44 \uC5C6\uC774 \uADF8 argv \uB97C \uADF8\uB300\uB85C \uC2E4\uD589\uD55C\uB2E4(\uC7A1 \uC120\uC5B8 JobsDeclaration.argv \uC758 \uC2E4\uD589 \uADDC\uCE59, Docker \uD45C\uC900 \uC9C4\uC785\uC810 \uAD00\uB840)" }, "role_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$", "description": "\uC5ED\uD560\uC744 \uACE0\uB974\uB294 \uD658\uACBD \uBCC0\uC218 \uC774\uB984(\uC608: STEP_ROLE). \uC5ED\uD560\uC774 \uD558\uB098\uBA74 null \uC774\uACE0 roles \uC758 \uD0A4\uB294 default \uD558\uB098\uB2E4" }, "roles": { "type": "object", "minProperties": 1, "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" }, "additionalProperties": { "allOf": [{ "$ref": "#/$defs/InputSet" }, { "not": { "required": ["config_paths"] } }] } }, "jobs": { "type": "object", "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" }, "additionalProperties": { "$ref": "#/$defs/InputSet" }, "description": "\uC7A1\uB9C8\uB2E4(\uD0A4 = \uC774 \uC774\uBBF8\uC9C0 \uB77C\uBCA8 io.openit.jobs \uC758 \uC7A1 \uC774\uB984, argv \uB85C \uACE0\uB978\uB2E4) \uADF8 \uC7A1 \uCEE8\uD14C\uC774\uB108\uAC00 \uBC1B\uB294 \uAC83. \uC7A1\uC774 \uC5C6\uC73C\uBA74 \uBE48 \uAC1D\uCCB4" } }, "allOf": [{ "if": { "properties": { "role_env": { "type": "null" } } }, "then": { "properties": { "roles": { "required": ["default"], "maxProperties": 1 } } } }], "$defs": { "Process": { "type": "object", "additionalProperties": false, "required": ["uid", "gid"], "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC744 \uC77D\uACE0 \uC120\uC5B8\uB41C \uACBD\uB85C\uC5D0 \uC4F0\uB294 \uD504\uB85C\uC138\uC2A4\uC758 \uC22B\uC790 \uC0AC\uC6A9\uC790\xB7\uADF8\uB8F9. \uC774\uB984(app, postgres)\uC774 \uC544\uB2C8\uB77C \uC22B\uC790\uB2E4: \uBC30\uCE58 \uC601\uC5ED\uC740 \uC774\uBBF8\uC9C0 \uC548\uC758 /etc/passwd \uB97C \uBAA8\uB978\uB2E4(\uAD6C\uC870 \uADDC\uCE59 1)", "properties": { "uid": { "type": "integer", "minimum": 0, "maximum": 2147483647 }, "gid": { "type": "integer", "minimum": 0, "maximum": 2147483647 } } }, "File": { "type": "object", "additionalProperties": false, "required": ["path", "kind", "required", "opened_by"], "properties": { "path_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$", "description": "\uACBD\uB85C\uB97C \uC8FC\uB294 \uD658\uACBD \uBCC0\uC218(\uC608: DB_PASSWORD_FILE). null \uC774\uBA74 path \uACE0\uC815" }, "path": { "type": "string", "pattern": "^/[^\\s]*$", "description": "path_env \uAC00 \uC5C6\uC744 \uB54C \uC774\uBBF8\uC9C0\uAC00 \uC77D\uB294 \uACBD\uB85C(path_env \uAC00 \uC788\uC73C\uBA74 \uADF8 \uAE30\uBCF8\uAC12)" }, "directory": { "type": "boolean", "default": false, "description": "\uCC38\uC774\uBA74 \uD3F4\uB354(\uADF8 \uC548\uC758 \uD30C\uC77C \uC804\uBD80\uB97C \uC77D\uB294\uB2E4)" }, "kind": { "enum": ["secret", "config", "certificate", "ca-bundle", "declaration"], "description": "secret \uC740 \uAC12\uC774 \uBE44\uBC00\uC774\uB2E4(D84): \uBC30\uCE58 \uC601\uC5ED\uC740 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC77D\uC9C0 \uBABB\uD558\uAC8C \uC8FC\uB418 read_by \uB294 \uC77D\uC744 \uC218 \uC788\uC5B4\uC57C \uD55C\uB2E4" }, "schema": { "type": ["string", "null"], "pattern": "^[A-Z][A-Za-z0-9]*$", "description": "\uB0B4\uC6A9\uC774 \uB530\uB974\uB294 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984(\uC788\uC73C\uBA74)" }, "required": { "type": "boolean" }, "opened_by": { "const": "start-process", "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC740 \uCEE8\uD14C\uC774\uB108\uC758 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4(process \uC758 uid, \uBC30\uCE58 \uC601\uC5ED\uC774 \uBD99\uC778 \uBCF4\uC870 \uADF8\uB8F9 \uD3EC\uD568)\uAC00 \uC5F0\uB2E4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uD30C\uC77C\uC744 0640\xB7\uADF8\uB8F9 SECRETS_GID \uB85C \uB450\uACE0 \uADF8 \uADF8\uB8F9\uC744 \uBCF4\uC870 \uADF8\uB8F9\uC73C\uB85C \uBD99\uC778\uB2E4. \uC0AC\uC6A9\uC790\uB97C \uBC14\uAFBC(gosu\xB7setpriv) \uB4A4\uC5D0\uB294 \uBCF4\uC870 \uADF8\uB8F9\uC774 \uC0AC\uB77C\uC9C0\uBBC0\uB85C \uADF8 \uC804\uC5D0 \uC5F4\uAC70\uB098 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4\uAC00 \uC790\uAE30 \uC0AC\uBCF8\uC744 \uB9CC\uB4E4\uC5B4 \uB118\uAE34\uB2E4(2026-11-06 DB \uBE44\uBC00 \uC77D\uAE30 \uC2E4\uD328\uC758 \uC6D0\uC778)" } } }, "Writable": { "type": "object", "additionalProperties": false, "required": ["path", "persist", "written_by"], "properties": { "path": { "type": "string", "pattern": "^/[^\\s]*$" }, "persist": { "type": "boolean", "description": "\uCC38\uC774\uBA74 \uB2E4\uC2DC \uC2DC\uC791\uD574\uB3C4 \uB0A8\uC544\uC57C \uD55C\uB2E4(\uC774\uB984 \uC788\uB294 \uBCFC\uB968). \uAC70\uC9D3\uC774\uBA74 tmpfs \uB85C \uCDA9\uBD84\uD558\uB2E4" }, "written_by": { "$ref": "#/$defs/Process", "description": "\uC774 \uACBD\uB85C\uC5D0 \uC4F0\uB294 \uD504\uB85C\uC138\uC2A4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uC774 \uC0AC\uC6A9\uC790\uAC00 \uC4F8 \uC218 \uC788\uAC8C \uC900\uB2E4(tmpfs uid/gid/mode \uB610\uB294 \uBCFC\uB968 \uC18C\uC720)" } } }, "InputSet": { "type": "object", "additionalProperties": false, "required": ["env_schema", "process", "files", "writable", "capabilities", "sysctls"], "properties": { "env_schema": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Env$", "description": "\uC774 \uC5ED\uD560\uC774 \uBC1B\uB294 \uD658\uACBD \uBCC0\uC218\uC758 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984" }, "process": { "$ref": "#/$defs/Process", "description": "\uCEE8\uD14C\uC774\uB108\uAC00 \uC2DC\uC791\uD558\uB294 \uC0AC\uC6A9\uC790(\uC774\uBBF8\uC9C0 USER \uC758 \uC22B\uC790). \uBC30\uCE58 \uC601\uC5ED\uC740 user \uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4" }, "files": { "type": "array", "items": { "$ref": "#/$defs/File" } }, "writable": { "type": "array", "items": { "$ref": "#/$defs/Writable" } }, "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"] }, "description": "cap_drop ALL \uB4A4\uC5D0 \uB354\uD574\uC57C \uD558\uB294 \uAC83\uB9CC. \uBE44\uC5B4 \uC788\uC73C\uBA74 \uB354\uD558\uC9C0 \uC54A\uB294\uB2E4" }, "sysctls": { "type": "object", "propertyNames": { "enum": ["net.ipv4.ip_unprivileged_port_start"] }, "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "\uBC30\uCE58 \uC601\uC5ED\uC774 \uC774 \uAC12\uC73C\uB85C \uC918\uC57C \uD558\uB294 \uCEE4\uB110 \uB9E4\uAC1C\uBCC0\uC218(\uC774\uB984 \uACF5\uAC04 \uC548). \uC5C6\uC73C\uBA74 \uC8FC\uC9C0 \uC54A\uB294\uB2E4. \uC608: root \uAC00 \uC544\uB2CC \uC0AC\uC6A9\uC790\uAC00 1024 \uC544\uB798 \uD3EC\uD2B8\uB97C \uC5F4 \uB54C net.ipv4.ip_unprivileged_port_start=0" }, "config_paths": { "type": "object", "description": "Job config directory paths. Resolve relative values against the config file container directory. Only these declared paths can be mounted; configuration content is validated against JobsDeclaration.config.schema first.", "propertyNames": { "type": "string", "pattern": "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$", "description": "RFC 6901 JSON Pointer in the job config declared by JobsDeclaration.config." }, "additionalProperties": { "$ref": "#/$defs/ConfigPath" } } } }, "ConfigPath": { "type": "object", "additionalProperties": false, "required": ["access", "required"], "properties": { "access": { "enum": ["read", "write"], "description": "Directory bind: read-only input or writable job output. The process identity is InputSet.process." }, "required": { "type": "boolean", "description": "If false, an absent config member does not declare a mount (e.g. HTTP/memory store has no file root)." } } } }, "examples": [{ "schema_version": 1, "image": "survey-service", "read_only_root": true, "exec_absolute_argv": true, "role_env": null, "roles": { "default": { "env_schema": "SurveyServiceEnv", "process": { "uid": 10001, "gid": 10001 }, "capabilities": [], "files": [{ "path_env": "SURVEY_DB_PASSWORD_FILE", "path": "/run/secrets/survey-db-password", "kind": "secret", "schema": null, "required": true, "opened_by": "start-process" }], "writable": [{ "path": "/data", "persist": true, "written_by": { "uid": 10001, "gid": 10001 } }, { "path": "/tmp", "persist": false, "written_by": { "uid": 10001, "gid": 10001 } }], "sysctls": {} } }, "jobs": {} }] };
 var pattern31 = new RegExp("^[A-Z][A-Z0-9_]*$", "u");
-var schema40 = { "type": "object", "additionalProperties": false, "required": ["env_schema", "process", "files", "writable", "capabilities", "sysctls"], "properties": { "env_schema": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Env$", "description": "\uC774 \uC5ED\uD560\uC774 \uBC1B\uB294 \uD658\uACBD \uBCC0\uC218\uC758 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984" }, "process": { "$ref": "#/$defs/Process", "description": "\uCEE8\uD14C\uC774\uB108\uAC00 \uC2DC\uC791\uD558\uB294 \uC0AC\uC6A9\uC790(\uC774\uBBF8\uC9C0 USER \uC758 \uC22B\uC790). \uBC30\uCE58 \uC601\uC5ED\uC740 user \uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4" }, "files": { "type": "array", "items": { "$ref": "#/$defs/File" } }, "writable": { "type": "array", "items": { "$ref": "#/$defs/Writable" } }, "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"] }, "description": "cap_drop ALL \uB4A4\uC5D0 \uB354\uD574\uC57C \uD558\uB294 \uAC83\uB9CC. \uBE44\uC5B4 \uC788\uC73C\uBA74 \uB354\uD558\uC9C0 \uC54A\uB294\uB2E4" }, "sysctls": { "type": "object", "propertyNames": { "enum": ["net.ipv4.ip_unprivileged_port_start"] }, "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "\uBC30\uCE58 \uC601\uC5ED\uC774 \uC774 \uAC12\uC73C\uB85C \uC918\uC57C \uD558\uB294 \uCEE4\uB110 \uB9E4\uAC1C\uBCC0\uC218(\uC774\uB984 \uACF5\uAC04 \uC548). \uC5C6\uC73C\uBA74 \uC8FC\uC9C0 \uC54A\uB294\uB2E4. \uC608: root \uAC00 \uC544\uB2CC \uC0AC\uC6A9\uC790\uAC00 1024 \uC544\uB798 \uD3EC\uD2B8\uB97C \uC5F4 \uB54C net.ipv4.ip_unprivileged_port_start=0" } } };
+var schema40 = { "type": "object", "additionalProperties": false, "required": ["env_schema", "process", "files", "writable", "capabilities", "sysctls"], "properties": { "env_schema": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Env$", "description": "\uC774 \uC5ED\uD560\uC774 \uBC1B\uB294 \uD658\uACBD \uBCC0\uC218\uC758 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984" }, "process": { "$ref": "#/$defs/Process", "description": "\uCEE8\uD14C\uC774\uB108\uAC00 \uC2DC\uC791\uD558\uB294 \uC0AC\uC6A9\uC790(\uC774\uBBF8\uC9C0 USER \uC758 \uC22B\uC790). \uBC30\uCE58 \uC601\uC5ED\uC740 user \uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4" }, "files": { "type": "array", "items": { "$ref": "#/$defs/File" } }, "writable": { "type": "array", "items": { "$ref": "#/$defs/Writable" } }, "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"] }, "description": "cap_drop ALL \uB4A4\uC5D0 \uB354\uD574\uC57C \uD558\uB294 \uAC83\uB9CC. \uBE44\uC5B4 \uC788\uC73C\uBA74 \uB354\uD558\uC9C0 \uC54A\uB294\uB2E4" }, "sysctls": { "type": "object", "propertyNames": { "enum": ["net.ipv4.ip_unprivileged_port_start"] }, "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "\uBC30\uCE58 \uC601\uC5ED\uC774 \uC774 \uAC12\uC73C\uB85C \uC918\uC57C \uD558\uB294 \uCEE4\uB110 \uB9E4\uAC1C\uBCC0\uC218(\uC774\uB984 \uACF5\uAC04 \uC548). \uC5C6\uC73C\uBA74 \uC8FC\uC9C0 \uC54A\uB294\uB2E4. \uC608: root \uAC00 \uC544\uB2CC \uC0AC\uC6A9\uC790\uAC00 1024 \uC544\uB798 \uD3EC\uD2B8\uB97C \uC5F4 \uB54C net.ipv4.ip_unprivileged_port_start=0" }, "config_paths": { "type": "object", "description": "Job config directory paths. Resolve relative values against the config file container directory. Only these declared paths can be mounted; configuration content is validated against JobsDeclaration.config.schema first.", "propertyNames": { "type": "string", "pattern": "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$", "description": "RFC 6901 JSON Pointer in the job config declared by JobsDeclaration.config." }, "additionalProperties": { "$ref": "#/$defs/ConfigPath" } } } };
 var schema42 = { "type": "object", "additionalProperties": false, "required": ["path", "kind", "required", "opened_by"], "properties": { "path_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$", "description": "\uACBD\uB85C\uB97C \uC8FC\uB294 \uD658\uACBD \uBCC0\uC218(\uC608: DB_PASSWORD_FILE). null \uC774\uBA74 path \uACE0\uC815" }, "path": { "type": "string", "pattern": "^/[^\\s]*$", "description": "path_env \uAC00 \uC5C6\uC744 \uB54C \uC774\uBBF8\uC9C0\uAC00 \uC77D\uB294 \uACBD\uB85C(path_env \uAC00 \uC788\uC73C\uBA74 \uADF8 \uAE30\uBCF8\uAC12)" }, "directory": { "type": "boolean", "default": false, "description": "\uCC38\uC774\uBA74 \uD3F4\uB354(\uADF8 \uC548\uC758 \uD30C\uC77C \uC804\uBD80\uB97C \uC77D\uB294\uB2E4)" }, "kind": { "enum": ["secret", "config", "certificate", "ca-bundle", "declaration"], "description": "secret \uC740 \uAC12\uC774 \uBE44\uBC00\uC774\uB2E4(D84): \uBC30\uCE58 \uC601\uC5ED\uC740 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC77D\uC9C0 \uBABB\uD558\uAC8C \uC8FC\uB418 read_by \uB294 \uC77D\uC744 \uC218 \uC788\uC5B4\uC57C \uD55C\uB2E4" }, "schema": { "type": ["string", "null"], "pattern": "^[A-Z][A-Za-z0-9]*$", "description": "\uB0B4\uC6A9\uC774 \uB530\uB974\uB294 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984(\uC788\uC73C\uBA74)" }, "required": { "type": "boolean" }, "opened_by": { "const": "start-process", "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC740 \uCEE8\uD14C\uC774\uB108\uC758 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4(process \uC758 uid, \uBC30\uCE58 \uC601\uC5ED\uC774 \uBD99\uC778 \uBCF4\uC870 \uADF8\uB8F9 \uD3EC\uD568)\uAC00 \uC5F0\uB2E4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uD30C\uC77C\uC744 0640\xB7\uADF8\uB8F9 SECRETS_GID \uB85C \uB450\uACE0 \uADF8 \uADF8\uB8F9\uC744 \uBCF4\uC870 \uADF8\uB8F9\uC73C\uB85C \uBD99\uC778\uB2E4. \uC0AC\uC6A9\uC790\uB97C \uBC14\uAFBC(gosu\xB7setpriv) \uB4A4\uC5D0\uB294 \uBCF4\uC870 \uADF8\uB8F9\uC774 \uC0AC\uB77C\uC9C0\uBBC0\uB85C \uADF8 \uC804\uC5D0 \uC5F4\uAC70\uB098 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4\uAC00 \uC790\uAE30 \uC0AC\uBCF8\uC744 \uB9CC\uB4E4\uC5B4 \uB118\uAE34\uB2E4(2026-11-06 DB \uBE44\uBC00 \uC77D\uAE30 \uC2E4\uD328\uC758 \uC6D0\uC778)" } } };
+var schema45 = { "type": "object", "additionalProperties": false, "required": ["access", "required"], "properties": { "access": { "enum": ["read", "write"], "description": "Directory bind: read-only input or writable job output. The process identity is InputSet.process." }, "required": { "type": "boolean", "description": "If false, an absent config member does not declare a mount (e.g. HTTP/memory store has no file root)." } } };
 var pattern33 = new RegExp("^[A-Z][A-Za-z0-9]*Env$", "u");
 var pattern35 = new RegExp("^/[^\\s]*$", "u");
 var pattern36 = new RegExp("^[A-Z][A-Za-z0-9]*$", "u");
+var pattern38 = new RegExp("^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$", "u");
 function validate29(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
@@ -2286,7 +2288,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
       errors++;
     }
     for (const key0 in data) {
-      if (!(key0 === "env_schema" || key0 === "process" || key0 === "files" || key0 === "writable" || key0 === "capabilities" || key0 === "sysctls")) {
+      if (!(key0 === "env_schema" || key0 === "process" || key0 === "files" || key0 === "writable" || key0 === "capabilities" || key0 === "sysctls" || key0 === "config_paths")) {
         const err6 = { instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" };
         if (vErrors === null) {
           vErrors = [err6];
@@ -2733,12 +2735,122 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
         errors++;
       }
     }
+    if (data.config_paths !== void 0) {
+      let data19 = data.config_paths;
+      if (data19 && typeof data19 == "object" && !Array.isArray(data19)) {
+        for (const key5 in data19) {
+          const _errs44 = errors;
+          if (typeof key5 === "string") {
+            if (!pattern38.test(key5)) {
+              const err45 = { instancePath: instancePath + "/config_paths", schemaPath: "#/properties/config_paths/propertyNames/pattern", keyword: "pattern", params: { pattern: "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$" }, message: 'must match pattern "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$"', propertyName: key5 };
+              if (vErrors === null) {
+                vErrors = [err45];
+              } else {
+                vErrors.push(err45);
+              }
+              errors++;
+            }
+          } else {
+            const err46 = { instancePath: instancePath + "/config_paths", schemaPath: "#/properties/config_paths/propertyNames/type", keyword: "type", params: { type: "string" }, message: "must be string", propertyName: key5 };
+            if (vErrors === null) {
+              vErrors = [err46];
+            } else {
+              vErrors.push(err46);
+            }
+            errors++;
+          }
+          var valid14 = _errs44 === errors;
+          if (!valid14) {
+            const err47 = { instancePath: instancePath + "/config_paths", schemaPath: "#/properties/config_paths/propertyNames", keyword: "propertyNames", params: { propertyName: key5 }, message: "property name must be valid" };
+            if (vErrors === null) {
+              vErrors = [err47];
+            } else {
+              vErrors.push(err47);
+            }
+            errors++;
+          }
+        }
+        for (const key6 in data19) {
+          let data20 = data19[key6];
+          if (data20 && typeof data20 == "object" && !Array.isArray(data20)) {
+            if (data20.access === void 0) {
+              const err48 = { instancePath: instancePath + "/config_paths/" + key6.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/$defs/ConfigPath/required", keyword: "required", params: { missingProperty: "access" }, message: "must have required property 'access'" };
+              if (vErrors === null) {
+                vErrors = [err48];
+              } else {
+                vErrors.push(err48);
+              }
+              errors++;
+            }
+            if (data20.required === void 0) {
+              const err49 = { instancePath: instancePath + "/config_paths/" + key6.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/$defs/ConfigPath/required", keyword: "required", params: { missingProperty: "required" }, message: "must have required property 'required'" };
+              if (vErrors === null) {
+                vErrors = [err49];
+              } else {
+                vErrors.push(err49);
+              }
+              errors++;
+            }
+            for (const key7 in data20) {
+              if (!(key7 === "access" || key7 === "required")) {
+                const err50 = { instancePath: instancePath + "/config_paths/" + key6.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/$defs/ConfigPath/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key7 }, message: "must NOT have additional properties" };
+                if (vErrors === null) {
+                  vErrors = [err50];
+                } else {
+                  vErrors.push(err50);
+                }
+                errors++;
+              }
+            }
+            if (data20.access !== void 0) {
+              let data21 = data20.access;
+              if (!(data21 === "read" || data21 === "write")) {
+                const err51 = { instancePath: instancePath + "/config_paths/" + key6.replace(/~/g, "~0").replace(/\//g, "~1") + "/access", schemaPath: "#/$defs/ConfigPath/properties/access/enum", keyword: "enum", params: { allowedValues: schema45.properties.access.enum }, message: "must be equal to one of the allowed values" };
+                if (vErrors === null) {
+                  vErrors = [err51];
+                } else {
+                  vErrors.push(err51);
+                }
+                errors++;
+              }
+            }
+            if (data20.required !== void 0) {
+              if (typeof data20.required !== "boolean") {
+                const err52 = { instancePath: instancePath + "/config_paths/" + key6.replace(/~/g, "~0").replace(/\//g, "~1") + "/required", schemaPath: "#/$defs/ConfigPath/properties/required/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+                if (vErrors === null) {
+                  vErrors = [err52];
+                } else {
+                  vErrors.push(err52);
+                }
+                errors++;
+              }
+            }
+          } else {
+            const err53 = { instancePath: instancePath + "/config_paths/" + key6.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/$defs/ConfigPath/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+            if (vErrors === null) {
+              vErrors = [err53];
+            } else {
+              vErrors.push(err53);
+            }
+            errors++;
+          }
+        }
+      } else {
+        const err54 = { instancePath: instancePath + "/config_paths", schemaPath: "#/properties/config_paths/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+        if (vErrors === null) {
+          vErrors = [err54];
+        } else {
+          vErrors.push(err54);
+        }
+        errors++;
+      }
+    }
   } else {
-    const err45 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err55 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err45];
+      vErrors = [err55];
     } else {
-      vErrors.push(err45);
+      vErrors.push(err55);
     }
     errors++;
   }
@@ -3016,17 +3128,51 @@ function validate27(data, { instancePath = "", parentData, parentDataProperty, r
           }
         }
         for (const key2 in data7) {
-          if (!validate28(data7[key2], { instancePath: instancePath + "/roles/" + key2.replace(/~/g, "~0").replace(/\//g, "~1"), parentData: data7, parentDataProperty: key2, rootData, dynamicAnchors })) {
+          let data8 = data7[key2];
+          if (!validate28(data8, { instancePath: instancePath + "/roles/" + key2.replace(/~/g, "~0").replace(/\//g, "~1"), parentData: data7, parentDataProperty: key2, rootData, dynamicAnchors })) {
             vErrors = vErrors === null ? validate28.errors : vErrors.concat(validate28.errors);
             errors = vErrors.length;
           }
+          const _errs23 = errors;
+          const _errs24 = errors;
+          if (data8 && typeof data8 == "object" && !Array.isArray(data8)) {
+            let missing0;
+            if (data8.config_paths === void 0 && (missing0 = "config_paths")) {
+              const err22 = {};
+              if (vErrors === null) {
+                vErrors = [err22];
+              } else {
+                vErrors.push(err22);
+              }
+              errors++;
+            }
+          }
+          var valid8 = _errs24 === errors;
+          if (valid8) {
+            const err23 = { instancePath: instancePath + "/roles/" + key2.replace(/~/g, "~0").replace(/\//g, "~1"), schemaPath: "#/properties/roles/additionalProperties/allOf/1/not", keyword: "not", params: {}, message: "must NOT be valid" };
+            if (vErrors === null) {
+              vErrors = [err23];
+            } else {
+              vErrors.push(err23);
+            }
+            errors++;
+          } else {
+            errors = _errs23;
+            if (vErrors !== null) {
+              if (_errs23) {
+                vErrors.length = _errs23;
+              } else {
+                vErrors = null;
+              }
+            }
+          }
         }
       } else {
-        const err22 = { instancePath: instancePath + "/roles", schemaPath: "#/properties/roles/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+        const err24 = { instancePath: instancePath + "/roles", schemaPath: "#/properties/roles/type", keyword: "type", params: { type: "object" }, message: "must be object" };
         if (vErrors === null) {
-          vErrors = [err22];
+          vErrors = [err24];
         } else {
-          vErrors.push(err22);
+          vErrors.push(err24);
         }
         errors++;
       }
@@ -3035,25 +3181,25 @@ function validate27(data, { instancePath = "", parentData, parentDataProperty, r
       let data9 = data.jobs;
       if (data9 && typeof data9 == "object" && !Array.isArray(data9)) {
         for (const key3 in data9) {
-          const _errs23 = errors;
+          const _errs27 = errors;
           if (typeof key3 === "string") {
             if (!pattern17.test(key3)) {
-              const err23 = { instancePath: instancePath + "/jobs", schemaPath: "#/properties/jobs/propertyNames/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"', propertyName: key3 };
+              const err25 = { instancePath: instancePath + "/jobs", schemaPath: "#/properties/jobs/propertyNames/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"', propertyName: key3 };
               if (vErrors === null) {
-                vErrors = [err23];
+                vErrors = [err25];
               } else {
-                vErrors.push(err23);
+                vErrors.push(err25);
               }
               errors++;
             }
           }
-          var valid7 = _errs23 === errors;
-          if (!valid7) {
-            const err24 = { instancePath: instancePath + "/jobs", schemaPath: "#/properties/jobs/propertyNames", keyword: "propertyNames", params: { propertyName: key3 }, message: "property name must be valid" };
+          var valid9 = _errs27 === errors;
+          if (!valid9) {
+            const err26 = { instancePath: instancePath + "/jobs", schemaPath: "#/properties/jobs/propertyNames", keyword: "propertyNames", params: { propertyName: key3 }, message: "property name must be valid" };
             if (vErrors === null) {
-              vErrors = [err24];
+              vErrors = [err26];
             } else {
-              vErrors.push(err24);
+              vErrors.push(err26);
             }
             errors++;
           }
@@ -3065,21 +3211,21 @@ function validate27(data, { instancePath = "", parentData, parentDataProperty, r
           }
         }
       } else {
-        const err25 = { instancePath: instancePath + "/jobs", schemaPath: "#/properties/jobs/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+        const err27 = { instancePath: instancePath + "/jobs", schemaPath: "#/properties/jobs/type", keyword: "type", params: { type: "object" }, message: "must be object" };
         if (vErrors === null) {
-          vErrors = [err25];
+          vErrors = [err27];
         } else {
-          vErrors.push(err25);
+          vErrors.push(err27);
         }
         errors++;
       }
     }
   } else {
-    const err26 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err28 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err26];
+      vErrors = [err28];
     } else {
-      vErrors.push(err26);
+      vErrors.push(err28);
     }
     errors++;
   }
