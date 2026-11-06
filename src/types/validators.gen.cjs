@@ -1,4 +1,4 @@
-// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts DeviceConfig, KioskStartFragment, StaffPushPayload, StaffCallReport, StaffCallRetryRequest, PushSubscriptionRequest, HealthStatus (패키지 버전 3.4.20).
+// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts DeviceConfig, KioskStartFragment, StaffPushPayload, StaffCallReport, StaffCallRetryRequest, PushSubscriptionRequest, HealthStatus (패키지 버전 3.4.21).
 /* eslint-disable */
 "use strict";
 var __getOwnPropNames = Object.getOwnPropertyNames;
