@@ -153,6 +153,7 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 ## 계약 4.0.5 최종 후속 (2026-11-08)
 
 - 공개 DeviceConfig에서 환자 참조를 읽지 않는다. 시작 URL 조각만 환자 참조를 공급하고 공개 설정은 question_set_id와 allow_remote_stt만 허용한다. 타입·검증기와 두 시작 스키마 참조를 고정 태그에서 갱신했다.
-- 표준 npm test의 pretest에 build와 check-schema를 연결했다. 모의 서버의 서버 발급 ID와 실제 응답을 소유자 스키마로 검증하고, 필수 필드 누락 변이를 거부한다. TLS 네트워크 오류의 같은 턴 재시도·120초 예산 시험과 현행 운영 안내를 추가했다.
+- 표준 npm test의 pretest에 build와 check-schema를 연결했다. 모의 서버의 서버 발급 ID와 실제 응답을 소유자 스키마로 검증하고, 필수 필드 누락 변이는 최초 수동 확인했고, 후속 test/check-schema.test.ts에서 정상 응답과 session_id·subject_ref·resolved_by 누락 거부를 자동 검증한다. TLS 네트워크 오류의 같은 턴 재시도·120초 예산 시험과 현행 운영 안내를 추가했다.
 - 확인: 단위 319 pass, skip0(pretest 포함), typecheck 및 두 생성기 --check 통과. 최종 이미지 시험 결과는 아래에 기록한다. 앞의 4.0.2 고정 문장은 당시 기록이다. 전체 프로젝트 E2E는 실행하지 않는다.
 - 최종 이미지 시험 21 pass/skip0, 실제 이미지 smoke rc0(비root·읽기 전용 루트·라벨·건강 확인). 두 프런트 생성물 검사와 타입 검사도 rc0이다.
+- 교차검토 후 필드 누락 변이 3개와 정상 대조를 표준 시험에 추가했다. npm test 323 pass/skip0, typecheck rc0. 이 후속은 시험·문서만 바꾼다.
