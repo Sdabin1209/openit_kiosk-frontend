@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffAlert (패키지 버전 4.0.2) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffAlert (패키지 버전 4.0.4) */
 
 
 /**
@@ -11,7 +11,7 @@ alert_id: string
  */
 session_id: string
 /**
- * RISK_STOP 등
+ * 알림 종류. 알려진 값: RISK_STOP(위험 정지, 위험 신호·선별 포함), CALL_STAFF(직원 호출: 서비스 판단 또는 위험 신호 severity CALL_STAFF), USER_CALLED_STAFF(환자가 직원 호출). 모르는 값은 읽는 쪽이 일반 알림으로 보인다(CONVENTIONS 1절 3항)
  */
 kind: string
 created_at: string

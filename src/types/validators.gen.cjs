@@ -1,4 +1,4 @@
-// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts DeviceConfig, KioskStartFragment, StaffPushPayload, StaffCallReport, StaffCallRetryRequest, PushSubscriptionRequest, HealthStatus (패키지 버전 4.0.2).
+// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts DeviceConfig, KioskStartFragment, StaffPushPayload, StaffCallReport, StaffCallRetryRequest, PushSubscriptionRequest, HealthStatus (패키지 버전 4.0.4).
 /* eslint-disable */
 "use strict";
 var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -3536,12 +3536,9 @@ function validate40(data, { instancePath = "", parentData, parentDataProperty, r
     }
     if (data.subject_ref !== void 0) {
       let data2 = data.subject_ref;
-      const _errs7 = errors;
-      let valid2 = false;
-      const _errs8 = errors;
       if (typeof data2 === "string") {
         if (!pattern10.test(data2)) {
-          const err5 = { instancePath: instancePath + "/subject_ref", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref/anyOf/0/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9._:/#=+-]{1,128}$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9._:/#=+-]{1,128}$(?![\\s\\S])"' };
+          const err5 = { instancePath: instancePath + "/subject_ref", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9._:/#=+-]{1,128}$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9._:/#=+-]{1,128}$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err5];
           } else {
@@ -3550,7 +3547,7 @@ function validate40(data, { instancePath = "", parentData, parentDataProperty, r
           errors++;
         }
       } else {
-        const err6 = { instancePath: instancePath + "/subject_ref", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref/anyOf/0/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        const err6 = { instancePath: instancePath + "/subject_ref", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
           vErrors = [err6];
         } else {
@@ -3558,67 +3555,35 @@ function validate40(data, { instancePath = "", parentData, parentDataProperty, r
         }
         errors++;
       }
-      var _valid0 = _errs8 === errors;
-      valid2 = valid2 || _valid0;
-      const _errs10 = errors;
-      if (data2 !== null) {
-        const err7 = { instancePath: instancePath + "/subject_ref", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
-        if (vErrors === null) {
-          vErrors = [err7];
-        } else {
-          vErrors.push(err7);
+    }
+    if (data.question_set_id !== void 0) {
+      let data3 = data.question_set_id;
+      if (typeof data3 === "string") {
+        if (!pattern11.test(data3)) {
+          const err7 = { instancePath: instancePath + "/question_set_id", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/question_set_id/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])"' };
+          if (vErrors === null) {
+            vErrors = [err7];
+          } else {
+            vErrors.push(err7);
+          }
+          errors++;
         }
-        errors++;
-      }
-      var _valid0 = _errs10 === errors;
-      valid2 = valid2 || _valid0;
-      if (!valid2) {
-        const err8 = { instancePath: instancePath + "/subject_ref", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
+      } else {
+        const err8 = { instancePath: instancePath + "/question_set_id", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/question_set_id/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
           vErrors = [err8];
         } else {
           vErrors.push(err8);
         }
         errors++;
-      } else {
-        errors = _errs7;
-        if (vErrors !== null) {
-          if (_errs7) {
-            vErrors.length = _errs7;
-          } else {
-            vErrors = null;
-          }
-        }
-      }
-    }
-    if (data.question_set_id !== void 0) {
-      let data3 = data.question_set_id;
-      if (typeof data3 === "string") {
-        if (!pattern11.test(data3)) {
-          const err9 = { instancePath: instancePath + "/question_set_id", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/question_set_id/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])"' };
-          if (vErrors === null) {
-            vErrors = [err9];
-          } else {
-            vErrors.push(err9);
-          }
-          errors++;
-        }
-      } else {
-        const err10 = { instancePath: instancePath + "/question_set_id", schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/question_set_id/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-        if (vErrors === null) {
-          vErrors = [err10];
-        } else {
-          vErrors.push(err10);
-        }
-        errors++;
       }
     }
   } else {
-    const err11 = { instancePath, schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err9 = { instancePath, schemaPath: "PublicApiRequests.schema.json#/$defs/SessionStartBody/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err11];
+      vErrors = [err9];
     } else {
-      vErrors.push(err11);
+      vErrors.push(err9);
     }
     errors++;
   }

@@ -52,7 +52,7 @@ export const contractVersion = () => contractFile("pyproject.toml").match(/^vers
 
 // 문진 스키마(survey-service 리포의 태그). 공개 API 본문 타입 생성(scripts/gen-types.mjs)이 옆 폴더의 작업 트리가 아니라 이 태그에서 읽는다(U410, 계약과 같은 이유: ADR 0027).
 // 이 영역은 문진 스키마를 이미지에 넣지 않으므로 이 값은 이미지 라벨이 아니다(ADR 0031).
-export const SURVEY_SCHEMA_TAG = "survey-schema-v4.1.2";
+export const SURVEY_SCHEMA_TAG = "survey-schema-v4.1.4";
 let SURVEY_DIR_CACHE;
 const surveyDir = () => (SURVEY_DIR_CACHE ??= depRepo("survey-service", "OPENIT_SURVEY_SERVICE_REPO", new URL("../../survey-service/", import.meta.url).pathname,
   "git@github.com:Sdabin1209/openit_survey-service.git", SURVEY_SCHEMA_TAG));
