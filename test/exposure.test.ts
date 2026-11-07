@@ -21,9 +21,14 @@ test("계약 Exposure 예시는 통과한다(생성 검증기가 계약과 같�
 
 test("선언과 이미지 라우트 규칙(Caddyfile)이 어긋나지 않는다: 닫은 경로, 메서드, 직원 화면은 계정 인증", () => {
   const denied = exposure.routes.filter((r: any) => r.auth.kind === "denied").flatMap((r: any) => r.paths).sort();
-  assert.deepEqual(denied, ["/config.json", "/healthz", "/readyz"], "게이트웨이 밖으로 내지 않는 경로");
-  // 이 이미지는 /healthz·/readyz·/config.json을 자기가 처리한다(게이트웨이가 자기 /healthz·/readyz를 따로 내고 /config.json은 막는다)
+  assert.deepEqual(denied, ["/healthz", "/readyz"], "게이트웨이 밖으로 내지 않는 경로");
+  // 이 이미지는 /healthz·/readyz를 자기가 처리한다(게이트웨이는 자기 /healthz·/readyz를 따로 낸다, 영역 상태 경로는 공개 입구에 열지 않는다)
   for (const p of denied) assert.ok(caddyfile.includes(p), `Caddyfile이 ${p}를 안다`);
+  // /config.json은 키오스크 앱이 시작할 때 같은 출처(공개 입구)로 읽는다(link_device_config_receive). 공개 입구는 denied 선언에 경로를 만들지 않고
+  // 같은 영역의 /*(none)가 그 경로를 서비스하므로(계약 4.0.4 Exposure.upstream_token 설명), 선언도 실제대로 none으로 적는다.
+  const cfg = exposure.routes.find((r: any) => r.paths.includes("/config.json"));
+  assert.deepEqual([cfg.paths, cfg.auth], [["/config.json"], { kind: "none" }], "/config.json은 인증 없음으로 선언한다");
+  assert.ok(caddyfile.includes("/config.json"), "Caddyfile이 /config.json을 안다");
   // 선언의 methods(GET)는 이미지가 GET·HEAD 외를 405로 막는 것과 같다
   assert.match(caddyfile, /not method GET HEAD/);
   for (const r of exposure.routes.filter((r: any) => r.auth.kind !== "denied")) assert.deepEqual(r.methods, ["GET"]);

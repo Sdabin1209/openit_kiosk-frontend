@@ -1,5 +1,9 @@
 # STATUS
 
+## /config.json 노출 선언 정정 (2026-11-08, 브랜치 codex/contracts-4-rc1, ADR 0042)
+- `deploy-exposure.json`의 `/config.json`을 denied에서 none(GET)으로 바꿨다. 공개 입구는 denied에 경로를 만들지 않고 같은 영역의 `/*`(none)가 그 경로를 서비스하며(계약 4.0.4), 앱이 시작할 때 같은 출처로 읽는다. 시험: `test/exposure.test.ts`, `test-image/static-image.test.ts`.
+- 확인: `npm test` 317 pass rc0, `npm run typecheck` rc0, `npm run test:image` 21 pass rc0. `npm run check-schema`는 이 변경 전에도 rc1(모의 서버 불일치 3건, 이번 변경과 무관, 남은 일).
+
 ## U422 시험에서 실제 시간 제거 (2026-10-31, 브랜치 wo-422, ADR 0034)
 - 컴포넌트가 시계·타이머를 인자로 받는다(wiring/clock.ts가 실제를 넣음). 시험은 `fakeTimers`·`timesOut()`·사건 대기. 분류표: `test/TIMING.md`. 라이브러리(Caddy) 시간 시험 2개는 설정 값 확인으로 대체.
 - `test-e2e`도 Playwright `page.clock`으로 바꿨다: 34/34 통과(약 4분 -> 약 42초). `test-e2e/Dockerfile`의 옛 경로(U400 때 놓침)를 고쳤다.
