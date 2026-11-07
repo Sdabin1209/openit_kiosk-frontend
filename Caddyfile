@@ -73,7 +73,7 @@
 		}
 
 		# 기기 설정: 운영이 마운트한 파일(CONFIG_FILE)을 /config.json으로 낸다. 없으면 존재하지 않는 경로로 가서 404.
-		# 내용(subject_ref 등)은 로그에 쓰지 않는다. 공개 입구에서는 인증 없음으로 열린다(deploy-exposure.json, ADR 0042).
+		# 공개 설정 내용은 로그에 쓰지 않으며 비밀·환자 참조를 넣지 않는다. 공개 입구에서는 인증 없음으로 열린다(deploy-exposure.json, ADR 0042).
 		handle /config.json {
 			header Content-Type application/json
 			root * /

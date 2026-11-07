@@ -2,7 +2,7 @@
 
 
 /**
- * 세션 시작 요청 입력. subject_ref는 병원 접수 환자 참조(계약 DeviceConfig의 형식), 없으면 생략 또는 null. question_set_id는 문진표 ID(계약 DeviceConfig의 형식), 없으면 생략 또는 null.
+ * 세션 시작 요청 입력. subject_ref는 병원 접수 환자 참조(계약 SessionStartBody의 형식), 없으면 생략 또는 null. question_set_id는 문진표 ID(계약 DeviceConfig의 형식), 없으면 생략 또는 null.
  */
 export interface StartRequest {
 subject_ref?: (string | null)

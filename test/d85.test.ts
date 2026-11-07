@@ -23,10 +23,10 @@ test("시작 조각의 환자 참조를 읽고 주소창에서 지운다(+ 보�
   assert.deepEqual(parseFragment("#subject_ref=a+b=c"), { subject_ref: "a+b=c" });
 });
 
-test("기기 설정은 환자 참조만 주며 기기 자격 칸은 없다", async () => {
+test("공개 기기 설정은 문진표·STT 설정만 주고 환자 참조·기기 자격은 주지 않는다", async () => {
   const seen: string[] = [];
-  const value = await loadKioskStart(win(""), (async (url: string) => { seen.push(url); return json({ subject_ref: "p1" }); }) as any);
-  assert.deepEqual(value, { subjectRef: "p1", subjectInvalid: false, questionSetId: null });
+  const value = await loadKioskStart(win(""), (async (url: string) => { seen.push(url); return json({ question_set_id: "general", allow_remote_stt: true }); }) as any);
+  assert.deepEqual(value, { subjectRef: null, subjectInvalid: false, questionSetId: "general", allowRemoteStt: true });
   assert.deepEqual(seen, ["/config.json"]);
   for (const response of [json({}, 404), new Response("<html>")]) {
     assert.deepEqual(await loadKioskStart(win(""), (async () => response) as any), { subjectRef: null, subjectInvalid: false, questionSetId: null });
@@ -37,8 +37,15 @@ test("폐기된 기기 토큰 설정/조각은 계약 위반으로 통째로 거
   for (const [hash, config] of [["#device=retired&subject_ref=p1", {}], ["", { device_token: "retired", subject_ref: "p1" }]] as const) {
     const value = await loadKioskStart(win(hash), (async () => json(config)) as any);
     assert.equal(value.subjectRef, null);
-    assert.equal(value.subjectInvalid, true);
+    assert.equal(value.subjectInvalid, hash !== "");
     assert.equal("deviceToken" in value, false);
+  }
+});
+
+test("공개 설정의 폐기된 환자 참조는 쓰지 않고 조각의 참조만 유지한다", async () => {
+  for (const hash of ["", "#subject_ref=url-patient"]) {
+    const value = await loadKioskStart(win(hash), (async () => json({ subject_ref: "public-patient", question_set_id: "general", allow_remote_stt: true })) as any);
+    assert.deepEqual(value, { subjectRef: hash ? "url-patient" : null, subjectInvalid: false, questionSetId: null });
   }
 });
 

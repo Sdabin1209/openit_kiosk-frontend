@@ -62,10 +62,6 @@ export function resolveStart(input: StartInput): KioskStart {
   let allowRemote = false;
   if (input.config !== null && (subject === undefined || questionSet === undefined)) {
     const raw = input.config, c = usableKeys(vDeviceConfig, raw);
-    if (subject === undefined && !subjectBad) {
-      if (typeof c.ok.subject_ref === "string") subject = c.ok.subject_ref;
-      else if (c.bad.has("subject_ref") || (c.whole && typeof raw === "object" && raw !== null && "subject_ref" in raw)) subjectBad = true;
-    }
     // 문진표 ID도 조각이 먼저, 없을 때만 기기 설정(계약 3.3.0). 형식이 틀리면 그 키만 버려 활성 목록에서 정한다(환자 참조와 달리 직원을 부르지 않는다).
     if (questionSet === undefined && typeof c.ok.question_set_id === "string") questionSet = c.ok.question_set_id;
     if (c.ok.allow_remote_stt === true) allowRemote = true;
@@ -84,7 +80,7 @@ export function resolveStart(input: StartInput): KioskStart {
  * 시작 값 보관소. 환자 참조(subject_ref)는 한 번 꺼내면 비운다:
  * 새로고침 없이 다음 환자가 시작할 때 이전 환자의 참조가 다시 쓰이면 건강 정보가 다른 사람 기록에 붙는다(감사 P1).
  * 다음 시작에 새 참조가 없으면 null로 돌려주고, 키오스크는 참조 없이 시작한다.
- * 접수 연동이 기기당 고정 참조인지 환자마다 새 URL인지는 사용자 확인 대기이며, 그 전의 안전한 기본이다.
+ * 환자 참조는 시작 URL 조각으로만 받고 공개 기기 설정에서는 받지 않는다.
  */
 export function createStartHolder(load: () => Promise<KioskStart>) {
   const held: KioskStart = { subjectRef: null, subjectInvalid: false, questionSetId: null };

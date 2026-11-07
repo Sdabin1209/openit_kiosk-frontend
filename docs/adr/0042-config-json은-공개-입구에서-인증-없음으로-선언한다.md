@@ -1,10 +1,12 @@
 # ADR 0042: `/config.json`은 공개 입구에서 인증 없음(none)으로 선언한다 (0029의 `/config.json` 행 대체)
 
 ## 상태
-채택됨 (2026-11-08, 계약 v4.0.4). Supersedes: ADR 0029 표의 `/config.json` denied 행.
+채택됨 (2026-11-08, 계약 v4.0.5). Supersedes: ADR 0029 표의 `/config.json` denied 행.
 
 ## 맥락
-ADR 0029는 `/config.json`을 `denied`로 적고 "게이트웨이가 404로 막는다"고 보았다. 계약 4.0.4 `Exposure`(routes[].upstream_token 설명)는 denied 선언에 공개 입구가 경로를 만들지 않으며, 같은 (경로, 메서드)에 다른 선언이 있으면 그 선언이 쓰인다고 정한다. 이 영역의 `/*`(none, GET)가 `/config.json`을 덮으므로 실제로는 인증 없이 열린다. 또 키오스크 앱은 시작할 때 같은 출처(공개 입구)로 `GET /config.json`을 읽는다(`src/components/link_device_config_receive.ts`). 선언과 실제가 어긋났다.
+ADR 0029는 `/config.json`을 `denied`로 적고 게이트웨이가 404로 막는다고 보았다. 계약 Exposure는 denied 선언으로 경로를 만들지 않으며, 같은 경로에 다른 선언이 있으면 그 선언을 사용한다. 앱은 시작할 때 같은 출처로 `GET /config.json`을 읽으므로 이 경로를 명시적으로 선언해야 한다.
+
+platform에 남았던 전역 404 규칙은 명시적 GET none 선언보다 먼저 적용되지 않는 것으로 실제 Caddy 통합 시험에서 확인했다. 그 규칙 제거는 중복 정책 정리이며 새 선언에서도 경로를 막던 결함 수정으로 주장하지 않는다.
 
 ## 결정
 `deploy-exposure.json`에 `/config.json` 경로를 `auth.kind=none`, `methods=[GET]`, 나머지 값은 `/*`와 같게(user_header strip, timeouts 2000/10000ms, max_body_bytes 1024) 따로 적는다. denied는 `/healthz`, `/readyz`만 남긴다.
@@ -20,7 +22,7 @@ ADR 0029는 `/config.json`을 `denied`로 적고 "게이트웨이가 404로 막�
 
 ## 결과
 - 얻는 것: 선언이 실제 공개 입구 동작과 같다.
-- 감수하는 것: `/config.json`은 공개 입구에 닿는 누구나 읽을 수 있다. `DeviceConfig.subject_ref`(개인정보 참조일 수 있음)를 기기 설정에 두면 함께 열린다. 이 영역은 값을 로그에 쓰지 않는다.
+- 감수하는 것: `/config.json`은 공개 입구에 닿는 누구나 읽을 수 있다. 계약 4.0.5에서 `DeviceConfig.subject_ref`를 제거했으며, 환자 참조는 시작 URL 조각으로만 받는다. 설정에 이 키가 있으면 계약 위반으로 설정 전체를 사용하지 않는다. 값은 로그에 쓰지 않는다.
 
 ## 되돌리는 조건
 계약이 정적 경로의 기기 인증(device, upstream_token 없음)이나 denied 우선 규칙을 정하면 그에 맞춰 바꾼다.

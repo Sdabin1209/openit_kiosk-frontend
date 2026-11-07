@@ -32,13 +32,13 @@ test("/config.json: 계약이 거부하는 설정(모르는 키)은 쓰지 않�
   assert.equal("deviceToken" in s, false);
 });
 
-test("/config.json: allow_remote_stt 문자열은 꺼짐, 비ASCII 토큰은 없음, 잘못된 subject_ref는 무효 표시", async () => {
+test("/config.json: allow_remote_stt 문자열은 꺼짐, 폐기된 토큰·환자 참조 설정은 쓰지 않음", async () => {
   const stt = await loadKioskStart(win(), cfg(ex("conformance/examples_invalid", "DeviceConfig.stt-string")));
   assert.equal(stt.allowRemoteStt, undefined);
   assert.equal("deviceToken" in stt, false); // 나머지 키는 계약을 지키므로 그대로 쓴다
   assert.equal((await loadKioskStart(win(), cfg(ex("conformance/examples_invalid", "DeviceConfig.retired-device-token")))).subjectRef, null);
   const ref = await loadKioskStart(win(), cfg(ex("conformance/examples_invalid", "DeviceConfig.bad-subject-ref")));
-  assert.equal(ref.subjectInvalid, true);
+  assert.equal(ref.subjectInvalid, false);
   assert.equal(ref.subjectRef, null);
 });
 

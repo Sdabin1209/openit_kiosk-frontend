@@ -1,5 +1,7 @@
 # 표준성·근거 전수 점검 보고서: kiosk-frontend (2026-10-29)
 
+> 과거 제안·점검 시점의 기록이며 운영 안내가 아니다. 현행 인증·공개 설정은 계약 4.0.5와 ADR 0041·0042를 따른다.
+
 기준서: `../head/docs/audit/standards-audit-spec.md` (D89). 점검 대상 리포 HEAD: `98a43ac`(작업 트리 변경 없음, `git status` 깨끗). 코드·설정·시험은 고치지 않았다(이 파일만 추가).
 읽은 것: `CLAUDE.md`, `README.md`, `docs/brief.md`, `docs/design.md`, `docs/boundary.md`, `docs/adr/0001~0015`, `api/*.ts`, `apps/kiosk/{stt,clinical,main,index.html,kiosk.css}`, `apps/kiosk/flow.ts`(상태 기계 표·유휴·폴링 부분, 전체는 아님), `apps/staff/{sw,push,sync,index.html,staff.css}`, `server/static.mjs`, `Dockerfile`, `scripts/build.mjs`, `package.json`, `.dockerignore`, `.gitignore`. 이웃(읽기 전용): `../boundary-contracts/PUBLIC_API.md` 일부(원칙, 27행, 57행, A절, F절).
 표준 이름은 이 세션에서 원문을 열어 확인하지 않았고 기억에 의존했다. 기억에 의존하며 확신이 덜한 것은 `(기억)`으로 표시했다. 실행한 것: `dist/` 파일 크기 확인, 대비비 계산(python). 시험·빌드·Docker는 실행하지 않았다.

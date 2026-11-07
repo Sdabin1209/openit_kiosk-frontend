@@ -8,7 +8,7 @@
     "subjectRef": {
       "anyOf": [
         {
-          "$ref": "DeviceConfig.schema.json#/properties/subject_ref"
+          "$ref": "PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref"
         },
         {
           "type": "null"

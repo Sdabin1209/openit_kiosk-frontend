@@ -12,7 +12,7 @@
     "check-schema": "node scripts/check-schema.mjs",
     "gen-validators": "node scripts/gen-validators.mjs",
     "gen-types": "node scripts/gen-types.mjs",
-    "pretest": "npm run build",
+    "pretest": "npm run build && npm run check-schema",
     "test": "node --test \"test/*.test.ts\"",
     "mock": "node mock-server/main.ts",
     "smoke": "bash scripts/smoke.sh",

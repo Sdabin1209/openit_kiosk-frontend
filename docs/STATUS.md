@@ -1,5 +1,7 @@
 # STATUS
 
+과거 날짜의 기기 토큰·설정 서술은 당시 기록이다. 현행은 계약 4.0.5와 ADR 0041·0042, docs/runbook.md를 따른다.
+
 ## /config.json 노출 선언 정정 (2026-11-08, 브랜치 codex/contracts-4-rc1, ADR 0042)
 - `deploy-exposure.json`의 `/config.json`을 denied에서 none(GET)으로 바꿨다. 공개 입구는 denied에 경로를 만들지 않고 같은 영역의 `/*`(none)가 그 경로를 서비스하며(계약 4.0.4), 앱이 시작할 때 같은 출처로 읽는다. 시험: `test/exposure.test.ts`, `test-image/static-image.test.ts`.
 - 확인: `npm test` 317 pass rc0, `npm run typecheck` rc0, `npm run test:image` 21 pass rc0. `npm run check-schema`는 이 변경 전에도 rc1(모의 서버 불일치 3건, 이번 변경과 무관, 남은 일).
@@ -147,3 +149,10 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 - 검증: typecheck, 단위 317 통과/skip 0, 이미지 시험 21 통과/skip 0, 실제 이미지 smoke 통과(nonroot·라벨·healthy/unhealthy·바인드 포함). 생성물 --check 통과. 전체 프로젝트 E2E는 실행하지 않았다.
 
 최종 계약 고정은 v4.0.2이다. 시작 요청의 재시도는 새 세션이 될 수 있다는 계약 의미를 따르며 재시도 예산은 유지한다. 새 판에서 생성물/타입 검사, 단위 317 통과(skip 0), 실제 이미지 스모크를 확인했다. 앞서 이미지 시험 21개도 통과했다.
+
+## 계약 4.0.5 최종 후속 (2026-11-08)
+
+- 공개 DeviceConfig에서 환자 참조를 읽지 않는다. 시작 URL 조각만 환자 참조를 공급하고 공개 설정은 question_set_id와 allow_remote_stt만 허용한다. 타입·검증기와 두 시작 스키마 참조를 고정 태그에서 갱신했다.
+- 표준 npm test의 pretest에 build와 check-schema를 연결했다. 모의 서버의 서버 발급 ID와 실제 응답을 소유자 스키마로 검증하고, 필수 필드 누락 변이를 거부한다. TLS 네트워크 오류의 같은 턴 재시도·120초 예산 시험과 현행 운영 안내를 추가했다.
+- 확인: 단위 319 pass, skip0(pretest 포함), typecheck 및 두 생성기 --check 통과. 최종 이미지 시험 결과는 아래에 기록한다. 앞의 4.0.2 고정 문장은 당시 기록이다. 전체 프로젝트 E2E는 실행하지 않는다.
+- 최종 이미지 시험 21 pass/skip0, 실제 이미지 smoke rc0(비root·읽기 전용 루트·라벨·건강 확인). 두 프런트 생성물 검사와 타입 검사도 rc0이다.

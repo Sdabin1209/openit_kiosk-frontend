@@ -1,5 +1,7 @@
 # 구조 규칙 R1~R7 전수 점검 보고서: kiosk-frontend (2026-10-28)
 
+> 과거 제안·점검 시점의 기록이며 운영 안내가 아니다. 현행 인증·공개 설정은 계약 4.0.5와 ADR 0041·0042를 따른다.
+
 기준서: `../head/docs/audit/structure-rules-audit-spec.md` (D104). 점검 대상 리포 HEAD: `6b84c64`. 코드·설정·시험은 고치지 않았다(이 파일만 추가).
 이웃 참조(읽기 전용): `../boundary-contracts`(PUBLIC_API.md, HTTP.md, INTERFACES.md 해당 절, schemas/, conformance/servers.py 일부; 작업 트리는 `v2.1.1-1-gf984b3c`), `../survey-service/schema/schemas`(FrontendInput, StaffSessionView), `../head/shared/areas.json`.
 

@@ -287,3 +287,17 @@ test("상태 폴링 응답이 깨졌으면 재시도하고 그래도 안 되면 
   const api2 = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async () => json({ ok: true })) as any) });
   await assert.rejects(api2.getSessionState("s1"), CallStaffError);
 });
+
+
+test("TLS 거부처럼 원인이 숨겨진 fetch 오류는 같은 턴으로 재시도하고 예산 뒤 직원 호출로 끝난다", async () => {
+  const unavailable = () => { throw new TypeError("Failed to fetch"); };
+  const recovered = make([unavailable, () => ok()]);
+  await recovered.api.sendUtterance("s1", "x", "tls-turn");
+  assert.deepEqual(recovered.turnIds, ["tls-turn", "tls-turn"]);
+  const blocked = make([unavailable]);
+  await assert.rejects(blocked.api.sendUtterance("s1", "x", "tls-turn"), CallStaffError);
+  assert.ok(blocked.count() > 1);
+  assert.ok(blocked.turnIds.every((id) => id === "tls-turn"));
+  assert.equal(DEFAULT_RETRY.budgetMs, 120000);
+  assert.ok(blocked.c.waits.reduce((a, b) => a + b, 0) < DEFAULT_RETRY.budgetMs);
+});
