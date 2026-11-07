@@ -35,20 +35,18 @@ const manualSleep = () => { const s: Array<() => void> = []; return { sleep: () 
 
 // ---- P1 ----
 test("P1: 한 번 쓴 환자 참조는 다음 시작에 다시 쓰이지 않는다(기기 토큰은 유지)", async () => {
-  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:1", subjectInvalid: false, questionSetId: null }));
+  const h = createStartHolder(async () => ({ subjectRef: "visit:1", subjectInvalid: false, questionSetId: null }));
   const a = await h.take();
   assert.equal((await h.take()).subjectRef, "visit:1", "시작이 접수되기 전에는 비우지 않는다(실패한 시작을 같은 참조로 다시 할 수 있다)");
   a.confirm!(); // 시작이 서버에 접수됨
   const b = await h.take();
   assert.equal(a.subjectRef, "visit:1");
   assert.equal(b.subjectRef, null);
-  assert.equal(b.deviceToken, "tok");
-  assert.equal(h.deviceToken(), "tok");
 });
 
 test("P1: 두 번째 환자 세션은 참조 없이 시작하고 화면 표시(startNotice)가 켜진다", async () => {
   const { api, bodies } = server();
-  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:1", subjectInvalid: false, questionSetId: null }));
+  const h = createStartHolder(async () => ({ subjectRef: "visit:1", subjectInvalid: false, questionSetId: null }));
   const flow = createKioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
   await flow.start();
   assert.equal(bodies[0].subject_ref, "visit:1");
@@ -267,7 +265,7 @@ test("K-2: 시작이 실패하면 환자 참조가 남아 같은 참조로 다�
     if (b.kind === "SESSION_START" && fail) return json({ code: "UNAVAILABLE" }, 503);
     return b.kind === "SESSION_START" ? started("질문") : ok("질문");
   }) as any) });
-  const h = createStartHolder(async () => ({ deviceToken: "tok", subjectRef: "visit:9", subjectInvalid: false, questionSetId: null }));
+  const h = createStartHolder(async () => ({ subjectRef: "visit:9", subjectInvalid: false, questionSetId: null }));
   const flow = createKioskFlow(api, { startValues: () => h.take(), idleMs: 0 });
   await flow.start();
   assert.equal(flow.current.state, "CALL_STAFF");

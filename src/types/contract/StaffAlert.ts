@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffAlert (패키지 버전 3.6.5) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffAlert (패키지 버전 4.0.0) */
 
 
 /**
@@ -6,6 +6,9 @@
  */
 export interface StaffAlert {
 alert_id: string
+/**
+ * 근거: 1~64자(PUBLIC_API.md 세션 ID 형식)
+ */
 session_id: string
 /**
  * RISK_STOP 등

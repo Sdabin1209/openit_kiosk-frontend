@@ -1,10 +1,13 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts SessionState (패키지 버전 3.6.5) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts SessionState (패키지 버전 4.0.0) */
 
 
 /**
  * 키오스크가 폴링하는 세션 상태(D66). 위험 정지가 풀렸는지와 이어서 할 안내 문장을 알린다.
  */
 export interface SessionState {
+/**
+ * 근거: 1~64자(PUBLIC_API.md 세션 ID 형식)
+ */
 session_id: string
 state: ("ACTIVE" | "PAUSED_RISK" | "ENDED")
 /**

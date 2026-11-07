@@ -8,7 +8,7 @@ import { bundleStandalone, createAjv } from "./standalone.mjs";
 import Ajv2020 from "ajv/dist/2020.js";
 import standaloneCode from "ajv/dist/standalone/index.js";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { contractJson, contractVersion, pinnedTag } from "./contract-source.mjs";
+import { contractJson, contractList, contractVersion, pinnedTag } from "./contract-source.mjs";
 
 // 계약은 옆 폴더의 현재 작업 트리가 아니라 고정한 태그(Dockerfile ARG)에서 읽는다(scripts/contract-source.mjs, ADR 0027).
 const version = contractVersion();
@@ -22,7 +22,7 @@ const TARGETS = [
 
 function generate(t) {
   const ajv = createAjv({ code: { source: true, esm: false }, allErrors: true });
-  for (const n of [...t.deps, ...t.used]) ajv.addSchema(load(n), `${n}.schema.json`);
+  for (const file of contractList("schemas").filter((f) => f.endsWith(".schema.json"))) ajv.addSchema(contractJson(`schemas/${file}`), file);
   const refs = Object.fromEntries(t.used.map((n) => [n, `${n}.schema.json`]));
   return `// 생성 파일: node scripts/gen-validators.mjs (직접 고치지 않는다). 출처: boundary-contracts ${t.used.join(", ")} (패키지 버전 ${version}).\n/* eslint-disable */\n` + bundleStandalone(standaloneCode(ajv, refs));
 }

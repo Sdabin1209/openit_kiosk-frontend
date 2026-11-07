@@ -7,7 +7,7 @@ import { createKioskFlow, createWebSpeechStt, loadKioskStart } from "../wiring/k
 
 // 기기 토큰과 환자 참조는 메모리에만 둔다(주소창 조각은 읽자마자 지운다). 환자 참조는 한 번 쓰면 비운다(다음 환자에게 재사용하지 않는다).
 const holder = createStartHolder(() => loadKioskStart(window));
-const api = createPublicApiClient({ baseUrl: "/v1", deviceToken: () => holder.deviceToken() });
+const api = createPublicApiClient({ baseUrl: "/v1" });
 const flow = createKioskFlow(api, { startValues: () => holder.take() });
 const chat = new ChatLog(); // 현재 세션의 대화(메모리에만, 세션이 끝나면 지운다: ADR 0015)
 flow.subscribeConversation((e) => chat.accept(e));

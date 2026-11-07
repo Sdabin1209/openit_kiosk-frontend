@@ -5,7 +5,6 @@
  * 키오스크 시작 값(메모리 전용). 형식은 계약 DeviceConfig·KioskStartFragment가 정한다.
  */
 export interface KioskStart {
-deviceToken: (string | null)
 subjectRef: (string | null)
 /**
  * 값이 있었지만 형식이 틀렸다. 세션을 시작하지 않고 직원을 부른다

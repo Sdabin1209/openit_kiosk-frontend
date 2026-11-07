@@ -28,7 +28,7 @@ staffCall?: StaffCallView
 busy?: boolean
 /**
  * CHOOSING에서 고를 문진표(활성 목록의 ID·제목)
- * 
+ *
  * @minItems 1
  */
 choices?: [{

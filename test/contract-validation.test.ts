@@ -29,30 +29,30 @@ for (const [schema, fn] of [["DeviceConfig", validateDeviceConfig], ["KioskStart
 
 test("/config.json: 계약이 거부하는 설정(모르는 키)은 쓰지 않는다 - 토큰도 없는 것으로 본다", async () => {
   const s = await loadKioskStart(win(), cfg(ex("conformance/examples_invalid", "DeviceConfig.unknown-key")));
-  assert.equal(s.deviceToken, null);
+  assert.equal("deviceToken" in s, false);
 });
 
 test("/config.json: allow_remote_stt 문자열은 꺼짐, 비ASCII 토큰은 없음, 잘못된 subject_ref는 무효 표시", async () => {
   const stt = await loadKioskStart(win(), cfg(ex("conformance/examples_invalid", "DeviceConfig.stt-string")));
   assert.equal(stt.allowRemoteStt, undefined);
-  assert.equal(stt.deviceToken, "tok-FAKE"); // 나머지 키는 계약을 지키므로 그대로 쓴다
-  assert.equal((await loadKioskStart(win(), cfg(ex("conformance/examples_invalid", "DeviceConfig.token-with-non-ascii")))).deviceToken, null);
+  assert.equal("deviceToken" in stt, false); // 나머지 키는 계약을 지키므로 그대로 쓴다
+  assert.equal((await loadKioskStart(win(), cfg(ex("conformance/examples_invalid", "DeviceConfig.retired-device-token")))).subjectRef, null);
   const ref = await loadKioskStart(win(), cfg(ex("conformance/examples_invalid", "DeviceConfig.bad-subject-ref")));
   assert.equal(ref.subjectInvalid, true);
   assert.equal(ref.subjectRef, null);
 });
 
 test("/config.json: 객체가 아니면(배열, null) 쓰지 않는다", async () => {
-  for (const v of [[], null, "x", 3]) assert.equal((await loadKioskStart(win(), cfg(v))).deviceToken, null);
+  for (const v of [[], null, "x", 3]) assert.equal((await loadKioskStart(win(), cfg(v))).subjectRef, null);
 });
 
 test("시작 URL 조각: 계약이 거부하는 모르는 키가 있으면 조각 전체를 쓰지 않고, 환자 참조가 있었으면 무효로 표시", async () => {
   const s = await loadKioskStart(win("#device=tok-FAKE&subject_ref=p1&patient_name=x"), cfg({}));
-  assert.equal(s.deviceToken, null);
+  assert.equal("deviceToken" in s, false);
   assert.equal(s.subjectRef, null);
   assert.equal(s.subjectInvalid, true);
   const d = await loadKioskStart(win("#device=" + encodeURIComponent("토큰")), cfg({}));
-  assert.equal(d.deviceToken, null);
+  assert.equal("deviceToken" in d, false);
 });
 
 test("푸시 본문: 계약을 지키면 세션·종류·alert_id를 쓰고, 어기면(모르는 키, session_id 없음) 일반 문구와 고정 tag", () => {

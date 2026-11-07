@@ -51,9 +51,9 @@ test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDe
 });
 
 test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async () => {
-  const { m } = await mk();
-  await fetch(m.base + "/v1/sessions", { method: "POST", body: JSON.stringify({ session_id: "s1", kind: "SESSION_START" }) });
-  const bad = await fetch(m.base + "/v1/sessions/s1/turns", { method: "POST", body: JSON.stringify({ session_id: "s1", kind: "UTTERANCE", utterance: "x", turn_id: "t", extra: 1 }) });
+  const { m, api } = await mk();
+  const sid = (await api.startSession()).session_id;
+  const bad = await fetch(m.base + `/v1/sessions/${sid}/turns`, { method: "POST", body: JSON.stringify({ session_id: sid, kind: "UTTERANCE", utterance: "x", turn_id: "t", extra: 1 }) });
   assert.equal(bad.status, 400);
   const body: any = await bad.json();
   assert.equal(body.code, "INVALID_RECORD");
@@ -62,11 +62,11 @@ test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async ()
   const vErr = bs("BoundaryError.schema.json");
   const okErr: boolean = vErr(body);
   assert.ok(okErr, JSON.stringify(vErr.errors));
-  assert.match(String(body.pipeline_schema_version), /^3\./);
+  assert.equal(body.pipeline_schema_version, "4.0");
 });
 
 test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨다", async () => {
-  const { m, api } = await mk({ vapidPublicKey: "PUBKEY" });
+  const { m, api } = await mk({ vapidPublicKey: "A".repeat(87) });
   const SID_s1 = (await api.startSession()).session_id; await api.sendUtterance(SID_s1, "위험");
   const page = await createStaffApi(api).listAlerts("OPEN");
   assert.ok(vPage(page), JSON.stringify(vPage.errors)); // 새 optional 필드 포함 목록 전체(계약 2ec2849에서 StaffAlertPage가 StaffAlert를 $ref)
@@ -75,7 +75,7 @@ test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨
   assert.ok(vState(st), JSON.stringify(vState.errors));
   assert.equal(st.state, "PAUSED_RISK");
   const pc = await createStaffApi(api).pushConfig();
-  assert.ok(vPush(pc)); assert.equal(pc.vapid_public_key, "PUBKEY");
+  assert.ok(vPush(pc)); assert.equal(pc.vapid_public_key, "A".repeat(87));
   m.state.sc.vapidPublicKey = null;
   assert.equal((await api.getPushConfig()).vapid_public_key, null);
 });

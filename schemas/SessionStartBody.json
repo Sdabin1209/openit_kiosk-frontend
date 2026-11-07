@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "SessionStartBody.json",
+  "title": "SessionStartBody",
+  "description": "세션 시작의 HTTP 본문. 형식의 정본은 공개 API 계약이며 모의 서버도 같은 검증기를 쓴다.",
+  "$ref": "PublicApiRequests.schema.json#/$defs/SessionStartBody"
+}

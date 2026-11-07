@@ -5,6 +5,9 @@
  * 세션 시작 응답 본문: FrontendBody + 서버가 발급한 session_id(1~64자 영문·숫자·-_). 없거나 틀리면 성공으로 보지 않는다(ID를 지어내지 않는다).
  */
 export type StartedBody = (FrontendBody & {
+/**
+ * 근거: 1~64자(PUBLIC_API.md 세션 ID 형식)
+ */
 session_id: string
 })
 

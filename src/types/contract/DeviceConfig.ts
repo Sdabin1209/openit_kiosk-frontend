@@ -1,17 +1,12 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts DeviceConfig (패키지 버전 3.6.5) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts DeviceConfig (패키지 버전 4.0.0) */
 
 
 /**
- * 키오스크 기기 설정(`GET /config.json`). 쓰는 쪽: deploy(운영이 마운트하는 CONFIG_FILE 내용). 읽는 쪽: kiosk-frontend(api/device.ts loadKioskStart). 초안. 모든 키는 선택이다. device_token이 없으면 키오스크는 세션을 시작하지 않고 직원 호출 화면(NO_DEVICE_TOKEN)을 보인다. 이 문서의 값은 비밀(device_token)·개인정보 참조(subject_ref)를 담을 수 있으므로 로그·오류 응답에 쓰지 않는다. [3.4.4 검토 B-28-9: 기기 인증은 mTLS 가 기본이고(PUBLIC_API F절) 기기 토큰 필드는 F-1 호환용으로 남긴다. 제거는 다음 MAJOR 4.0.0.]
+ * 키오스크 기기 설정(`GET /config.json`). 쓰는 쪽: deploy(운영이 마운트하는 CONFIG_FILE 내용). 읽는 쪽: kiosk-frontend(src/wiring/kiosk.ts loadKioskStart → src/components/link_device_config_receive.ts). 모든 키는 선택이다. 기기 인증은 게이트웨이의 클라이언트 인증서(mTLS, PUBLIC_API F절)이고 앱은 기기 자격을 보내지 않는다. 4.0.0: device_token(F-1 기기 토큰)을 없앴다(D136). subject_ref 는 개인정보 참조일 수 있으므로 로그·오류 응답에 쓰지 않는다.
  */
 export interface DeviceConfig {
 /**
- * @deprecated
- * (폐기 예정, 2.3.0) 기기 토큰. 2.3.0부터 키오스크 기기 인증은 게이트웨이의 클라이언트 인증서(mTLS, ADR 0012)라 이 값이 필요 없다. 2.x 호환으로만 남고 3.0.0에서 없어진다. 있으면 /v1/sessions* 요청에 `Authorization: Bearer`로 실린다. 비밀 값.
- */
-device_token?: string
-/**
- * 병원 접수가 넘긴 환자 참조(PUBLIC_API.md 추가 인터페이스 A의 형식). 기기당 고정 참조인지 환자마다 새 값인지는 미정(사용자 확인 대기). 시작 URL 조각의 subject_ref가 있으면 그것이 먼저다.
+ * 병원 접수가 넘긴 환자 참조(PUBLIC_API.md 추가 인터페이스 A의 형식). 시작 URL 조각의 subject_ref가 있으면 그것이 먼저다. 키오스크는 이 값을 페이지를 연 뒤 서버가 접수한 첫 세션 시작 한 번에만 쓰고 비운다(다음 환자에게 이전 참조가 붙지 않게, kiosk-frontend start_values.ts createStartHolder). 그래서 이 파일에 고정 값을 두면 페이지를 새로 열 때마다 첫 세션에만 붙는다. 접수 연동이 기기당 고정 참조를 쓸지 환자마다 새 URL 을 쓸지는 설치처 결정이다(head OPEN_GAPS G-SUBJ-1).
  */
 subject_ref?: string
 /**

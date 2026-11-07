@@ -5,3 +5,5 @@ export function contractList(dir: string): string[];
 export function contractVersion(): string;
 export const SURVEY_SCHEMA_TAG: string;
 export function surveySchemaJson(name: string): any;
+
+export function surveySchemaNames(): string[];

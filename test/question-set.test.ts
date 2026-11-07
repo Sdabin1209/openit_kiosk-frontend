@@ -152,14 +152,14 @@ test("400 QUESTION_SET_REQUIRED는 재시도 없이 직원 호출 화면", async
   assert.equal(mock.state.log.filter((l) => l.method === "POST" && l.path === "/v1/sessions").length, 1);
 });
 
-test("요청: 목록 읽기와 시작 본문에 question_set_id가 실리고, 기기 토큰은 목록 요청에도 간다", async () => {
+test("요청: 목록 읽기와 시작 본문에 question_set_id가 실리고, 기기 자격은 HTTP에 싣지 않는다", async () => {
   const seen: { url: string; auth: unknown; body: unknown }[] = [];
   const mock = await startMock({ questionSets: [SETS[0]!] }); open.push(mock.close);
   const f = (async (u: string, init: RequestInit) => { seen.push({ url: u.replace(mock.base, ""), auth: (init.headers as any).authorization, body: init.body ? JSON.parse(init.body as string) : null }); return fetch(u, init); }) as any;
-  const api = createPublicApiClient({ ...fast, baseUrl: `${mock.base}/v1`, fetch: f, deviceToken: () => "tok-FAKE" });
+  const api = createPublicApiClient({ ...fast, baseUrl: `${mock.base}/v1`, fetch: f });
   await api.listQuestionSets();
   await api.startSession(null, "general");
-  assert.equal(seen[0]!.url, "/v1/question-sets"); assert.equal(seen[0]!.auth, "Bearer tok-FAKE");
+  assert.equal(seen[0]!.url, "/v1/question-sets"); assert.equal(seen[0]!.auth, undefined);
   assert.deepEqual(seen[1]!.body, { kind: "SESSION_START", question_set_id: "general" });
   assert.throws(() => api.startSession(null, "공백 있음"), /question_set_id/);
 });

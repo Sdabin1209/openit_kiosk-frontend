@@ -2,6 +2,7 @@
 // 시나리오 제어(/__mock/*)는 계약 밖의 모의 전용 경로다.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { randomBytes } from "node:crypto";
+import { SessionStartBody as validateStart } from "../src/types/validators.gen.cjs";
 
 export interface Scenario {
   delayMs: number;              // 모든 /v1 응답 지연
@@ -19,8 +20,7 @@ export interface Scenario {
   retryAfterSec: number | null; // 429·503 오류에 Retry-After(초)를 붙임
   autoResumeMs: number;         // 0보다 크면 위험 정지 후 이 시간 뒤 직원이 RESUME한 것처럼 처리
   vapidPublicKey: string | null; // GET /v1/staff/push-config
-  deviceToken: string | null;   // 있으면 /v1/sessions* 에 Authorization: Bearer <이 값>이 없을 때 401(F절). null이면 검증하지 않음
-  gatewayDevice: boolean;       // true면 게이트웨이(mTLS, 2.3.0)를 흉내 낸다: /v1/sessions*에 X-Openit-Device(기기 ID)가 없거나 형식이 틀리면 401, 다른 기기가 만든 세션은 404
+  gatewayDevice: boolean;       // true면 게이트웨이(mTLS, 2.3.0)를 흉내 낸다: /v1/sessions*에 X-Openit-Device(기기 ID)가 없거나 형식이 틀리면 403, 다른 기기가 만든 세션은 404
   staffCallApi: boolean;        // false면 staff-call 두 경로가 404(2.1.0 이전 서버 모의)
   pauseReasonField: boolean;    // false면 /state에 pause_reason을 싣지 않는다(옛 서버)
   reaskKeyword: string;         // 발화에 이 말이 있으면 되묻기 한도 정지(pause_reason=REASK_LIMIT, 알림 kind CALL_STAFF)
@@ -31,7 +31,7 @@ export interface Scenario {
   questionSets: { question_set_id: string; title: string; version: string }[]; // GET /v1/question-sets의 활성 목록(I10, 계약 3.3.0). 기본은 하나
   requireSubjectRef: boolean;   // SURVEY_REQUIRE_SUBJECT_REF 대역: 켜면 subject_ref 없을 때 400(A절)
 }
-const DEFAULT: Scenario = { gatewayDevice: false, delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, heartbeat: true, resyncOnConnect: false, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, deviceToken: null, staffCallApi: true, pauseReasonField: true, reaskKeyword: "알수없음", retryDelivery: "DELIVERED", retryAfterS: 30, retryLimit: 10, enforceInterval: false, requireSubjectRef: false, questionSets: [{ question_set_id: "general", title: "일반 문진", version: "1.0.0" }] };
+const DEFAULT: Scenario = { gatewayDevice: false, delayMs: 0, hangFirst: 0, errorStatus: null, errorTimes: 0, riskKeyword: "위험", alertDelivery: "DELIVERED", notCommitted: false, errorReason: null, heartbeat: true, resyncOnConnect: false, streamErrorStatus: null, streamErrorTimes: 0, retryAfterSec: null, autoResumeMs: 0, vapidPublicKey: null, staffCallApi: true, pauseReasonField: true, reaskKeyword: "알수없음", retryDelivery: "DELIVERED", retryAfterS: 30, retryLimit: 10, enforceInterval: false, requireSubjectRef: false, questionSets: [{ question_set_id: "general", title: "일반 문진", version: "1.0.0" }] };
 const PRESETS: Record<string, Partial<Scenario>> = {
   normal: {},
   risk_stop: { alertDelivery: "DELIVERED" },
@@ -65,7 +65,8 @@ const SUBJECT_REF_RE = /^[A-Za-z0-9._:/#=+-]{1,128}$/; // PUBLIC_API.md A절
 const ts = (d = new Date()) => d.toISOString().replace(/\.\d+Z$/, "Z"); // 스키마 Timestamp: 초 단위, 끝에 Z
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 // 기준 계약(Dockerfile ARG BOUNDARY_CONTRACT)의 PIPELINE_SCHEMA_VERSION. 이 영역(Node)은 계약 패키지(Python)를 import할 수 없어 값을 여기 한 곳에 두고, scripts/check-schema.mjs가 계약 상수와 대조한다. 시험은 이 상수를 import한다.
-export const PIPELINE_SCHEMA_VERSION = "3.4";
+import { PIPELINE_SCHEMA_VERSION } from "../src/types/validators.gen.cjs";
+export { PIPELINE_SCHEMA_VERSION };
 const berr = (code: string, message: string, retryable = false) => ({ pipeline_schema_version: PIPELINE_SCHEMA_VERSION, code, message, retryable });
 
 export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: number } = {}): { server: Server; state: MockState; reset: (s?: Partial<Scenario>) => void } {
@@ -146,15 +147,11 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
       res.writeHead(s, headers); return res.end(JSON.stringify(eb));
     }
 
-    // F절: 기기 토큰. /v1/sessions* 만 대상이다. 직원 경로와 개입 결정(/intervention)은 게이트웨이의 직원 인증 몫이라 기기 토큰을 보지 않는다.
-    if (state.sc.deviceToken && /^\/v1\/(sessions|question-sets)(\/|$)/.test(path) && !path.endsWith("/intervention") && req.headers.authorization !== `Bearer ${state.sc.deviceToken}`) {
-      return json(res, 401, berr("PERMISSION_DENIED", "device token required"));
-    }
-    // F절(2.3.0, mTLS): 게이트웨이가 인증서 CN을 X-Openit-Device로 붙인다. 앱은 기기 자격을 보내지 않는다. 헤더가 없거나 형식이 틀리면 401, 다른 기기가 만든 세션은 404.
+    // F절(2.3.0, mTLS): 게이트웨이가 인증서 CN을 X-Openit-Device로 붙인다. 앱은 기기 자격을 보내지 않는다. 헤더가 없거나 형식이 틀리면 403, 다른 기기가 만든 세션은 404.
     const devHeader = req.headers["x-openit-device"];
     const devId = typeof devHeader === "string" && DEVICE_ID_RE.test(devHeader) ? devHeader : null;
     if (state.sc.gatewayDevice && /^\/v1\/(sessions|question-sets)(\/|$)/.test(path) && !path.endsWith("/intervention")) {
-      if (!devId) return json(res, 401, berr("PERMISSION_DENIED", "client certificate required"));
+      if (!devId) return json(res, 403, berr("PERMISSION_DENIED", "client certificate required"));
       const owner = state.sessions.get(/^\/v1\/sessions\/([^/]+)/.exec(path)?.[1] ?? "")?.deviceId;
       if (owner && owner !== devId) return json(res, 404, berr("NOT_FOUND", "no such session"));
     }
@@ -169,12 +166,9 @@ export function createMock(initial: Partial<Scenario> = {}, opt: { pingMs?: numb
 
     // ---- 문진 ----
     if (m === "POST" && path === "/v1/sessions") {
-      // 계약 2.2.0(D106): session_id를 생략하면 서버가 발급한다. 보내는 방식은 폐기 예정이지만 2.x에서는 받는다.
-      if (body.kind !== "SESSION_START" || (body.session_id !== undefined && !ID_RE.test(body.session_id))) return json(res, 400, berr("INVALID_RECORD", "bad start"));
-      if (body.session_id === undefined) body.session_id = randomBytes(16).toString("base64url"); // CSPRNG 128비트, 문자 집합 [A-Za-z0-9_-]
-      const { turn_id: _t, ...startRest } = body;
-      if (Object.keys(startRest).some((k) => !["kind", "session_id", "subject_ref", "question_set_id"].includes(k))) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
-      if (body.subject_ref !== undefined && (typeof body.subject_ref !== "string" || !SUBJECT_REF_RE.test(body.subject_ref))) return json(res, 400, berr("INVALID_RECORD", "bad subject_ref")); // 값은 응답·로그에 되풀이하지 않는다
+      if (!validateStart(body)) return json(res, 400, berr("INVALID_RECORD", "body does not match schema"));
+      // SessionStartBody 검증 뒤 서버만 ID를 발급한다. 호출자가 고른 ID는 받지 않는다(D136).
+      body.session_id = randomBytes(32).toString("base64url");
       { const nr = noRelease(); if (nr) return nr; }
       // 문진표: 활성이 하나면 생략 가능, 둘 이상이면 필수, 목록에 없으면 400 INVALID_RECORD + details.reason(계약 3.3.0 I10)
       const sets = state.sc.questionSets;

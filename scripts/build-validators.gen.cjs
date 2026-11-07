@@ -1,4 +1,4 @@
-// 생성 파일: node scripts/gen-validators.mjs (직접 고치지 않는다). 출처: boundary-contracts BuildImageRequest, BuildImageResult, SetupEnvReport, Exposure, ContainerInputs (패키지 버전 3.6.5).
+// 생성 파일: node scripts/gen-validators.mjs (직접 고치지 않는다). 출처: boundary-contracts BuildImageRequest, BuildImageResult, SetupEnvReport, Exposure, ContainerInputs (패키지 버전 4.0.0).
 /* eslint-disable */
 "use strict";
 var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -82,10 +82,10 @@ var require_equal = __commonJS({
 exports.BuildImageRequest = validate20;
 var func1 = require_ucs2length().default;
 var pattern4 = new RegExp("^/", "u");
-var pattern5 = new RegExp("^[0-9a-f]{7,40}$", "u");
-var pattern6 = new RegExp("^v[0-9]+\\.[0-9]+\\.[0-9]+$", "u");
-var pattern12 = new RegExp("^[a-z0-9-]+$", "u");
-var pattern13 = new RegExp("^[a-z0-9./_-]+:[A-Za-z0-9._-]+$", "u");
+var pattern5 = new RegExp("^[0-9a-f]{7,40}$(?![\\s\\S])", "u");
+var pattern6 = new RegExp("^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])", "u");
+var pattern12 = new RegExp("^[a-z0-9-]+$(?![\\s\\S])", "u");
+var pattern13 = new RegExp("^(?=[^:]{1,255}:)[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$(?![\\s\\S])", "u");
 function validate20(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
   let vErrors = null;
@@ -180,7 +180,7 @@ function validate20(data, { instancePath = "", parentData, parentDataProperty, r
       let data1 = data.revision;
       if (typeof data1 === "string") {
         if (!pattern5.test(data1)) {
-          const err8 = { instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/pattern", keyword: "pattern", params: { pattern: "^[0-9a-f]{7,40}$" }, message: 'must match pattern "^[0-9a-f]{7,40}$"' };
+          const err8 = { instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/pattern", keyword: "pattern", params: { pattern: "^[0-9a-f]{7,40}$(?![\\s\\S])" }, message: 'must match pattern "^[0-9a-f]{7,40}$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err8];
           } else {
@@ -225,7 +225,7 @@ function validate20(data, { instancePath = "", parentData, parentDataProperty, r
           let data3 = data2.boundary;
           if (typeof data3 === "string") {
             if (!pattern6.test(data3)) {
-              const err12 = { instancePath: instancePath + "/versions/boundary", schemaPath: "#/properties/versions/properties/boundary/pattern", keyword: "pattern", params: { pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$" }, message: 'must match pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$"' };
+              const err12 = { instancePath: instancePath + "/versions/boundary", schemaPath: "#/properties/versions/properties/boundary/pattern", keyword: "pattern", params: { pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])" }, message: 'must match pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])"' };
               if (vErrors === null) {
                 vErrors = [err12];
               } else {
@@ -247,7 +247,7 @@ function validate20(data, { instancePath = "", parentData, parentDataProperty, r
           let data4 = data2.model_runtime;
           if (typeof data4 === "string") {
             if (!pattern6.test(data4)) {
-              const err14 = { instancePath: instancePath + "/versions/model_runtime", schemaPath: "#/properties/versions/properties/model_runtime/pattern", keyword: "pattern", params: { pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$" }, message: 'must match pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$"' };
+              const err14 = { instancePath: instancePath + "/versions/model_runtime", schemaPath: "#/properties/versions/properties/model_runtime/pattern", keyword: "pattern", params: { pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])" }, message: 'must match pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])"' };
               if (vErrors === null) {
                 vErrors = [err14];
               } else {
@@ -269,7 +269,7 @@ function validate20(data, { instancePath = "", parentData, parentDataProperty, r
           let data5 = data2.survey_schema;
           if (typeof data5 === "string") {
             if (!pattern6.test(data5)) {
-              const err16 = { instancePath: instancePath + "/versions/survey_schema", schemaPath: "#/properties/versions/properties/survey_schema/pattern", keyword: "pattern", params: { pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$" }, message: 'must match pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$"' };
+              const err16 = { instancePath: instancePath + "/versions/survey_schema", schemaPath: "#/properties/versions/properties/survey_schema/pattern", keyword: "pattern", params: { pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])" }, message: 'must match pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])"' };
               if (vErrors === null) {
                 vErrors = [err16];
               } else {
@@ -418,7 +418,7 @@ function validate20(data, { instancePath = "", parentData, parentDataProperty, r
       let data10 = data.variant;
       if (typeof data10 === "string") {
         if (!pattern12.test(data10)) {
-          const err30 = { instancePath: instancePath + "/variant", schemaPath: "#/properties/variant/pattern", keyword: "pattern", params: { pattern: "^[a-z0-9-]+$" }, message: 'must match pattern "^[a-z0-9-]+$"' };
+          const err30 = { instancePath: instancePath + "/variant", schemaPath: "#/properties/variant/pattern", keyword: "pattern", params: { pattern: "^[a-z0-9-]+$(?![\\s\\S])" }, message: 'must match pattern "^[a-z0-9-]+$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err30];
           } else {
@@ -440,7 +440,7 @@ function validate20(data, { instancePath = "", parentData, parentDataProperty, r
       let data11 = data.image_tag;
       if (typeof data11 === "string") {
         if (!pattern13.test(data11)) {
-          const err32 = { instancePath: instancePath + "/image_tag", schemaPath: "#/properties/image_tag/pattern", keyword: "pattern", params: { pattern: "^[a-z0-9./_-]+:[A-Za-z0-9._-]+$" }, message: 'must match pattern "^[a-z0-9./_-]+:[A-Za-z0-9._-]+$"' };
+          const err32 = { instancePath: instancePath + "/image_tag", schemaPath: "_common.schema.json#/$defs/ImageRef/pattern", keyword: "pattern", params: { pattern: "^(?=[^:]{1,255}:)[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$(?![\\s\\S])" }, message: 'must match pattern "^(?=[^:]{1,255}:)[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err32];
           } else {
@@ -449,7 +449,7 @@ function validate20(data, { instancePath = "", parentData, parentDataProperty, r
           errors++;
         }
       } else {
-        const err33 = { instancePath: instancePath + "/image_tag", schemaPath: "#/properties/image_tag/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        const err33 = { instancePath: instancePath + "/image_tag", schemaPath: "_common.schema.json#/$defs/ImageRef/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
           vErrors = [err33];
         } else {
@@ -471,12 +471,12 @@ function validate20(data, { instancePath = "", parentData, parentDataProperty, r
   return errors === 0;
 }
 validate20.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-exports.BuildImageResult = validate21;
-var pattern15 = new RegExp("^sha256:[0-9a-f]{64}$", "u");
-var pattern16 = new RegExp("^io\\.openit\\.(?!(service|revision|contracts\\.boundary|contracts\\.survey-schema|model-runtime|variant|app-version|langgraph|jobs|exposure|database|inputs)$)", "u");
-var pattern17 = new RegExp("^[a-z][a-z0-9-]*$", "u");
-var pattern20 = new RegExp("^([0-9]+|n/a)$", "u");
-var pattern21 = new RegExp("^(v[0-9]+\\.[0-9]+\\.[0-9]+|n/a)$", "u");
+exports.BuildImageResult = validate22;
+var pattern15 = new RegExp("^sha256:[0-9a-f]{64}$(?![\\s\\S])", "u");
+var pattern16 = new RegExp("^io\\.openit\\.(?!(service|revision|contracts\\.boundary|contracts\\.survey-schema|model-runtime|variant|app-version|langgraph|jobs|exposure|database|inputs)$(?![\\s\\S]))", "u");
+var pattern17 = new RegExp("^[a-z][a-z0-9-]*$(?![\\s\\S])", "u");
+var pattern20 = new RegExp("^([0-9]+|n/a)$(?![\\s\\S])", "u");
+var pattern21 = new RegExp("^(v[0-9]+\\.[0-9]+\\.[0-9]+|n/a)$(?![\\s\\S])", "u");
 function validate23(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
   let vErrors = null;
@@ -583,7 +583,7 @@ function validate23(data, { instancePath = "", parentData, parentDataProperty, r
       let data0 = data["io.openit.service"];
       if (typeof data0 === "string") {
         if (!pattern17.test(data0)) {
-          const err8 = { instancePath: instancePath + "/io.openit.service", schemaPath: "#/properties/io.openit.service/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"' };
+          const err8 = { instancePath: instancePath + "/io.openit.service", schemaPath: "#/properties/io.openit.service/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err8];
           } else {
@@ -605,7 +605,7 @@ function validate23(data, { instancePath = "", parentData, parentDataProperty, r
       let data1 = data["io.openit.revision"];
       if (typeof data1 === "string") {
         if (!pattern5.test(data1)) {
-          const err10 = { instancePath: instancePath + "/io.openit.revision", schemaPath: "#/properties/io.openit.revision/pattern", keyword: "pattern", params: { pattern: "^[0-9a-f]{7,40}$" }, message: 'must match pattern "^[0-9a-f]{7,40}$"' };
+          const err10 = { instancePath: instancePath + "/io.openit.revision", schemaPath: "#/properties/io.openit.revision/pattern", keyword: "pattern", params: { pattern: "^[0-9a-f]{7,40}$(?![\\s\\S])" }, message: 'must match pattern "^[0-9a-f]{7,40}$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err10];
           } else {
@@ -627,7 +627,7 @@ function validate23(data, { instancePath = "", parentData, parentDataProperty, r
       let data2 = data["io.openit.contracts.boundary"];
       if (typeof data2 === "string") {
         if (!pattern6.test(data2)) {
-          const err12 = { instancePath: instancePath + "/io.openit.contracts.boundary", schemaPath: "#/properties/io.openit.contracts.boundary/pattern", keyword: "pattern", params: { pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$" }, message: 'must match pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$"' };
+          const err12 = { instancePath: instancePath + "/io.openit.contracts.boundary", schemaPath: "#/properties/io.openit.contracts.boundary/pattern", keyword: "pattern", params: { pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])" }, message: 'must match pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err12];
           } else {
@@ -649,7 +649,7 @@ function validate23(data, { instancePath = "", parentData, parentDataProperty, r
       let data3 = data["io.openit.contracts.survey-schema"];
       if (typeof data3 === "string") {
         if (!pattern20.test(data3)) {
-          const err14 = { instancePath: instancePath + "/io.openit.contracts.survey-schema", schemaPath: "#/properties/io.openit.contracts.survey-schema/pattern", keyword: "pattern", params: { pattern: "^([0-9]+|n/a)$" }, message: 'must match pattern "^([0-9]+|n/a)$"' };
+          const err14 = { instancePath: instancePath + "/io.openit.contracts.survey-schema", schemaPath: "#/properties/io.openit.contracts.survey-schema/pattern", keyword: "pattern", params: { pattern: "^([0-9]+|n/a)$(?![\\s\\S])" }, message: 'must match pattern "^([0-9]+|n/a)$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err14];
           } else {
@@ -671,7 +671,7 @@ function validate23(data, { instancePath = "", parentData, parentDataProperty, r
       let data4 = data["io.openit.model-runtime"];
       if (typeof data4 === "string") {
         if (!pattern21.test(data4)) {
-          const err16 = { instancePath: instancePath + "/io.openit.model-runtime", schemaPath: "#/properties/io.openit.model-runtime/pattern", keyword: "pattern", params: { pattern: "^(v[0-9]+\\.[0-9]+\\.[0-9]+|n/a)$" }, message: 'must match pattern "^(v[0-9]+\\.[0-9]+\\.[0-9]+|n/a)$"' };
+          const err16 = { instancePath: instancePath + "/io.openit.model-runtime", schemaPath: "#/properties/io.openit.model-runtime/pattern", keyword: "pattern", params: { pattern: "^(v[0-9]+\\.[0-9]+\\.[0-9]+|n/a)$(?![\\s\\S])" }, message: 'must match pattern "^(v[0-9]+\\.[0-9]+\\.[0-9]+|n/a)$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err16];
           } else {
@@ -693,7 +693,7 @@ function validate23(data, { instancePath = "", parentData, parentDataProperty, r
       let data5 = data["io.openit.variant"];
       if (typeof data5 === "string") {
         if (!pattern17.test(data5)) {
-          const err18 = { instancePath: instancePath + "/io.openit.variant", schemaPath: "#/properties/io.openit.variant/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"' };
+          const err18 = { instancePath: instancePath + "/io.openit.variant", schemaPath: "#/properties/io.openit.variant/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err18];
           } else {
@@ -812,11 +812,11 @@ function validate23(data, { instancePath = "", parentData, parentDataProperty, r
   return errors === 0;
 }
 validate23.evaluated = { "props": { "io.openit.service": true, "io.openit.revision": true, "io.openit.contracts.boundary": true, "io.openit.contracts.survey-schema": true, "io.openit.model-runtime": true, "io.openit.variant": true, "io.openit.app-version": true, "io.openit.langgraph": true, "io.openit.jobs": true, "io.openit.exposure": true, "io.openit.database": true, "io.openit.inputs": true }, "dynamicProps": false, "dynamicItems": false };
-function validate21(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate22(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate21.evaluated;
+  const evaluated0 = validate22.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -866,7 +866,7 @@ function validate21(data, { instancePath = "", parentData, parentDataProperty, r
       let data0 = data.image;
       if (typeof data0 === "string") {
         if (!pattern13.test(data0)) {
-          const err4 = { instancePath: instancePath + "/image", schemaPath: "#/properties/image/pattern", keyword: "pattern", params: { pattern: "^[a-z0-9./_-]+:[A-Za-z0-9._-]+$" }, message: 'must match pattern "^[a-z0-9./_-]+:[A-Za-z0-9._-]+$"' };
+          const err4 = { instancePath: instancePath + "/image", schemaPath: "_common.schema.json#/$defs/ImageRef/pattern", keyword: "pattern", params: { pattern: "^(?=[^:]{1,255}:)[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$(?![\\s\\S])" }, message: 'must match pattern "^(?=[^:]{1,255}:)[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*:[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err4];
           } else {
@@ -875,7 +875,7 @@ function validate21(data, { instancePath = "", parentData, parentDataProperty, r
           errors++;
         }
       } else {
-        const err5 = { instancePath: instancePath + "/image", schemaPath: "#/properties/image/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        const err5 = { instancePath: instancePath + "/image", schemaPath: "_common.schema.json#/$defs/ImageRef/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
           vErrors = [err5];
         } else {
@@ -888,7 +888,7 @@ function validate21(data, { instancePath = "", parentData, parentDataProperty, r
       let data1 = data.image_id;
       if (typeof data1 === "string") {
         if (!pattern15.test(data1)) {
-          const err6 = { instancePath: instancePath + "/image_id", schemaPath: "_common.schema.json#/$defs/Hash/pattern", keyword: "pattern", params: { pattern: "^sha256:[0-9a-f]{64}$" }, message: 'must match pattern "^sha256:[0-9a-f]{64}$"' };
+          const err6 = { instancePath: instancePath + "/image_id", schemaPath: "_common.schema.json#/$defs/Hash/pattern", keyword: "pattern", params: { pattern: "^sha256:[0-9a-f]{64}$(?![\\s\\S])" }, message: 'must match pattern "^sha256:[0-9a-f]{64}$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err6];
           } else {
@@ -921,12 +921,12 @@ function validate21(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate21.errors = vErrors;
+  validate22.errors = vErrors;
   return errors === 0;
 }
-validate21.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate22.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.SetupEnvReport = validate25;
-var schema36 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "SetupEnvReport.schema.json", "title": "SetupEnvReport", "description": "\uC601\uC5ED scripts/setup-env.sh \uADDC\uC57D\uC758 \uACB0\uACFC \uD55C \uC904 (\uC601\uC5ED -> deploy prepare-areas.sh). \uADDC\uC57D: \uC601\uC5ED\uC740 \uC790\uAE30 \uB9AC\uD3EC \uB8E8\uD2B8\uC5D0\uC11C `bash scripts/setup-env.sh` \uB85C \uC2DC\uD5D8 \uD658\uACBD(\uD30C\uC774\uC36C .venv \uB610\uB294 node_modules)\uC744 \uC900\uBE44\uD558\uACE0, \uC774\uBBF8 \uC900\uBE44\uB3FC \uC788\uC73C\uBA74 \uC544\uBB34\uAC83\uB3C4 \uBC14\uAFB8\uC9C0 \uC54A\uB294\uB2E4(\uBA71\uB4F1). \uC778\uC790 \uC5C6\uC74C. \uBE44\uBC00 \uAC12\uC744 \uB2E4\uB8E8\uAC70\uB098 \uCD9C\uB825\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC885\uB8CC \uCF54\uB4DC 0 \uC131\uACF5, 0 \uC774 \uC544\uB2C8\uBA74 \uC2E4\uD328. \uC774 \uC2A4\uD0A4\uB9C8\uB294 \uADF8 \uACB0\uACFC\uB97C deploy \uAC00 \uC694\uC57D\uD45C\uC5D0 \uC4F0\uB294 \uBAA8\uC591\uC774\uB2E4(\uD604\uC7AC prepare-areas.sh \uB294 \uC885\uB8CC \uCF54\uB4DC\uC640 \uC18C\uC694 \uC2DC\uAC04\uB9CC \uC4F4\uB2E4: status \uB294 'ok' \uB610\uB294 'fail', \uC2A4\uD06C\uB9BD\uD2B8\xB7\uD3F4\uB354 \uBD80\uC7AC\uB294 deploy \uAC00 \uCC44\uC6B4\uB2E4). \uC601\uC5ED\uC774 environment\uB97C \uC120\uC5B8\uD558\uBA74 doctor.sh \uAC00 .venv\xB7node_modules \uACBD\uB85C\uB97C \uCD94\uCE21\uD558\uC9C0 \uC54A\uC544\uB3C4 \uB41C\uB2E4.", "x-producers": ["*"], "x-consumers": ["deploy"], "type": "object", "properties": { "area": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }, "status": { "enum": ["ok", "fail", "script-missing", "folder-missing"] }, "exit_code": { "type": "integer", "minimum": 0, "maximum": 255 }, "seconds": { "type": "integer", "minimum": 0 }, "environment": { "type": "object", "properties": { "kind": { "enum": ["python-venv", "node-modules"] }, "path": { "type": "string", "pattern": "^[^/]" }, "test_command": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "\uB9AC\uD3EC \uB8E8\uD2B8\uC5D0\uC11C \uC2E4\uD589\uD560 \uC2DC\uD5D8 \uBA85\uB839 argv. \uC178\uC744 \uAC70\uCE58\uC9C0 \uC54A\uB294\uB2E4. \uC885\uB8CC \uCF54\uB4DC 0\uC774\uBA74 \uD1B5\uACFC" } }, "required": ["kind", "path", "test_command"], "additionalProperties": false, "description": '\uC900\uBE44\uB41C \uC2DC\uD5D8 \uD658\uACBD(2.6.0 \uD655\uC815, OPEN_GAPS U43). path\uB294 \uC601\uC5ED \uB9AC\uD3EC \uB8E8\uD2B8 \uAE30\uC900 \uC0C1\uB300 \uACBD\uB85C. test_command\uB294 \uB9AC\uD3EC \uB8E8\uD2B8\uC5D0\uC11C \uC601\uC5ED \uC2DC\uD5D8 \uC804\uCCB4\uB97C \uB3CC\uB9AC\uB294 argv(\uC608: [".venv/bin/python","-m","pytest","-q"], ["npm","test"]). deploy\uB294 \uC774\uAC83\uB9CC \uC77D\uACE0 \uC774\uC6C3\uC758 .venv\xB7node_modules \uACBD\uB85C\uB098 \uC2DC\uD5D8 \uB3C4\uAD6C\uB97C \uC9D0\uC791\uD558\uC9C0 \uC54A\uB294\uB2E4(\uAD6C\uC870 \uADDC\uCE59 1). 3.0.0: status\uAC00 ok\uBA74 \uD544\uC218(\uC601\uC5ED\uC774 \uC900\uBE44\uD55C \uD658\uACBD\uACFC \uC2DC\uD5D8 \uBA85\uB839\uC744 \uBC18\uB4DC\uC2DC \uC120\uC5B8\uD55C\uB2E4). \uC2E4\uD328\xB7\uC2A4\uD06C\uB9BD\uD2B8 \uC5C6\uC74C\xB7\uD3F4\uB354 \uC5C6\uC74C \uBCF4\uACE0\uC5D0\uB294 \uC5C6\uB2E4.' } }, "required": ["area", "status", "exit_code", "seconds"], "additionalProperties": false, "allOf": [{ "if": { "properties": { "status": { "const": "ok" } }, "required": ["status"] }, "then": { "required": ["environment"] } }] };
+var schema38 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "SetupEnvReport.schema.json", "title": "SetupEnvReport", "description": "\uC601\uC5ED scripts/setup-env.sh \uADDC\uC57D\uC758 \uACB0\uACFC \uD55C \uC904 (\uC601\uC5ED -> deploy prepare-areas.sh). \uADDC\uC57D: \uC601\uC5ED\uC740 \uC790\uAE30 \uB9AC\uD3EC \uB8E8\uD2B8\uC5D0\uC11C `bash scripts/setup-env.sh` \uB85C \uC2DC\uD5D8 \uD658\uACBD(\uD30C\uC774\uC36C .venv \uB610\uB294 node_modules)\uC744 \uC900\uBE44\uD558\uACE0, \uC774\uBBF8 \uC900\uBE44\uB3FC \uC788\uC73C\uBA74 \uC544\uBB34\uAC83\uB3C4 \uBC14\uAFB8\uC9C0 \uC54A\uB294\uB2E4(\uBA71\uB4F1). \uC778\uC790 \uC5C6\uC74C. \uBE44\uBC00 \uAC12\uC744 \uB2E4\uB8E8\uAC70\uB098 \uCD9C\uB825\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC885\uB8CC \uCF54\uB4DC 0 \uC131\uACF5, 0 \uC774 \uC544\uB2C8\uBA74 \uC2E4\uD328. \uC774 \uC2A4\uD0A4\uB9C8\uB294 \uADF8 \uACB0\uACFC\uB97C deploy \uAC00 \uC694\uC57D\uD45C\uC5D0 \uC4F0\uB294 \uBAA8\uC591\uC774\uB2E4(\uD604\uC7AC prepare-areas.sh \uB294 \uC885\uB8CC \uCF54\uB4DC\uC640 \uC18C\uC694 \uC2DC\uAC04\uB9CC \uC4F4\uB2E4: status \uB294 'ok' \uB610\uB294 'fail', \uC2A4\uD06C\uB9BD\uD2B8\xB7\uD3F4\uB354 \uBD80\uC7AC\uB294 deploy \uAC00 \uCC44\uC6B4\uB2E4). \uC601\uC5ED\uC774 environment\uB97C \uC120\uC5B8\uD558\uBA74 doctor.sh \uAC00 .venv\xB7node_modules \uACBD\uB85C\uB97C \uCD94\uCE21\uD558\uC9C0 \uC54A\uC544\uB3C4 \uB41C\uB2E4.", "x-producers": ["*"], "x-consumers": ["deploy"], "type": "object", "properties": { "area": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, "status": { "enum": ["ok", "fail", "script-missing", "folder-missing"] }, "exit_code": { "type": "integer", "minimum": 0, "maximum": 255, "description": "\uADFC\uAC70: POSIX \uC885\uB8CC \uC0C1\uD0DC 0~255" }, "seconds": { "type": "integer", "minimum": 0 }, "environment": { "type": "object", "properties": { "kind": { "enum": ["python-venv", "node-modules"] }, "path": { "type": "string", "pattern": "^[^/]" }, "test_command": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "\uB9AC\uD3EC \uB8E8\uD2B8\uC5D0\uC11C \uC2E4\uD589\uD560 \uC2DC\uD5D8 \uBA85\uB839 argv. \uC178\uC744 \uAC70\uCE58\uC9C0 \uC54A\uB294\uB2E4. \uC885\uB8CC \uCF54\uB4DC 0\uC774\uBA74 \uD1B5\uACFC" } }, "required": ["kind", "path", "test_command"], "additionalProperties": false, "description": '\uC900\uBE44\uB41C \uC2DC\uD5D8 \uD658\uACBD(2.6.0 \uD655\uC815, OPEN_GAPS U43). path\uB294 \uC601\uC5ED \uB9AC\uD3EC \uB8E8\uD2B8 \uAE30\uC900 \uC0C1\uB300 \uACBD\uB85C. test_command\uB294 \uB9AC\uD3EC \uB8E8\uD2B8\uC5D0\uC11C \uC601\uC5ED \uC2DC\uD5D8 \uC804\uCCB4\uB97C \uB3CC\uB9AC\uB294 argv(\uC608: [".venv/bin/python","-m","pytest","-q"], ["npm","test"]). deploy\uB294 \uC774\uAC83\uB9CC \uC77D\uACE0 \uC774\uC6C3\uC758 .venv\xB7node_modules \uACBD\uB85C\uB098 \uC2DC\uD5D8 \uB3C4\uAD6C\uB97C \uC9D0\uC791\uD558\uC9C0 \uC54A\uB294\uB2E4(\uAD6C\uC870 \uADDC\uCE59 1). 3.0.0: status\uAC00 ok\uBA74 \uD544\uC218(\uC601\uC5ED\uC774 \uC900\uBE44\uD55C \uD658\uACBD\uACFC \uC2DC\uD5D8 \uBA85\uB839\uC744 \uBC18\uB4DC\uC2DC \uC120\uC5B8\uD55C\uB2E4). \uC2E4\uD328\xB7\uC2A4\uD06C\uB9BD\uD2B8 \uC5C6\uC74C\xB7\uD3F4\uB354 \uC5C6\uC74C \uBCF4\uACE0\uC5D0\uB294 \uC5C6\uB2E4.' } }, "required": ["area", "status", "exit_code", "seconds"], "additionalProperties": false, "allOf": [{ "if": { "properties": { "status": { "const": "ok" } }, "required": ["status"] }, "then": { "required": ["environment"] } }] };
 var pattern24 = new RegExp("^[^/]", "u");
 function validate25(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
@@ -1052,7 +1052,7 @@ function validate25(data, { instancePath = "", parentData, parentDataProperty, r
       let data1 = data.area;
       if (typeof data1 === "string") {
         if (!pattern17.test(data1)) {
-          const err9 = { instancePath: instancePath + "/area", schemaPath: "#/properties/area/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"' };
+          const err9 = { instancePath: instancePath + "/area", schemaPath: "#/properties/area/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err9];
           } else {
@@ -1073,7 +1073,7 @@ function validate25(data, { instancePath = "", parentData, parentDataProperty, r
     if (data.status !== void 0) {
       let data2 = data.status;
       if (!(data2 === "ok" || data2 === "fail" || data2 === "script-missing" || data2 === "folder-missing")) {
-        const err11 = { instancePath: instancePath + "/status", schemaPath: "#/properties/status/enum", keyword: "enum", params: { allowedValues: schema36.properties.status.enum }, message: "must be equal to one of the allowed values" };
+        const err11 = { instancePath: instancePath + "/status", schemaPath: "#/properties/status/enum", keyword: "enum", params: { allowedValues: schema38.properties.status.enum }, message: "must be equal to one of the allowed values" };
         if (vErrors === null) {
           vErrors = [err11];
         } else {
@@ -1181,7 +1181,7 @@ function validate25(data, { instancePath = "", parentData, parentDataProperty, r
         if (data5.kind !== void 0) {
           let data6 = data5.kind;
           if (!(data6 === "python-venv" || data6 === "node-modules")) {
-            const err21 = { instancePath: instancePath + "/environment/kind", schemaPath: "#/properties/environment/properties/kind/enum", keyword: "enum", params: { allowedValues: schema36.properties.environment.properties.kind.enum }, message: "must be equal to one of the allowed values" };
+            const err21 = { instancePath: instancePath + "/environment/kind", schemaPath: "#/properties/environment/properties/kind/enum", keyword: "enum", params: { allowedValues: schema38.properties.environment.properties.kind.enum }, message: "must be equal to one of the allowed values" };
             if (vErrors === null) {
               vErrors = [err21];
             } else {
@@ -1281,8 +1281,8 @@ function validate25(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate25.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.Exposure = validate26;
-var schema38 = { "type": "object", "properties": { "paths": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^/" } }, "methods": { "type": "array", "uniqueItems": true, "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] }, "description": "\uBE44\uC6B0\uBA74 \uBAA8\uB4E0 \uBA54\uC11C\uB4DC" }, "auth": { "type": "object", "properties": { "kind": { "enum": ["device-token", "account", "authenticated", "machine-token", "none", "denied"], "description": "device-token: \uD0A4\uC624\uC2A4\uD06C \uAE30\uAE30(mTLS/\uAE30\uAE30 \uD1A0\uD070). account: \uC0AC\uB78C \uACC4\uC815(roles \uD544\uC218). authenticated: \uB85C\uADF8\uC778\uD55C \uC0AC\uB78C \uACC4\uC815\uC774\uBA74 \uC5ED\uD560\uACFC \uBB34\uAD00\uD558\uAC8C \uC5F0\uB2E4(3.4.0, U82: \uB370\uC774\uD130 \uC5C6\uB294 \uD654\uBA74 \uC815\uC801 \uD30C\uC77C \u2014 \uAC00\uC785 \uC2B9\uC778 \uB300\uAE30 \uACC4\uC815\uC5D0\uAC8C \uC548\uB0B4\uB97C \uBCF4\uC774\uB824\uBA74 \uD654\uBA74\uC774 \uC5F4\uB824\uC57C \uD55C\uB2E4; roles \uB97C \uC4F0\uC9C0 \uC54A\uB294\uB2E4). machine-token: (3.4.7 \uC815\uC815) \uBE44\uC0AC\uB78C \uD638\uCD9C\uC790\uC758 \uACBD\uB85C. \uAC8C\uC774\uD2B8\uC6E8\uC774\uB294 \uD1A0\uD070\uC744 \uB300\uC870\uD558\uC9C0 \uC54A\uACE0 \uBC1B\uB294 \uC11C\uBE44\uC2A4\uAC00 \uB300\uC870\uD55C\uB2E4(RUNTIME R3.23). platform \uACF5\uAC1C \uC785\uAD6C\uB294 \uC774 \uACBD\uB85C\uB97C \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4(denied \uC640 \uAC19\uB2E4): compose \uBC16 \uD638\uCD9C\uC790\uB294 R1.5 \uC758 hosts \uD45C\uB85C \uBC1B\uB294 \uC601\uC5ED\uC758 \uAC8C\uC774\uD2B8\uC6E8\uC774\uC5D0 \uBC14\uB85C \uAC04\uB2E4. \uAC12\uC740 4.0.0 \uC5D0\uC11C \uBE80\uB2E4. none: \uC778\uC99D \uC5C6\uC74C(/healthz \uB4F1). (3.4.9) \uC601\uC5ED\uC758 /healthz\xB7/readyz\xB7/metrics \uB294 \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC6A9\uC774\uACE0 platform \uACF5\uAC1C \uC785\uAD6C\uB294 \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4(CONVENTIONS 2\uC808 \uC0C1\uD0DC \uACBD\uB85C \uADDC\uCE59). denied: \uBC16\uC5D0\uC11C \uB2FF\uC744 \uC218 \uC5C6\uC74C denied \uB294 platform \uACF5\uAC1C \uC785\uAD6C\uC5D0\uC11C \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4\uB294 \uB73B\uC774\uB2E4. \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uC5D0\uC11C \uC774 \uACBD\uB85C\uB97C \uC81C\uAC70\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC601\uC5ED \uAC04 \uC694\uCCAD\uC758 \uC11C\uBE44\uC2A4 \uD1A0\uD070\uC740 \uBC1B\uB294 \uC11C\uBE44\uC2A4\uAC00 \uAC80\uC0AC\uD55C\uB2E4(R3.23)." }, "roles": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z-]*$" } } }, "required": ["kind"], "if": { "properties": { "kind": { "const": "account" } } }, "then": { "required": ["roles"], "properties": { "roles": { "minItems": 1 } } }, "additionalProperties": false }, "upstream_token": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "gateway \uAC00 \uC0C1\uB958\uC5D0 \uBD99\uC774\uB294 \uC11C\uBE44\uC2A4 \uD1A0\uD070\uC758 \uBE44\uBC00 \uC774\uB984(\uAC12 \uC544\uB2D8)" }, "user_header": { "enum": ["set", "strip"], "description": "set=\uC778\uC99D\uB41C \uACC4\uC815 ID \uB97C X-Openit-User \uB85C \uBD99\uC784(\uD074\uB77C\uC774\uC5B8\uD2B8 \uAC12\uC740 \uB36E\uC5B4\uC500), strip=\uC9C0\uC6C0" }, "streaming": { "type": "boolean" }, "timeouts_ms": { "type": "object", "properties": { "dial": { "type": "integer", "minimum": 1 }, "response_header": { "type": "integer", "minimum": 1 }, "read": { "type": "integer", "minimum": 1 } }, "additionalProperties": false }, "max_body_bytes": { "type": "integer", "minimum": 1, "maximum": 8589934592, "description": "3.4.7(RUNTIME R3.5\xB7R10.13): \uC774 \uACBD\uB85C\uC758 \uC694\uCCAD \uBCF8\uBB38 \uC0C1\uD55C(\uBC14\uC774\uD2B8). platform \uACF5\uAC1C \uC785\uAD6C\uC640 \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 \uB458 \uB2E4 \uC774 \uAC12\uC73C\uB85C 413 \uC744 \uB0B8\uB2E4(\uC571\uC5D0 \uB2FF\uAE30 \uC804). \uC5C6\uC73C\uBA74 8MiB(8388608, \uC9C0\uAE08\uAE4C\uC9C0\uC758 \uACF5\uAC1C \uC785\uAD6C \uAE30\uBCF8, \uC2DC\uC791\uAC12\xB7\uCE21\uC815 \uC548 \uD568). \uC0C1\uD55C\uC740 \uD074\uB77C\uC774\uC5B8\uD2B8 max_tar_bytes 8GiB. \uAC12\uC740 \uBC1B\uB294 \uC601\uC5ED\uC774 ADR \uB85C \uADFC\uAC70\uC640 \uD568\uAED8 \uC815\uD55C\uB2E4" }, "upstream_port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "3.4.7: \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 \uC774 \uACBD\uB85C\uB97C \uB118\uAE38 \uC601\uC5ED \uC548 \uCEF4\uD3EC\uB10C\uD2B8\uC758 loopback \uD3EC\uD2B8(\uAC19\uC740 \uB124\uD2B8\uC6CC\uD06C \uACF5\uAC04 127.0.0.1). \uC5C6\uC73C\uBA74 \uADF8 \uC601\uC5ED \uC11C\uBE44\uC2A4 \uD558\uB098(\uBC30\uD3EC \uC124\uC815\uC758 \uC571 \uD3EC\uD2B8)\uB85C \uB118\uAE34\uB2E4. \uC601\uC5ED \uC548 \uAD6C\uC131\uC740 \uC601\uC5ED\uC774 \uC815\uD558\uACE0, \uC774 \uAC12\uC740 \uBC30\uD3EC \uB54C \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC124\uC815\uC744 \uB9CC\uB4DC\uB294 \uC785\uB825\uC774\uB2E4(CONVENTIONS 13\uC808 \uC608\uC678)" } }, "required": ["paths", "auth"], "additionalProperties": false };
-var pattern28 = new RegExp("^[a-z][a-z-]*$", "u");
+var schema40 = { "type": "object", "properties": { "paths": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^/" } }, "methods": { "type": "array", "uniqueItems": true, "items": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] }, "description": "\uBE44\uC6B0\uBA74 \uBAA8\uB4E0 \uBA54\uC11C\uB4DC" }, "auth": { "type": "object", "properties": { "kind": { "enum": ["device", "account", "authenticated", "none", "denied"], "description": "device: \uD0A4\uC624\uC2A4\uD06C \uAE30\uAE30(mTLS \uAE30\uAE30 \uC778\uC99D\uC11C + \uD5C8\uC6A9 \uBAA9\uB85D DeviceAllowlist; 4.0.0 \uC5D0\uC11C device-token \uC774\uB984\uC744 \uBC14\uAFE8\uB2E4). account: \uC0AC\uB78C \uACC4\uC815(roles \uD544\uC218). authenticated: \uB85C\uADF8\uC778\uD55C \uC0AC\uB78C \uACC4\uC815\uC774\uBA74 \uC5ED\uD560\uACFC \uBB34\uAD00\uD558\uAC8C \uC5F0\uB2E4(3.4.0, U82: \uB370\uC774\uD130 \uC5C6\uB294 \uD654\uBA74 \uC815\uC801 \uD30C\uC77C \u2014 \uAC00\uC785 \uC2B9\uC778 \uB300\uAE30 \uACC4\uC815\uC5D0\uAC8C \uC548\uB0B4\uB97C \uBCF4\uC774\uB824\uBA74 \uD654\uBA74\uC774 \uC5F4\uB824\uC57C \uD55C\uB2E4; roles \uB97C \uC4F0\uC9C0 \uC54A\uB294\uB2E4). none: \uC778\uC99D \uC5C6\uC74C(/healthz \uB4F1). (3.4.9) \uC601\uC5ED\uC758 /healthz\xB7/readyz\xB7/metrics \uB294 \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC6A9\uC774\uACE0 platform \uACF5\uAC1C \uC785\uAD6C\uB294 \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4(CONVENTIONS 2\uC808 \uC0C1\uD0DC \uACBD\uB85C \uADDC\uCE59). denied: \uBC16\uC5D0\uC11C \uB2FF\uC744 \uC218 \uC5C6\uC74C denied \uB294 platform \uACF5\uAC1C \uC785\uAD6C\uC5D0\uC11C \uB0B4\uBCF4\uB0B4\uC9C0 \uC54A\uB294\uB2E4\uB294 \uB73B\uC774\uB2E4. \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uC5D0\uC11C \uC774 \uACBD\uB85C\uB97C \uC81C\uAC70\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC601\uC5ED \uAC04 \uC694\uCCAD\uC758 \uC11C\uBE44\uC2A4 \uD1A0\uD070\uC740 \uBC1B\uB294 \uC11C\uBE44\uC2A4\uAC00 \uAC80\uC0AC\uD55C\uB2E4(R3.23)." }, "roles": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z-]*$(?![\\s\\S])" } } }, "required": ["kind"], "if": { "properties": { "kind": { "const": "account" } } }, "then": { "required": ["roles"], "properties": { "roles": { "minItems": 1 } } }, "additionalProperties": false }, "upstream_token": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$(?![\\s\\S])", "description": "gateway \uAC00 \uC0C1\uB958\uC5D0 \uBD99\uC774\uB294 \uC11C\uBE44\uC2A4 \uD1A0\uD070\uC758 \uBE44\uBC00 \uC774\uB984(\uAC12 \uC544\uB2D8)" }, "user_header": { "enum": ["set", "strip"], "description": "set=\uC778\uC99D\uB41C \uACC4\uC815 ID \uB97C X-Openit-User \uB85C \uBD99\uC784(\uD074\uB77C\uC774\uC5B8\uD2B8 \uAC12\uC740 \uB36E\uC5B4\uC500), strip=\uC9C0\uC6C0" }, "streaming": { "type": "boolean" }, "timeouts_ms": { "type": "object", "properties": { "dial": { "type": "integer", "minimum": 1 }, "response_header": { "type": "integer", "minimum": 1 }, "read": { "type": "integer", "minimum": 1 } }, "additionalProperties": false }, "max_body_bytes": { "type": "integer", "minimum": 1, "maximum": 8589934592, "description": "3.4.7(RUNTIME R3.5\xB7R10.13): \uC774 \uACBD\uB85C\uC758 \uC694\uCCAD \uBCF8\uBB38 \uC0C1\uD55C(\uBC14\uC774\uD2B8). platform \uACF5\uAC1C \uC785\uAD6C\uC640 \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 \uB458 \uB2E4 \uC774 \uAC12\uC73C\uB85C 413 \uC744 \uB0B8\uB2E4(\uC571\uC5D0 \uB2FF\uAE30 \uC804). \uC5C6\uC73C\uBA74 8MiB(8388608, \uC9C0\uAE08\uAE4C\uC9C0\uC758 \uACF5\uAC1C \uC785\uAD6C \uAE30\uBCF8, \uC2DC\uC791\uAC12\xB7\uCE21\uC815 \uC548 \uD568). \uC0C1\uD55C\uC740 \uD074\uB77C\uC774\uC5B8\uD2B8 max_tar_bytes 8GiB. \uAC12\uC740 \uBC1B\uB294 \uC601\uC5ED\uC774 ADR \uB85C \uADFC\uAC70\uC640 \uD568\uAED8 \uC815\uD55C\uB2E4" }, "upstream_port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "3.4.7: \uC601\uC5ED \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 \uC774 \uACBD\uB85C\uB97C \uB118\uAE38 \uC601\uC5ED \uC548 \uCEF4\uD3EC\uB10C\uD2B8\uC758 loopback \uD3EC\uD2B8(\uAC19\uC740 \uB124\uD2B8\uC6CC\uD06C \uACF5\uAC04 127.0.0.1). \uC5C6\uC73C\uBA74 \uADF8 \uC601\uC5ED \uC11C\uBE44\uC2A4 \uD558\uB098(\uBC30\uD3EC \uC124\uC815\uC758 \uC571 \uD3EC\uD2B8)\uB85C \uB118\uAE34\uB2E4. \uC601\uC5ED \uC548 \uAD6C\uC131\uC740 \uC601\uC5ED\uC774 \uC815\uD558\uACE0, \uC774 \uAC12\uC740 \uBC30\uD3EC \uB54C \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC124\uC815\uC744 \uB9CC\uB4DC\uB294 \uC785\uB825\uC774\uB2E4(CONVENTIONS 13\uC808 \uC608\uC678)" } }, "required": ["paths", "auth"], "additionalProperties": false };
+var pattern28 = new RegExp("^[a-z][a-z-]*$(?![\\s\\S])", "u");
 var func0 = require_equal().default;
 var func9 = Object.prototype.hasOwnProperty;
 function validate26(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
@@ -1330,7 +1330,7 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
       let data0 = data.service;
       if (typeof data0 === "string") {
         if (!pattern17.test(data0)) {
-          const err3 = { instancePath: instancePath + "/service", schemaPath: "#/properties/service/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"' };
+          const err3 = { instancePath: instancePath + "/service", schemaPath: "#/properties/service/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err3];
           } else {
@@ -1360,7 +1360,7 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
           const _errs8 = errors;
           if (typeof data2 === "string") {
             if (!pattern17.test(data2)) {
-              const err5 = { instancePath: instancePath + "/egress/" + i0, schemaPath: "#/properties/egress/items/oneOf/0/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"' };
+              const err5 = { instancePath: instancePath + "/egress/" + i0, schemaPath: "#/properties/egress/items/oneOf/0/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"' };
               if (vErrors === null) {
                 vErrors = [err5];
               } else {
@@ -1504,7 +1504,7 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
               errors++;
             }
             for (const key1 in data4) {
-              if (!func9.call(schema38.properties, key1)) {
+              if (!func9.call(schema40.properties, key1)) {
                 const err15 = { instancePath: instancePath + "/routes/" + i2, schemaPath: "#/$defs/route/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" };
                 if (vErrors === null) {
                   vErrors = [err15];
@@ -1566,7 +1566,7 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
                 for (let i4 = 0; i4 < len3; i4++) {
                   let data8 = data7[i4];
                   if (!(data8 === "GET" || data8 === "POST" || data8 === "PUT" || data8 === "PATCH" || data8 === "DELETE")) {
-                    const err20 = { instancePath: instancePath + "/routes/" + i2 + "/methods/" + i4, schemaPath: "#/$defs/route/properties/methods/items/enum", keyword: "enum", params: { allowedValues: schema38.properties.methods.items.enum }, message: "must be equal to one of the allowed values" };
+                    const err20 = { instancePath: instancePath + "/routes/" + i2 + "/methods/" + i4, schemaPath: "#/$defs/route/properties/methods/items/enum", keyword: "enum", params: { allowedValues: schema40.properties.methods.items.enum }, message: "must be equal to one of the allowed values" };
                     if (vErrors === null) {
                       vErrors = [err20];
                     } else {
@@ -1697,8 +1697,8 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
                 }
                 if (data9.kind !== void 0) {
                   let data12 = data9.kind;
-                  if (!(data12 === "device-token" || data12 === "account" || data12 === "authenticated" || data12 === "machine-token" || data12 === "none" || data12 === "denied")) {
-                    const err29 = { instancePath: instancePath + "/routes/" + i2 + "/auth/kind", schemaPath: "#/$defs/route/properties/auth/properties/kind/enum", keyword: "enum", params: { allowedValues: schema38.properties.auth.properties.kind.enum }, message: "must be equal to one of the allowed values" };
+                  if (!(data12 === "device" || data12 === "account" || data12 === "authenticated" || data12 === "none" || data12 === "denied")) {
+                    const err29 = { instancePath: instancePath + "/routes/" + i2 + "/auth/kind", schemaPath: "#/$defs/route/properties/auth/properties/kind/enum", keyword: "enum", params: { allowedValues: schema40.properties.auth.properties.kind.enum }, message: "must be equal to one of the allowed values" };
                     if (vErrors === null) {
                       vErrors = [err29];
                     } else {
@@ -1715,7 +1715,7 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
                       let data14 = data13[i6];
                       if (typeof data14 === "string") {
                         if (!pattern28.test(data14)) {
-                          const err30 = { instancePath: instancePath + "/routes/" + i2 + "/auth/roles/" + i6, schemaPath: "#/$defs/route/properties/auth/properties/roles/items/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z-]*$" }, message: 'must match pattern "^[a-z][a-z-]*$"' };
+                          const err30 = { instancePath: instancePath + "/routes/" + i2 + "/auth/roles/" + i6, schemaPath: "#/$defs/route/properties/auth/properties/roles/items/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z-]*$(?![\\s\\S])"' };
                           if (vErrors === null) {
                             vErrors = [err30];
                           } else {
@@ -1780,7 +1780,7 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
               let data15 = data4.upstream_token;
               if (typeof data15 === "string") {
                 if (!pattern17.test(data15)) {
-                  const err35 = { instancePath: instancePath + "/routes/" + i2 + "/upstream_token", schemaPath: "#/$defs/route/properties/upstream_token/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"' };
+                  const err35 = { instancePath: instancePath + "/routes/" + i2 + "/upstream_token", schemaPath: "#/$defs/route/properties/upstream_token/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"' };
                   if (vErrors === null) {
                     vErrors = [err35];
                   } else {
@@ -1801,7 +1801,7 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
             if (data4.user_header !== void 0) {
               let data16 = data4.user_header;
               if (!(data16 === "set" || data16 === "strip")) {
-                const err37 = { instancePath: instancePath + "/routes/" + i2 + "/user_header", schemaPath: "#/$defs/route/properties/user_header/enum", keyword: "enum", params: { allowedValues: schema38.properties.user_header.enum }, message: "must be equal to one of the allowed values" };
+                const err37 = { instancePath: instancePath + "/routes/" + i2 + "/user_header", schemaPath: "#/$defs/route/properties/user_header/enum", keyword: "enum", params: { allowedValues: schema40.properties.user_header.enum }, message: "must be equal to one of the allowed values" };
                 if (vErrors === null) {
                   vErrors = [err37];
                 } else {
@@ -2012,15 +2012,15 @@ function validate26(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate26.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.ContainerInputs = validate27;
-var schema39 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://openit.example/schemas/ContainerInputs.schema.json", "title": "ContainerInputs", "description": "3.5.0(2026-11-06): \uC601\uC5ED \uC774\uBBF8\uC9C0\uAC00 \uCEE8\uD14C\uC774\uB108 \uBC16(\uBC30\uCE58 \uC601\uC5ED)\uC5D0\uC11C \uC8FC\uC785\uBC1B\uC544\uC57C \uD558\uB294 \uAC83 \uC804\uBD80. \uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4DC\uB294 \uC601\uC5ED\uC774 \uC120\uC5B8\uD558\uACE0(\uB77C\uBCA8 io.openit.inputs), \uB744\uC6B0\uB294 \uC601\uC5ED(deploy)\uC740 \uC774 \uC120\uC5B8\uACFC \uC815\uD655\uD788 \uAC19\uAC8C \uC8FC\uC785\uD55C\uB2E4. \uD658\uACBD \uBCC0\uC218\uC758 \uC774\uB984\xB7\uAC12\uC740 env_schema \uAC00 \uAC00\uB9AC\uD0A4\uB294 \uACC4\uC57D Env \uAC00 \uC815\uD55C\uB2E4. \uC774 \uC120\uC5B8\uC5D0 \uC5C6\uB294 \uC8FC\uC785(\uD30C\uC77C\xB7\uC4F0\uAE30 \uB9C8\uC6B4\uD2B8\xB7\uAD8C\uD55C)\uC740 \uD558\uC9C0 \uC54A\uACE0, \uC120\uC5B8\uB41C \uAC83\uC740 \uBE60\uB728\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uC65C: \uD30C\uC77C \uAD8C\uD55C\xB7\uC4F0\uAE30 \uACBD\uB85C\xB7\uC2E4\uD589 \uC0AC\uC6A9\uC790\xB7argv \uAC00 \uBB38\uC7A5 \uADDC\uCE59(CLAUDE.md '\uC774\uBBF8\uC9C0\uB294 \uB2E4\uC74C\uC744 \uC9C0\uD0A8\uB2E4')\uBFD0\uC774\uB77C \uB450 \uC601\uC5ED\uC774 \uAC01\uC790 \uD574\uC11D\uD588\uACE0, 2026-11-06 E2E \uAE30\uB3D9 \uC2E4\uD328 \uB124 \uAC74(DB \uBE44\uBC00 \uC77D\uAE30, TLS \uC0AC\uBCF8 \uACBD\uB85C, \uC7A1 argv, \uD1A0\uD070 \uC774\uB984)\uC774 \uBAA8\uB450 \uADF8 \uC5B4\uAE0B\uB0A8\uC774\uC5C8\uB2E4.", "x-producers": ["*"], "x-consumers": ["deploy"], "type": "object", "additionalProperties": false, "required": ["schema_version", "image", "read_only_root", "exec_absolute_argv", "role_env", "roles", "jobs"], "properties": { "schema_version": { "const": 1 }, "image": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "\uAC8C\uC2DC \uC774\uBBF8\uC9C0 \uC774\uB984(\uB77C\uBCA8 io.openit.service \uC640 \uAC19\uB2E4)" }, "read_only_root": { "const": true, "description": "\uB8E8\uD2B8 \uD30C\uC77C \uC2DC\uC2A4\uD15C\uC740 \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uB744\uC6B4\uB2E4. \uC4F0\uAE30\uB294 roles.*.writable \uC5D0 \uC120\uC5B8\uD55C \uACBD\uB85C\uB9CC" }, "exec_absolute_argv": { "const": true, "description": "\uBA85\uB839\uC758 \uCCAB \uC778\uC790\uAC00 \uC808\uB300 \uACBD\uB85C\uBA74 \uC774\uBBF8\uC9C0 \uC9C4\uC785\uC810\uC740 \uC11C\uBC84 \uC900\uBE44 \uC5C6\uC774 \uADF8 argv \uB97C \uADF8\uB300\uB85C \uC2E4\uD589\uD55C\uB2E4(\uC7A1 \uC120\uC5B8 JobsDeclaration.argv \uC758 \uC2E4\uD589 \uADDC\uCE59, Docker \uD45C\uC900 \uC9C4\uC785\uC810 \uAD00\uB840)" }, "role_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$", "description": "\uC5ED\uD560\uC744 \uACE0\uB974\uB294 \uD658\uACBD \uBCC0\uC218 \uC774\uB984(\uC608: STEP_ROLE). \uC5ED\uD560\uC774 \uD558\uB098\uBA74 null \uC774\uACE0 roles \uC758 \uD0A4\uB294 default \uD558\uB098\uB2E4" }, "roles": { "type": "object", "minProperties": 1, "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" }, "additionalProperties": { "allOf": [{ "$ref": "#/$defs/InputSet" }, { "not": { "required": ["config_paths"] } }] } }, "jobs": { "type": "object", "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" }, "additionalProperties": { "$ref": "#/$defs/InputSet" }, "description": "\uC7A1\uB9C8\uB2E4(\uD0A4 = \uC774 \uC774\uBBF8\uC9C0 \uB77C\uBCA8 io.openit.jobs \uC758 \uC7A1 \uC774\uB984, argv \uB85C \uACE0\uB978\uB2E4) \uADF8 \uC7A1 \uCEE8\uD14C\uC774\uB108\uAC00 \uBC1B\uB294 \uAC83. \uC7A1\uC774 \uC5C6\uC73C\uBA74 \uBE48 \uAC1D\uCCB4" } }, "allOf": [{ "if": { "properties": { "role_env": { "type": "null" } } }, "then": { "properties": { "roles": { "required": ["default"], "maxProperties": 1 } } } }], "$defs": { "Process": { "type": "object", "additionalProperties": false, "required": ["uid", "gid"], "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC744 \uC77D\uACE0 \uC120\uC5B8\uB41C \uACBD\uB85C\uC5D0 \uC4F0\uB294 \uD504\uB85C\uC138\uC2A4\uC758 \uC22B\uC790 \uC0AC\uC6A9\uC790\xB7\uADF8\uB8F9. \uC774\uB984(app, postgres)\uC774 \uC544\uB2C8\uB77C \uC22B\uC790\uB2E4: \uBC30\uCE58 \uC601\uC5ED\uC740 \uC774\uBBF8\uC9C0 \uC548\uC758 /etc/passwd \uB97C \uBAA8\uB978\uB2E4(\uAD6C\uC870 \uADDC\uCE59 1)", "properties": { "uid": { "type": "integer", "minimum": 0, "maximum": 2147483647 }, "gid": { "type": "integer", "minimum": 0, "maximum": 2147483647 } } }, "File": { "type": "object", "additionalProperties": false, "required": ["path", "kind", "required", "opened_by"], "properties": { "path_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$", "description": "\uACBD\uB85C\uB97C \uC8FC\uB294 \uD658\uACBD \uBCC0\uC218(\uC608: DB_PASSWORD_FILE). null \uC774\uBA74 path \uACE0\uC815" }, "path": { "type": "string", "pattern": "^/[^\\s]*$", "description": "path_env \uAC00 \uC5C6\uC744 \uB54C \uC774\uBBF8\uC9C0\uAC00 \uC77D\uB294 \uACBD\uB85C(path_env \uAC00 \uC788\uC73C\uBA74 \uADF8 \uAE30\uBCF8\uAC12)" }, "directory": { "type": "boolean", "default": false, "description": "\uCC38\uC774\uBA74 \uD3F4\uB354(\uADF8 \uC548\uC758 \uD30C\uC77C \uC804\uBD80\uB97C \uC77D\uB294\uB2E4)" }, "kind": { "enum": ["secret", "config", "certificate", "ca-bundle", "declaration"], "description": "secret \uC740 \uAC12\uC774 \uBE44\uBC00\uC774\uB2E4(D84): \uBC30\uCE58 \uC601\uC5ED\uC740 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC77D\uC9C0 \uBABB\uD558\uAC8C \uC8FC\uB418 read_by \uB294 \uC77D\uC744 \uC218 \uC788\uC5B4\uC57C \uD55C\uB2E4" }, "schema": { "type": ["string", "null"], "pattern": "^[A-Z][A-Za-z0-9]*$", "description": "\uB0B4\uC6A9\uC774 \uB530\uB974\uB294 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984(\uC788\uC73C\uBA74)" }, "required": { "type": "boolean" }, "opened_by": { "const": "start-process", "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC740 \uCEE8\uD14C\uC774\uB108\uC758 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4(process \uC758 uid, \uBC30\uCE58 \uC601\uC5ED\uC774 \uBD99\uC778 \uBCF4\uC870 \uADF8\uB8F9 \uD3EC\uD568)\uAC00 \uC5F0\uB2E4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uD30C\uC77C\uC744 0640\xB7\uADF8\uB8F9 SECRETS_GID \uB85C \uB450\uACE0 \uADF8 \uADF8\uB8F9\uC744 \uBCF4\uC870 \uADF8\uB8F9\uC73C\uB85C \uBD99\uC778\uB2E4. \uC0AC\uC6A9\uC790\uB97C \uBC14\uAFBC(gosu\xB7setpriv) \uB4A4\uC5D0\uB294 \uBCF4\uC870 \uADF8\uB8F9\uC774 \uC0AC\uB77C\uC9C0\uBBC0\uB85C \uADF8 \uC804\uC5D0 \uC5F4\uAC70\uB098 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4\uAC00 \uC790\uAE30 \uC0AC\uBCF8\uC744 \uB9CC\uB4E4\uC5B4 \uB118\uAE34\uB2E4(2026-11-06 DB \uBE44\uBC00 \uC77D\uAE30 \uC2E4\uD328\uC758 \uC6D0\uC778)" } } }, "Writable": { "type": "object", "additionalProperties": false, "required": ["path", "persist", "written_by"], "properties": { "path": { "type": "string", "pattern": "^/[^\\s]*$" }, "persist": { "type": "boolean", "description": "\uCC38\uC774\uBA74 \uB2E4\uC2DC \uC2DC\uC791\uD574\uB3C4 \uB0A8\uC544\uC57C \uD55C\uB2E4(\uC774\uB984 \uC788\uB294 \uBCFC\uB968). \uAC70\uC9D3\uC774\uBA74 tmpfs \uB85C \uCDA9\uBD84\uD558\uB2E4" }, "written_by": { "$ref": "#/$defs/Process", "description": "\uC774 \uACBD\uB85C\uC5D0 \uC4F0\uB294 \uD504\uB85C\uC138\uC2A4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uC774 \uC0AC\uC6A9\uC790\uAC00 \uC4F8 \uC218 \uC788\uAC8C \uC900\uB2E4(tmpfs uid/gid/mode \uB610\uB294 \uBCFC\uB968 \uC18C\uC720)" } } }, "InputSet": { "type": "object", "additionalProperties": false, "required": ["env_schema", "process", "files", "writable", "capabilities", "sysctls"], "properties": { "env_schema": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Env$", "description": "\uC774 \uC5ED\uD560\uC774 \uBC1B\uB294 \uD658\uACBD \uBCC0\uC218\uC758 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984" }, "process": { "$ref": "#/$defs/Process", "description": "\uCEE8\uD14C\uC774\uB108\uAC00 \uC2DC\uC791\uD558\uB294 \uC0AC\uC6A9\uC790(\uC774\uBBF8\uC9C0 USER \uC758 \uC22B\uC790). \uBC30\uCE58 \uC601\uC5ED\uC740 user \uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4" }, "files": { "type": "array", "items": { "$ref": "#/$defs/File" } }, "writable": { "type": "array", "items": { "$ref": "#/$defs/Writable" } }, "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"] }, "description": "cap_drop ALL \uB4A4\uC5D0 \uB354\uD574\uC57C \uD558\uB294 \uAC83\uB9CC. \uBE44\uC5B4 \uC788\uC73C\uBA74 \uB354\uD558\uC9C0 \uC54A\uB294\uB2E4" }, "sysctls": { "type": "object", "propertyNames": { "enum": ["net.ipv4.ip_unprivileged_port_start"] }, "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "\uBC30\uCE58 \uC601\uC5ED\uC774 \uC774 \uAC12\uC73C\uB85C \uC918\uC57C \uD558\uB294 \uCEE4\uB110 \uB9E4\uAC1C\uBCC0\uC218(\uC774\uB984 \uACF5\uAC04 \uC548). \uC5C6\uC73C\uBA74 \uC8FC\uC9C0 \uC54A\uB294\uB2E4. \uC608: root \uAC00 \uC544\uB2CC \uC0AC\uC6A9\uC790\uAC00 1024 \uC544\uB798 \uD3EC\uD2B8\uB97C \uC5F4 \uB54C net.ipv4.ip_unprivileged_port_start=0" }, "config_paths": { "type": "object", "description": "Job config directory paths. Resolve relative values against the config file container directory. Only these declared paths can be mounted; configuration content is validated against JobsDeclaration.config.schema first.", "propertyNames": { "type": "string", "pattern": "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$", "description": "RFC 6901 JSON Pointer in the job config declared by JobsDeclaration.config." }, "additionalProperties": { "$ref": "#/$defs/ConfigPath" } } } }, "ConfigPath": { "type": "object", "additionalProperties": false, "required": ["access", "required"], "properties": { "access": { "enum": ["read", "write"], "description": "Directory bind: read-only input or writable job output. The process identity is InputSet.process." }, "required": { "type": "boolean", "description": "If false, an absent config member does not declare a mount (e.g. HTTP/memory store has no file root)." } } } }, "examples": [{ "schema_version": 1, "image": "survey-service", "read_only_root": true, "exec_absolute_argv": true, "role_env": null, "roles": { "default": { "env_schema": "SurveyServiceEnv", "process": { "uid": 10001, "gid": 10001 }, "capabilities": [], "files": [{ "path_env": "SURVEY_DB_PASSWORD_FILE", "path": "/run/secrets/survey-db-password", "kind": "secret", "schema": null, "required": true, "opened_by": "start-process" }], "writable": [{ "path": "/data", "persist": true, "written_by": { "uid": 10001, "gid": 10001 } }, { "path": "/tmp", "persist": false, "written_by": { "uid": 10001, "gid": 10001 } }], "sysctls": {} } }, "jobs": {} }] };
-var pattern31 = new RegExp("^[A-Z][A-Z0-9_]*$", "u");
-var schema40 = { "type": "object", "additionalProperties": false, "required": ["env_schema", "process", "files", "writable", "capabilities", "sysctls"], "properties": { "env_schema": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Env$", "description": "\uC774 \uC5ED\uD560\uC774 \uBC1B\uB294 \uD658\uACBD \uBCC0\uC218\uC758 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984" }, "process": { "$ref": "#/$defs/Process", "description": "\uCEE8\uD14C\uC774\uB108\uAC00 \uC2DC\uC791\uD558\uB294 \uC0AC\uC6A9\uC790(\uC774\uBBF8\uC9C0 USER \uC758 \uC22B\uC790). \uBC30\uCE58 \uC601\uC5ED\uC740 user \uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4" }, "files": { "type": "array", "items": { "$ref": "#/$defs/File" } }, "writable": { "type": "array", "items": { "$ref": "#/$defs/Writable" } }, "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"] }, "description": "cap_drop ALL \uB4A4\uC5D0 \uB354\uD574\uC57C \uD558\uB294 \uAC83\uB9CC. \uBE44\uC5B4 \uC788\uC73C\uBA74 \uB354\uD558\uC9C0 \uC54A\uB294\uB2E4" }, "sysctls": { "type": "object", "propertyNames": { "enum": ["net.ipv4.ip_unprivileged_port_start"] }, "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "\uBC30\uCE58 \uC601\uC5ED\uC774 \uC774 \uAC12\uC73C\uB85C \uC918\uC57C \uD558\uB294 \uCEE4\uB110 \uB9E4\uAC1C\uBCC0\uC218(\uC774\uB984 \uACF5\uAC04 \uC548). \uC5C6\uC73C\uBA74 \uC8FC\uC9C0 \uC54A\uB294\uB2E4. \uC608: root \uAC00 \uC544\uB2CC \uC0AC\uC6A9\uC790\uAC00 1024 \uC544\uB798 \uD3EC\uD2B8\uB97C \uC5F4 \uB54C net.ipv4.ip_unprivileged_port_start=0" }, "config_paths": { "type": "object", "description": "Job config directory paths. Resolve relative values against the config file container directory. Only these declared paths can be mounted; configuration content is validated against JobsDeclaration.config.schema first.", "propertyNames": { "type": "string", "pattern": "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$", "description": "RFC 6901 JSON Pointer in the job config declared by JobsDeclaration.config." }, "additionalProperties": { "$ref": "#/$defs/ConfigPath" } } } };
-var schema42 = { "type": "object", "additionalProperties": false, "required": ["path", "kind", "required", "opened_by"], "properties": { "path_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$", "description": "\uACBD\uB85C\uB97C \uC8FC\uB294 \uD658\uACBD \uBCC0\uC218(\uC608: DB_PASSWORD_FILE). null \uC774\uBA74 path \uACE0\uC815" }, "path": { "type": "string", "pattern": "^/[^\\s]*$", "description": "path_env \uAC00 \uC5C6\uC744 \uB54C \uC774\uBBF8\uC9C0\uAC00 \uC77D\uB294 \uACBD\uB85C(path_env \uAC00 \uC788\uC73C\uBA74 \uADF8 \uAE30\uBCF8\uAC12)" }, "directory": { "type": "boolean", "default": false, "description": "\uCC38\uC774\uBA74 \uD3F4\uB354(\uADF8 \uC548\uC758 \uD30C\uC77C \uC804\uBD80\uB97C \uC77D\uB294\uB2E4)" }, "kind": { "enum": ["secret", "config", "certificate", "ca-bundle", "declaration"], "description": "secret \uC740 \uAC12\uC774 \uBE44\uBC00\uC774\uB2E4(D84): \uBC30\uCE58 \uC601\uC5ED\uC740 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC77D\uC9C0 \uBABB\uD558\uAC8C \uC8FC\uB418 read_by \uB294 \uC77D\uC744 \uC218 \uC788\uC5B4\uC57C \uD55C\uB2E4" }, "schema": { "type": ["string", "null"], "pattern": "^[A-Z][A-Za-z0-9]*$", "description": "\uB0B4\uC6A9\uC774 \uB530\uB974\uB294 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984(\uC788\uC73C\uBA74)" }, "required": { "type": "boolean" }, "opened_by": { "const": "start-process", "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC740 \uCEE8\uD14C\uC774\uB108\uC758 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4(process \uC758 uid, \uBC30\uCE58 \uC601\uC5ED\uC774 \uBD99\uC778 \uBCF4\uC870 \uADF8\uB8F9 \uD3EC\uD568)\uAC00 \uC5F0\uB2E4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uD30C\uC77C\uC744 0640\xB7\uADF8\uB8F9 SECRETS_GID \uB85C \uB450\uACE0 \uADF8 \uADF8\uB8F9\uC744 \uBCF4\uC870 \uADF8\uB8F9\uC73C\uB85C \uBD99\uC778\uB2E4. \uC0AC\uC6A9\uC790\uB97C \uBC14\uAFBC(gosu\xB7setpriv) \uB4A4\uC5D0\uB294 \uBCF4\uC870 \uADF8\uB8F9\uC774 \uC0AC\uB77C\uC9C0\uBBC0\uB85C \uADF8 \uC804\uC5D0 \uC5F4\uAC70\uB098 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4\uAC00 \uC790\uAE30 \uC0AC\uBCF8\uC744 \uB9CC\uB4E4\uC5B4 \uB118\uAE34\uB2E4(2026-11-06 DB \uBE44\uBC00 \uC77D\uAE30 \uC2E4\uD328\uC758 \uC6D0\uC778)" } } };
-var schema45 = { "type": "object", "additionalProperties": false, "required": ["access", "required"], "properties": { "access": { "enum": ["read", "write"], "description": "Directory bind: read-only input or writable job output. The process identity is InputSet.process." }, "required": { "type": "boolean", "description": "If false, an absent config member does not declare a mount (e.g. HTTP/memory store has no file root)." } } };
-var pattern33 = new RegExp("^[A-Z][A-Za-z0-9]*Env$", "u");
-var pattern35 = new RegExp("^/[^\\s]*$", "u");
-var pattern36 = new RegExp("^[A-Z][A-Za-z0-9]*$", "u");
-var pattern38 = new RegExp("^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$", "u");
+var schema41 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://openit.example/schemas/ContainerInputs.schema.json", "title": "ContainerInputs", "description": "3.5.0(2026-11-06): \uC601\uC5ED \uC774\uBBF8\uC9C0\uAC00 \uCEE8\uD14C\uC774\uB108 \uBC16(\uBC30\uCE58 \uC601\uC5ED)\uC5D0\uC11C \uC8FC\uC785\uBC1B\uC544\uC57C \uD558\uB294 \uAC83 \uC804\uBD80. \uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4DC\uB294 \uC601\uC5ED\uC774 \uC120\uC5B8\uD558\uACE0(\uB77C\uBCA8 io.openit.inputs), \uB744\uC6B0\uB294 \uC601\uC5ED(deploy)\uC740 \uC774 \uC120\uC5B8\uACFC \uC815\uD655\uD788 \uAC19\uAC8C \uC8FC\uC785\uD55C\uB2E4. \uD658\uACBD \uBCC0\uC218\uC758 \uC774\uB984\xB7\uAC12\uC740 env_schema \uAC00 \uAC00\uB9AC\uD0A4\uB294 \uACC4\uC57D Env \uAC00 \uC815\uD55C\uB2E4. \uC774 \uC120\uC5B8\uC5D0 \uC5C6\uB294 \uC8FC\uC785(\uD30C\uC77C\xB7\uC4F0\uAE30 \uB9C8\uC6B4\uD2B8\xB7\uAD8C\uD55C)\uC740 \uD558\uC9C0 \uC54A\uACE0, \uC120\uC5B8\uB41C \uAC83\uC740 \uBE60\uB728\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uC65C: \uD30C\uC77C \uAD8C\uD55C\xB7\uC4F0\uAE30 \uACBD\uB85C\xB7\uC2E4\uD589 \uC0AC\uC6A9\uC790\xB7argv \uAC00 \uBB38\uC7A5 \uADDC\uCE59(CLAUDE.md '\uC774\uBBF8\uC9C0\uB294 \uB2E4\uC74C\uC744 \uC9C0\uD0A8\uB2E4')\uBFD0\uC774\uB77C \uB450 \uC601\uC5ED\uC774 \uAC01\uC790 \uD574\uC11D\uD588\uACE0, 2026-11-06 E2E \uAE30\uB3D9 \uC2E4\uD328 \uB124 \uAC74(DB \uBE44\uBC00 \uC77D\uAE30, TLS \uC0AC\uBCF8 \uACBD\uB85C, \uC7A1 argv, \uD1A0\uD070 \uC774\uB984)\uC774 \uBAA8\uB450 \uADF8 \uC5B4\uAE0B\uB0A8\uC774\uC5C8\uB2E4.", "x-producers": ["*"], "x-consumers": ["deploy"], "type": "object", "additionalProperties": false, "required": ["schema_version", "image", "read_only_root", "exec_absolute_argv", "role_env", "roles", "jobs"], "properties": { "schema_version": { "const": 1 }, "image": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$(?![\\s\\S])", "description": "\uAC8C\uC2DC \uC774\uBBF8\uC9C0 \uC774\uB984(\uB77C\uBCA8 io.openit.service \uC640 \uAC19\uB2E4)" }, "read_only_root": { "const": true, "description": "\uB8E8\uD2B8 \uD30C\uC77C \uC2DC\uC2A4\uD15C\uC740 \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uB744\uC6B4\uB2E4. \uC4F0\uAE30\uB294 roles.*.writable \uC5D0 \uC120\uC5B8\uD55C \uACBD\uB85C\uB9CC" }, "exec_absolute_argv": { "const": true, "description": "\uBA85\uB839\uC758 \uCCAB \uC778\uC790\uAC00 \uC808\uB300 \uACBD\uB85C\uBA74 \uC774\uBBF8\uC9C0 \uC9C4\uC785\uC810\uC740 \uC11C\uBC84 \uC900\uBE44 \uC5C6\uC774 \uADF8 argv \uB97C \uADF8\uB300\uB85C \uC2E4\uD589\uD55C\uB2E4(\uC7A1 \uC120\uC5B8 JobsDeclaration.argv \uC758 \uC2E4\uD589 \uADDC\uCE59, Docker \uD45C\uC900 \uC9C4\uC785\uC810 \uAD00\uB840)" }, "role_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$(?![\\s\\S])", "description": "\uC5ED\uD560\uC744 \uACE0\uB974\uB294 \uD658\uACBD \uBCC0\uC218 \uC774\uB984(\uC608: STEP_ROLE). \uC5ED\uD560\uC774 \uD558\uB098\uBA74 null \uC774\uACE0 roles \uC758 \uD0A4\uB294 default \uD558\uB098\uB2E4" }, "roles": { "type": "object", "minProperties": 1, "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, "additionalProperties": { "allOf": [{ "$ref": "#/$defs/InputSet" }, { "not": { "required": ["config_paths"] } }] } }, "jobs": { "type": "object", "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, "additionalProperties": { "$ref": "#/$defs/InputSet" }, "description": "\uC7A1\uB9C8\uB2E4(\uD0A4 = \uC774 \uC774\uBBF8\uC9C0 \uB77C\uBCA8 io.openit.jobs \uC758 \uC7A1 \uC774\uB984, argv \uB85C \uACE0\uB978\uB2E4) \uADF8 \uC7A1 \uCEE8\uD14C\uC774\uB108\uAC00 \uBC1B\uB294 \uAC83. \uC7A1\uC774 \uC5C6\uC73C\uBA74 \uBE48 \uAC1D\uCCB4" } }, "allOf": [{ "if": { "properties": { "role_env": { "type": "null" } } }, "then": { "properties": { "roles": { "required": ["default"], "maxProperties": 1 } } } }], "$defs": { "Process": { "type": "object", "additionalProperties": false, "required": ["uid", "gid"], "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC744 \uC77D\uACE0 \uC120\uC5B8\uB41C \uACBD\uB85C\uC5D0 \uC4F0\uB294 \uD504\uB85C\uC138\uC2A4\uC758 \uC22B\uC790 \uC0AC\uC6A9\uC790\xB7\uADF8\uB8F9. \uC774\uB984(app, postgres)\uC774 \uC544\uB2C8\uB77C \uC22B\uC790\uB2E4: \uBC30\uCE58 \uC601\uC5ED\uC740 \uC774\uBBF8\uC9C0 \uC548\uC758 /etc/passwd \uB97C \uBAA8\uB978\uB2E4(\uAD6C\uC870 \uADDC\uCE59 1)", "properties": { "uid": { "type": "integer", "minimum": 0, "maximum": 2147483647, "description": "\uADFC\uAC70: 2^31-1 \uC740 \uD638\uD658\uC131\uC744 \uC704\uD55C \uD504\uB85C\uC81D\uD2B8 \uC0C1\uD55C\uC774\uB2E4(\uBD80\uD638 \uC788\uB294 32\uBE44\uD2B8 \uC815\uC218\uB85C \uB2E4\uB8E8\uB294 \uB3C4\uAD6C\uAC00 \uC788\uC5B4\uB3C4 \uC548\uC804\uD558\uAC8C; Linux \uC758 uid_t \uC790\uCCB4\uB294 \uBD80\uD638 \uC5C6\uB294 32\uBE44\uD2B8\uB77C \uCD5C\uB300\uCE58\uAC00 \uC544\uB2C8\uB2E4, \uCE21\uC815 \uC548 \uD568)" }, "gid": { "type": "integer", "minimum": 0, "maximum": 2147483647, "description": "\uADFC\uAC70: 2^31-1 \uC740 \uD638\uD658\uC131\uC744 \uC704\uD55C \uD504\uB85C\uC81D\uD2B8 \uC0C1\uD55C\uC774\uB2E4(\uBD80\uD638 \uC788\uB294 32\uBE44\uD2B8 \uC815\uC218\uB85C \uB2E4\uB8E8\uB294 \uB3C4\uAD6C\uAC00 \uC788\uC5B4\uB3C4 \uC548\uC804\uD558\uAC8C; Linux \uC758 gid_t \uC790\uCCB4\uB294 \uBD80\uD638 \uC5C6\uB294 32\uBE44\uD2B8\uB77C \uCD5C\uB300\uCE58\uAC00 \uC544\uB2C8\uB2E4, \uCE21\uC815 \uC548 \uD568)" } } }, "File": { "type": "object", "additionalProperties": false, "required": ["path", "kind", "required", "opened_by"], "properties": { "path_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$(?![\\s\\S])", "description": "\uACBD\uB85C\uB97C \uC8FC\uB294 \uD658\uACBD \uBCC0\uC218(\uC608: DB_PASSWORD_FILE). null \uC774\uBA74 path \uACE0\uC815" }, "path": { "type": "string", "pattern": "^/[^\\s]*$(?![\\s\\S])", "description": "path_env \uAC00 \uC5C6\uC744 \uB54C \uC774\uBBF8\uC9C0\uAC00 \uC77D\uB294 \uACBD\uB85C(path_env \uAC00 \uC788\uC73C\uBA74 \uADF8 \uAE30\uBCF8\uAC12)" }, "directory": { "type": "boolean", "default": false, "description": "\uCC38\uC774\uBA74 \uD3F4\uB354(\uADF8 \uC548\uC758 \uD30C\uC77C \uC804\uBD80\uB97C \uC77D\uB294\uB2E4)" }, "kind": { "enum": ["secret", "config", "certificate", "ca-bundle", "declaration"], "description": "secret \uC740 \uAC12\uC774 \uBE44\uBC00\uC774\uB2E4(D84): \uBC30\uCE58 \uC601\uC5ED\uC740 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC77D\uC9C0 \uBABB\uD558\uAC8C \uC8FC\uB418 read_by \uB294 \uC77D\uC744 \uC218 \uC788\uC5B4\uC57C \uD55C\uB2E4" }, "schema": { "type": ["string", "null"], "pattern": "^[A-Z][A-Za-z0-9]*$(?![\\s\\S])", "description": "\uB0B4\uC6A9\uC774 \uB530\uB974\uB294 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984(\uC788\uC73C\uBA74)" }, "required": { "type": "boolean" }, "opened_by": { "const": "start-process", "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC740 \uCEE8\uD14C\uC774\uB108\uC758 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4(process \uC758 uid, \uBC30\uCE58 \uC601\uC5ED\uC774 \uBD99\uC778 \uBCF4\uC870 \uADF8\uB8F9 \uD3EC\uD568)\uAC00 \uC5F0\uB2E4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uD30C\uC77C\uC744 0640\xB7\uADF8\uB8F9 SECRETS_GID \uB85C \uB450\uACE0 \uADF8 \uADF8\uB8F9\uC744 \uBCF4\uC870 \uADF8\uB8F9\uC73C\uB85C \uBD99\uC778\uB2E4. \uC0AC\uC6A9\uC790\uB97C \uBC14\uAFBC(gosu\xB7setpriv) \uB4A4\uC5D0\uB294 \uBCF4\uC870 \uADF8\uB8F9\uC774 \uC0AC\uB77C\uC9C0\uBBC0\uB85C \uADF8 \uC804\uC5D0 \uC5F4\uAC70\uB098 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4\uAC00 \uC790\uAE30 \uC0AC\uBCF8\uC744 \uB9CC\uB4E4\uC5B4 \uB118\uAE34\uB2E4(2026-11-06 DB \uBE44\uBC00 \uC77D\uAE30 \uC2E4\uD328\uC758 \uC6D0\uC778)" } } }, "Writable": { "type": "object", "additionalProperties": false, "required": ["path", "persist", "written_by"], "properties": { "path": { "type": "string", "pattern": "^/[^\\s]*$(?![\\s\\S])" }, "persist": { "type": "boolean", "description": "\uCC38\uC774\uBA74 \uB2E4\uC2DC \uC2DC\uC791\uD574\uB3C4 \uB0A8\uC544\uC57C \uD55C\uB2E4(\uC774\uB984 \uC788\uB294 \uBCFC\uB968). \uAC70\uC9D3\uC774\uBA74 tmpfs \uB85C \uCDA9\uBD84\uD558\uB2E4" }, "written_by": { "$ref": "#/$defs/Process", "description": "\uC774 \uACBD\uB85C\uC5D0 \uC4F0\uB294 \uD504\uB85C\uC138\uC2A4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uC774 \uC0AC\uC6A9\uC790\uAC00 \uC4F8 \uC218 \uC788\uAC8C \uC900\uB2E4(tmpfs uid/gid/mode \uB610\uB294 \uBCFC\uB968 \uC18C\uC720)" } } }, "InputSet": { "type": "object", "additionalProperties": false, "required": ["env_schema", "process", "files", "writable", "capabilities", "sysctls"], "properties": { "env_schema": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Env$(?![\\s\\S])", "description": "\uC774 \uC5ED\uD560\uC774 \uBC1B\uB294 \uD658\uACBD \uBCC0\uC218\uC758 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984" }, "process": { "$ref": "#/$defs/Process", "description": "\uCEE8\uD14C\uC774\uB108\uAC00 \uC2DC\uC791\uD558\uB294 \uC0AC\uC6A9\uC790(\uC774\uBBF8\uC9C0 USER \uC758 \uC22B\uC790). \uBC30\uCE58 \uC601\uC5ED\uC740 user \uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4" }, "files": { "type": "array", "items": { "$ref": "#/$defs/File" } }, "writable": { "type": "array", "items": { "$ref": "#/$defs/Writable" } }, "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"] }, "description": "cap_drop ALL \uB4A4\uC5D0 \uB354\uD574\uC57C \uD558\uB294 \uAC83\uB9CC. \uBE44\uC5B4 \uC788\uC73C\uBA74 \uB354\uD558\uC9C0 \uC54A\uB294\uB2E4" }, "sysctls": { "type": "object", "propertyNames": { "enum": ["net.ipv4.ip_unprivileged_port_start"] }, "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "\uBC30\uCE58 \uC601\uC5ED\uC774 \uC774 \uAC12\uC73C\uB85C \uC918\uC57C \uD558\uB294 \uCEE4\uB110 \uB9E4\uAC1C\uBCC0\uC218(\uC774\uB984 \uACF5\uAC04 \uC548). \uC5C6\uC73C\uBA74 \uC8FC\uC9C0 \uC54A\uB294\uB2E4. \uC608: root \uAC00 \uC544\uB2CC \uC0AC\uC6A9\uC790\uAC00 1024 \uC544\uB798 \uD3EC\uD2B8\uB97C \uC5F4 \uB54C net.ipv4.ip_unprivileged_port_start=0" }, "config_paths": { "type": "object", "description": "Job config directory paths. Resolve relative values against the config file container directory. Only these declared paths can be mounted; configuration content is validated against JobsDeclaration.config.schema first.", "propertyNames": { "type": "string", "pattern": "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$(?![\\s\\S])", "description": "RFC 6901 JSON Pointer in the job config declared by JobsDeclaration.config." }, "additionalProperties": { "$ref": "#/$defs/ConfigPath" } } } }, "ConfigPath": { "type": "object", "additionalProperties": false, "required": ["access", "required"], "properties": { "access": { "enum": ["read", "write"], "description": "Directory bind: read-only input or writable job output. The process identity is InputSet.process." }, "required": { "type": "boolean", "description": "If false, an absent config member does not declare a mount (e.g. HTTP/memory store has no file root)." } } } }, "examples": [{ "schema_version": 1, "image": "survey-service", "read_only_root": true, "exec_absolute_argv": true, "role_env": null, "roles": { "default": { "env_schema": "SurveyServiceEnv", "process": { "uid": 10001, "gid": 10001 }, "capabilities": [], "files": [{ "path_env": "SURVEY_DB_PASSWORD_FILE", "path": "/run/secrets/survey-db-password", "kind": "secret", "schema": null, "required": true, "opened_by": "start-process" }], "writable": [{ "path": "/data", "persist": true, "written_by": { "uid": 10001, "gid": 10001 } }, { "path": "/tmp", "persist": false, "written_by": { "uid": 10001, "gid": 10001 } }], "sysctls": {} } }, "jobs": {} }] };
+var pattern31 = new RegExp("^[A-Z][A-Z0-9_]*$(?![\\s\\S])", "u");
+var schema42 = { "type": "object", "additionalProperties": false, "required": ["env_schema", "process", "files", "writable", "capabilities", "sysctls"], "properties": { "env_schema": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*Env$(?![\\s\\S])", "description": "\uC774 \uC5ED\uD560\uC774 \uBC1B\uB294 \uD658\uACBD \uBCC0\uC218\uC758 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984" }, "process": { "$ref": "#/$defs/Process", "description": "\uCEE8\uD14C\uC774\uB108\uAC00 \uC2DC\uC791\uD558\uB294 \uC0AC\uC6A9\uC790(\uC774\uBBF8\uC9C0 USER \uC758 \uC22B\uC790). \uBC30\uCE58 \uC601\uC5ED\uC740 user \uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4" }, "files": { "type": "array", "items": { "$ref": "#/$defs/File" } }, "writable": { "type": "array", "items": { "$ref": "#/$defs/Writable" } }, "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"] }, "description": "cap_drop ALL \uB4A4\uC5D0 \uB354\uD574\uC57C \uD558\uB294 \uAC83\uB9CC. \uBE44\uC5B4 \uC788\uC73C\uBA74 \uB354\uD558\uC9C0 \uC54A\uB294\uB2E4" }, "sysctls": { "type": "object", "propertyNames": { "enum": ["net.ipv4.ip_unprivileged_port_start"] }, "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "\uBC30\uCE58 \uC601\uC5ED\uC774 \uC774 \uAC12\uC73C\uB85C \uC918\uC57C \uD558\uB294 \uCEE4\uB110 \uB9E4\uAC1C\uBCC0\uC218(\uC774\uB984 \uACF5\uAC04 \uC548). \uC5C6\uC73C\uBA74 \uC8FC\uC9C0 \uC54A\uB294\uB2E4. \uC608: root \uAC00 \uC544\uB2CC \uC0AC\uC6A9\uC790\uAC00 1024 \uC544\uB798 \uD3EC\uD2B8\uB97C \uC5F4 \uB54C net.ipv4.ip_unprivileged_port_start=0" }, "config_paths": { "type": "object", "description": "Job config directory paths. Resolve relative values against the config file container directory. Only these declared paths can be mounted; configuration content is validated against JobsDeclaration.config.schema first.", "propertyNames": { "type": "string", "pattern": "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$(?![\\s\\S])", "description": "RFC 6901 JSON Pointer in the job config declared by JobsDeclaration.config." }, "additionalProperties": { "$ref": "#/$defs/ConfigPath" } } } };
+var schema44 = { "type": "object", "additionalProperties": false, "required": ["path", "kind", "required", "opened_by"], "properties": { "path_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$(?![\\s\\S])", "description": "\uACBD\uB85C\uB97C \uC8FC\uB294 \uD658\uACBD \uBCC0\uC218(\uC608: DB_PASSWORD_FILE). null \uC774\uBA74 path \uACE0\uC815" }, "path": { "type": "string", "pattern": "^/[^\\s]*$(?![\\s\\S])", "description": "path_env \uAC00 \uC5C6\uC744 \uB54C \uC774\uBBF8\uC9C0\uAC00 \uC77D\uB294 \uACBD\uB85C(path_env \uAC00 \uC788\uC73C\uBA74 \uADF8 \uAE30\uBCF8\uAC12)" }, "directory": { "type": "boolean", "default": false, "description": "\uCC38\uC774\uBA74 \uD3F4\uB354(\uADF8 \uC548\uC758 \uD30C\uC77C \uC804\uBD80\uB97C \uC77D\uB294\uB2E4)" }, "kind": { "enum": ["secret", "config", "certificate", "ca-bundle", "declaration"], "description": "secret \uC740 \uAC12\uC774 \uBE44\uBC00\uC774\uB2E4(D84): \uBC30\uCE58 \uC601\uC5ED\uC740 \uB2E4\uB978 \uC0AC\uC6A9\uC790\uAC00 \uC77D\uC9C0 \uBABB\uD558\uAC8C \uC8FC\uB418 read_by \uB294 \uC77D\uC744 \uC218 \uC788\uC5B4\uC57C \uD55C\uB2E4" }, "schema": { "type": ["string", "null"], "pattern": "^[A-Z][A-Za-z0-9]*$(?![\\s\\S])", "description": "\uB0B4\uC6A9\uC774 \uB530\uB974\uB294 \uACC4\uC57D \uC2A4\uD0A4\uB9C8 \uC774\uB984(\uC788\uC73C\uBA74)" }, "required": { "type": "boolean" }, "opened_by": { "const": "start-process", "description": "\uC8FC\uC785\uB41C \uD30C\uC77C\uC740 \uCEE8\uD14C\uC774\uB108\uC758 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4(process \uC758 uid, \uBC30\uCE58 \uC601\uC5ED\uC774 \uBD99\uC778 \uBCF4\uC870 \uADF8\uB8F9 \uD3EC\uD568)\uAC00 \uC5F0\uB2E4. \uBC30\uCE58 \uC601\uC5ED\uC740 \uD30C\uC77C\uC744 0640\xB7\uADF8\uB8F9 SECRETS_GID \uB85C \uB450\uACE0 \uADF8 \uADF8\uB8F9\uC744 \uBCF4\uC870 \uADF8\uB8F9\uC73C\uB85C \uBD99\uC778\uB2E4. \uC0AC\uC6A9\uC790\uB97C \uBC14\uAFBC(gosu\xB7setpriv) \uB4A4\uC5D0\uB294 \uBCF4\uC870 \uADF8\uB8F9\uC774 \uC0AC\uB77C\uC9C0\uBBC0\uB85C \uADF8 \uC804\uC5D0 \uC5F4\uAC70\uB098 \uC2DC\uC791 \uD504\uB85C\uC138\uC2A4\uAC00 \uC790\uAE30 \uC0AC\uBCF8\uC744 \uB9CC\uB4E4\uC5B4 \uB118\uAE34\uB2E4(2026-11-06 DB \uBE44\uBC00 \uC77D\uAE30 \uC2E4\uD328\uC758 \uC6D0\uC778)" } } };
+var schema47 = { "type": "object", "additionalProperties": false, "required": ["access", "required"], "properties": { "access": { "enum": ["read", "write"], "description": "Directory bind: read-only input or writable job output. The process identity is InputSet.process." }, "required": { "type": "boolean", "description": "If false, an absent config member does not declare a mount (e.g. HTTP/memory store has no file root)." } } };
+var pattern33 = new RegExp("^[A-Z][A-Za-z0-9]*Env$(?![\\s\\S])", "u");
+var pattern35 = new RegExp("^/[^\\s]*$(?![\\s\\S])", "u");
+var pattern36 = new RegExp("^[A-Z][A-Za-z0-9]*$(?![\\s\\S])", "u");
+var pattern38 = new RegExp("^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$(?![\\s\\S])", "u");
 function validate29(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
@@ -2074,7 +2074,7 @@ function validate29(data, { instancePath = "", parentData, parentDataProperty, r
       let data0 = data.path;
       if (typeof data0 === "string") {
         if (!pattern35.test(data0)) {
-          const err4 = { instancePath: instancePath + "/path", schemaPath: "#/properties/path/pattern", keyword: "pattern", params: { pattern: "^/[^\\s]*$" }, message: 'must match pattern "^/[^\\s]*$"' };
+          const err4 = { instancePath: instancePath + "/path", schemaPath: "#/properties/path/pattern", keyword: "pattern", params: { pattern: "^/[^\\s]*$(?![\\s\\S])" }, message: 'must match pattern "^/[^\\s]*$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err4];
           } else {
@@ -2302,7 +2302,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
       let data0 = data.env_schema;
       if (typeof data0 === "string") {
         if (!pattern33.test(data0)) {
-          const err7 = { instancePath: instancePath + "/env_schema", schemaPath: "#/properties/env_schema/pattern", keyword: "pattern", params: { pattern: "^[A-Z][A-Za-z0-9]*Env$" }, message: 'must match pattern "^[A-Z][A-Za-z0-9]*Env$"' };
+          const err7 = { instancePath: instancePath + "/env_schema", schemaPath: "#/properties/env_schema/pattern", keyword: "pattern", params: { pattern: "^[A-Z][A-Za-z0-9]*Env$(?![\\s\\S])" }, message: 'must match pattern "^[A-Z][A-Za-z0-9]*Env$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err7];
           } else {
@@ -2483,7 +2483,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
             if (data5.path_env !== void 0) {
               let data6 = data5.path_env;
               if (typeof data6 !== "string" && data6 !== null) {
-                const err24 = { instancePath: instancePath + "/files/" + i0 + "/path_env", schemaPath: "#/$defs/File/properties/path_env/type", keyword: "type", params: { type: schema42.properties.path_env.type }, message: "must be string,null" };
+                const err24 = { instancePath: instancePath + "/files/" + i0 + "/path_env", schemaPath: "#/$defs/File/properties/path_env/type", keyword: "type", params: { type: schema44.properties.path_env.type }, message: "must be string,null" };
                 if (vErrors === null) {
                   vErrors = [err24];
                 } else {
@@ -2493,7 +2493,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
               }
               if (typeof data6 === "string") {
                 if (!pattern31.test(data6)) {
-                  const err25 = { instancePath: instancePath + "/files/" + i0 + "/path_env", schemaPath: "#/$defs/File/properties/path_env/pattern", keyword: "pattern", params: { pattern: "^[A-Z][A-Z0-9_]*$" }, message: 'must match pattern "^[A-Z][A-Z0-9_]*$"' };
+                  const err25 = { instancePath: instancePath + "/files/" + i0 + "/path_env", schemaPath: "#/$defs/File/properties/path_env/pattern", keyword: "pattern", params: { pattern: "^[A-Z][A-Z0-9_]*$(?![\\s\\S])" }, message: 'must match pattern "^[A-Z][A-Z0-9_]*$(?![\\s\\S])"' };
                   if (vErrors === null) {
                     vErrors = [err25];
                   } else {
@@ -2507,7 +2507,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
               let data7 = data5.path;
               if (typeof data7 === "string") {
                 if (!pattern35.test(data7)) {
-                  const err26 = { instancePath: instancePath + "/files/" + i0 + "/path", schemaPath: "#/$defs/File/properties/path/pattern", keyword: "pattern", params: { pattern: "^/[^\\s]*$" }, message: 'must match pattern "^/[^\\s]*$"' };
+                  const err26 = { instancePath: instancePath + "/files/" + i0 + "/path", schemaPath: "#/$defs/File/properties/path/pattern", keyword: "pattern", params: { pattern: "^/[^\\s]*$(?![\\s\\S])" }, message: 'must match pattern "^/[^\\s]*$(?![\\s\\S])"' };
                   if (vErrors === null) {
                     vErrors = [err26];
                   } else {
@@ -2539,7 +2539,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
             if (data5.kind !== void 0) {
               let data9 = data5.kind;
               if (!(data9 === "secret" || data9 === "config" || data9 === "certificate" || data9 === "ca-bundle" || data9 === "declaration")) {
-                const err29 = { instancePath: instancePath + "/files/" + i0 + "/kind", schemaPath: "#/$defs/File/properties/kind/enum", keyword: "enum", params: { allowedValues: schema42.properties.kind.enum }, message: "must be equal to one of the allowed values" };
+                const err29 = { instancePath: instancePath + "/files/" + i0 + "/kind", schemaPath: "#/$defs/File/properties/kind/enum", keyword: "enum", params: { allowedValues: schema44.properties.kind.enum }, message: "must be equal to one of the allowed values" };
                 if (vErrors === null) {
                   vErrors = [err29];
                 } else {
@@ -2551,7 +2551,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
             if (data5.schema !== void 0) {
               let data10 = data5.schema;
               if (typeof data10 !== "string" && data10 !== null) {
-                const err30 = { instancePath: instancePath + "/files/" + i0 + "/schema", schemaPath: "#/$defs/File/properties/schema/type", keyword: "type", params: { type: schema42.properties.schema.type }, message: "must be string,null" };
+                const err30 = { instancePath: instancePath + "/files/" + i0 + "/schema", schemaPath: "#/$defs/File/properties/schema/type", keyword: "type", params: { type: schema44.properties.schema.type }, message: "must be string,null" };
                 if (vErrors === null) {
                   vErrors = [err30];
                 } else {
@@ -2561,7 +2561,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
               }
               if (typeof data10 === "string") {
                 if (!pattern36.test(data10)) {
-                  const err31 = { instancePath: instancePath + "/files/" + i0 + "/schema", schemaPath: "#/$defs/File/properties/schema/pattern", keyword: "pattern", params: { pattern: "^[A-Z][A-Za-z0-9]*$" }, message: 'must match pattern "^[A-Z][A-Za-z0-9]*$"' };
+                  const err31 = { instancePath: instancePath + "/files/" + i0 + "/schema", schemaPath: "#/$defs/File/properties/schema/pattern", keyword: "pattern", params: { pattern: "^[A-Z][A-Za-z0-9]*$(?![\\s\\S])" }, message: 'must match pattern "^[A-Z][A-Za-z0-9]*$(?![\\s\\S])"' };
                   if (vErrors === null) {
                     vErrors = [err31];
                   } else {
@@ -2640,7 +2640,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
         for (let i2 = 0; i2 < len2; i2++) {
           let data16 = data15[i2];
           if (!(data16 === "NET_BIND_SERVICE" || data16 === "CHOWN" || data16 === "SETUID" || data16 === "SETGID" || data16 === "DAC_OVERRIDE" || data16 === "FOWNER" || data16 === "KILL")) {
-            const err37 = { instancePath: instancePath + "/capabilities/" + i2, schemaPath: "#/properties/capabilities/items/enum", keyword: "enum", params: { allowedValues: schema40.properties.capabilities.items.enum }, message: "must be equal to one of the allowed values" };
+            const err37 = { instancePath: instancePath + "/capabilities/" + i2, schemaPath: "#/properties/capabilities/items/enum", keyword: "enum", params: { allowedValues: schema42.properties.capabilities.items.enum }, message: "must be equal to one of the allowed values" };
             if (vErrors === null) {
               vErrors = [err37];
             } else {
@@ -2683,7 +2683,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
         for (const key3 in data17) {
           const _errs38 = errors;
           if (!(key3 === "net.ipv4.ip_unprivileged_port_start")) {
-            const err40 = { instancePath: instancePath + "/sysctls", schemaPath: "#/properties/sysctls/propertyNames/enum", keyword: "enum", params: { allowedValues: schema40.properties.sysctls.propertyNames.enum }, message: "must be equal to one of the allowed values", propertyName: key3 };
+            const err40 = { instancePath: instancePath + "/sysctls", schemaPath: "#/properties/sysctls/propertyNames/enum", keyword: "enum", params: { allowedValues: schema42.properties.sysctls.propertyNames.enum }, message: "must be equal to one of the allowed values", propertyName: key3 };
             if (vErrors === null) {
               vErrors = [err40];
             } else {
@@ -2742,7 +2742,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
           const _errs44 = errors;
           if (typeof key5 === "string") {
             if (!pattern38.test(key5)) {
-              const err45 = { instancePath: instancePath + "/config_paths", schemaPath: "#/properties/config_paths/propertyNames/pattern", keyword: "pattern", params: { pattern: "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$" }, message: 'must match pattern "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$"', propertyName: key5 };
+              const err45 = { instancePath: instancePath + "/config_paths", schemaPath: "#/properties/config_paths/propertyNames/pattern", keyword: "pattern", params: { pattern: "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$(?![\\s\\S])" }, message: 'must match pattern "^/(?:[^~/]|~[01])*(?:/(?:[^~/]|~[01])*)*$(?![\\s\\S])"', propertyName: key5 };
               if (vErrors === null) {
                 vErrors = [err45];
               } else {
@@ -2805,7 +2805,7 @@ function validate28(data, { instancePath = "", parentData, parentDataProperty, r
             if (data20.access !== void 0) {
               let data21 = data20.access;
               if (!(data21 === "read" || data21 === "write")) {
-                const err51 = { instancePath: instancePath + "/config_paths/" + key6.replace(/~/g, "~0").replace(/\//g, "~1") + "/access", schemaPath: "#/$defs/ConfigPath/properties/access/enum", keyword: "enum", params: { allowedValues: schema45.properties.access.enum }, message: "must be equal to one of the allowed values" };
+                const err51 = { instancePath: instancePath + "/config_paths/" + key6.replace(/~/g, "~0").replace(/\//g, "~1") + "/access", schemaPath: "#/$defs/ConfigPath/properties/access/enum", keyword: "enum", params: { allowedValues: schema47.properties.access.enum }, message: "must be equal to one of the allowed values" };
                 if (vErrors === null) {
                   vErrors = [err51];
                 } else {
@@ -3028,7 +3028,7 @@ function validate27(data, { instancePath = "", parentData, parentDataProperty, r
       let data3 = data.image;
       if (typeof data3 === "string") {
         if (!pattern17.test(data3)) {
-          const err13 = { instancePath: instancePath + "/image", schemaPath: "#/properties/image/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"' };
+          const err13 = { instancePath: instancePath + "/image", schemaPath: "#/properties/image/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err13];
           } else {
@@ -3071,7 +3071,7 @@ function validate27(data, { instancePath = "", parentData, parentDataProperty, r
     if (data.role_env !== void 0) {
       let data6 = data.role_env;
       if (typeof data6 !== "string" && data6 !== null) {
-        const err17 = { instancePath: instancePath + "/role_env", schemaPath: "#/properties/role_env/type", keyword: "type", params: { type: schema39.properties.role_env.type }, message: "must be string,null" };
+        const err17 = { instancePath: instancePath + "/role_env", schemaPath: "#/properties/role_env/type", keyword: "type", params: { type: schema41.properties.role_env.type }, message: "must be string,null" };
         if (vErrors === null) {
           vErrors = [err17];
         } else {
@@ -3081,7 +3081,7 @@ function validate27(data, { instancePath = "", parentData, parentDataProperty, r
       }
       if (typeof data6 === "string") {
         if (!pattern31.test(data6)) {
-          const err18 = { instancePath: instancePath + "/role_env", schemaPath: "#/properties/role_env/pattern", keyword: "pattern", params: { pattern: "^[A-Z][A-Z0-9_]*$" }, message: 'must match pattern "^[A-Z][A-Z0-9_]*$"' };
+          const err18 = { instancePath: instancePath + "/role_env", schemaPath: "#/properties/role_env/pattern", keyword: "pattern", params: { pattern: "^[A-Z][A-Z0-9_]*$(?![\\s\\S])" }, message: 'must match pattern "^[A-Z][A-Z0-9_]*$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err18];
           } else {
@@ -3107,7 +3107,7 @@ function validate27(data, { instancePath = "", parentData, parentDataProperty, r
           const _errs18 = errors;
           if (typeof key1 === "string") {
             if (!pattern17.test(key1)) {
-              const err20 = { instancePath: instancePath + "/roles", schemaPath: "#/properties/roles/propertyNames/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"', propertyName: key1 };
+              const err20 = { instancePath: instancePath + "/roles", schemaPath: "#/properties/roles/propertyNames/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"', propertyName: key1 };
               if (vErrors === null) {
                 vErrors = [err20];
               } else {
@@ -3184,7 +3184,7 @@ function validate27(data, { instancePath = "", parentData, parentDataProperty, r
           const _errs27 = errors;
           if (typeof key3 === "string") {
             if (!pattern17.test(key3)) {
-              const err25 = { instancePath: instancePath + "/jobs", schemaPath: "#/properties/jobs/propertyNames/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$" }, message: 'must match pattern "^[a-z][a-z0-9-]*$"', propertyName: key3 };
+              const err25 = { instancePath: instancePath + "/jobs", schemaPath: "#/properties/jobs/propertyNames/pattern", keyword: "pattern", params: { pattern: "^[a-z][a-z0-9-]*$(?![\\s\\S])" }, message: 'must match pattern "^[a-z][a-z0-9-]*$(?![\\s\\S])"', propertyName: key3 };
               if (vErrors === null) {
                 vErrors = [err25];
               } else {

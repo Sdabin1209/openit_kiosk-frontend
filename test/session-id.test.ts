@@ -87,8 +87,8 @@ test("모의 서버: session_id를 생략하면 계약 형식의 ID를 발급해
     // 발급된 ID로 이어 갈 수 있다
     const t = await fetch(`${m.base}/v1/sessions/${a.body.session_id}/turns`, { method: "POST", body: JSON.stringify({ session_id: a.body.session_id, kind: "UTTERANCE", utterance: "안녕", turn_id: "t1" }) });
     assert.equal(t.status, 200);
-    // 폐기 예정 방식(2.x에서만 허용): 클라이언트가 보낸 ID는 그대로 쓰고 응답에도 돌려준다
+    // 4.0: HTTP 시작 본문의 클라이언트 ID는 거부한다
     const legacy = await post({ kind: "SESSION_START", session_id: "legacy-1" });
-    assert.equal(legacy.status, 200); assert.equal(legacy.body.session_id, "legacy-1");
+    assert.equal(legacy.status, 400); assert.equal(legacy.body.code, "INVALID_RECORD");
   } finally { await m.close(); }
 });

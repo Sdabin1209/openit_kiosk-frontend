@@ -1,6 +1,9 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffAlertPage (패키지 버전 3.6.5) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffAlertPage (패키지 버전 4.0.0) */
 
 
+/**
+ * GET 직원 알림 목록 응답 본문(survey-service → 직원 콘솔). 알림 원소는 계약 StaffAlert. 서버는 openit_link 계약 모드가 내는 쪽에서 검증한다.
+ */
 export interface StaffAlertPage {
 items: StaffAlert[]
 next_cursor: (string | null)
@@ -10,6 +13,9 @@ next_cursor: (string | null)
  */
 export interface StaffAlert {
 alert_id: string
+/**
+ * 근거: 1~64자(PUBLIC_API.md 세션 ID 형식)
+ */
 session_id: string
 /**
  * RISK_STOP 등

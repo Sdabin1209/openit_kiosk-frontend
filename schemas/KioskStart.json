@@ -5,12 +5,6 @@
   "description": "키오스크 시작 값(메모리 전용). 형식은 계약 DeviceConfig·KioskStartFragment가 정한다.",
   "type": "object",
   "properties": {
-    "deviceToken": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "subjectRef": {
       "anyOf": [
         {
@@ -42,7 +36,6 @@
     }
   },
   "required": [
-    "deviceToken",
     "subjectRef",
     "subjectInvalid",
     "questionSetId"

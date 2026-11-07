@@ -6,6 +6,9 @@
  */
 export interface DecisionRequest {
 alert_id: string
+/**
+ * 근거: 1~64자(PUBLIC_API.md 세션 ID 형식)
+ */
 session_id: string
 decision: ("RESUME" | "END")
 }

@@ -4,7 +4,7 @@
 // UI를 모른다. 세션 순서 큐, 응답 대기 타임아웃, 상태 코드 분기, 오류를 ApiFailure 데이터 모양으로 던진다.
 import {
   InterventionRequest as vIntervention, SessionRequest as vSession, StaffCallReportInput as vReport, StaffCallRetryInput as vRetry,
-  StartRequest as vStart, QuestionSetListBody as vQsList, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
+  SessionStartBody as vSessionStart, StartRequest as vStart, QuestionSetListBody as vQsList, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
   StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, FrontendMessage as sMessage, InterventionDecision as sDecision, StaffCallRetryRequest as cRetryBody, PushSubscriptionRequest as cPushSub, type ValidateFn,
 } from "../types/validators.gen.cjs";
 import type { BoundaryError } from "../types/contract/BoundaryError.ts";
@@ -95,8 +95,6 @@ const body = (v: ValidateFn, what: string) => (r: unknown) => { if (!v(r)) throw
 export interface ClientOptions {
   /** 같은 출처의 /v1. 직원 콘솔은 게이트웨이가 직원 인증을 붙인다. */
   baseUrl?: string;
-  /** 키오스크 기기 토큰(메모리 값). 있으면 /sessions* 요청에만 Authorization: Bearer로 보낸다. 직원 경로에는 보내지 않는다. */
-  deviceToken?: () => string | null;
   fetch?: typeof fetch;
   /** 응답 대기 상한(ms). 기본값이 없다: 값은 config.ts의 REQUEST_TIMEOUT_MS 한 곳에만 있고 wiring이 넘긴다(이중 정의 금지). */
   timeoutMs: number;
@@ -128,12 +126,10 @@ export class PublicApiClient {
   private now: () => number;
   private timers: ClientOptions["timers"];
   private sleep: (ms: number) => Promise<void>;
-  private deviceToken: () => string | null;
   private queues = new Map<string, Promise<unknown>>();
 
   constructor(o: ClientOptions) {
     this.f = o.fetch ?? ((...a) => globalThis.fetch(...a));
-    this.deviceToken = o.deviceToken ?? (() => null);
     this.base = (o.baseUrl ?? "/v1").replace(/\/$/, "");
     this.timeoutMs = o.timeoutMs;
     this.retryPolicy = o.retryPolicy;
@@ -155,7 +151,7 @@ export class PublicApiClient {
     accept(vStart, "StartRequest", given);
     const req: { kind: "SESSION_START"; subject_ref?: string; question_set_id?: string } = { kind: "SESSION_START", ...given }; // 세션 ID는 서버가 발급해 응답에 싣는다(2.2.0, D106)
     // 아직 ID가 없으므로 세션별 직렬 큐에 넣지 않는다(이후 요청부터 응답의 ID로 큐가 생긴다).
-    accept(sMessage, "FrontendMessage(문진 스키마)", req);
+    accept(vSessionStart, "SessionStartBody(공개 API 계약)", req);
     return this.call<StartedSession>("POST", `/sessions`, req, true, co, body(vStarted, "StartedBody"));
   }
 
@@ -315,8 +311,7 @@ export class PublicApiClient {
     const timer = this.timers.setTimeout(() => ctl.abort(), this.timeoutMs);
     try {
       const headers: Record<string, string> = reqBody === undefined ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" };
-      const token = /^\/(sessions|question-sets)(\/|$)/.test(path) ? this.deviceToken() : null;
-      if (token) headers.authorization = `Bearer ${token}`;
+      // 기기 인증서는 브라우저 TLS가 낸다. 앱은 기기 자격이나 인증 헤더를 만들지 않는다(PUBLIC_API F, D136).
       const res = await this.f(this.base + path, {
         method,
         headers,

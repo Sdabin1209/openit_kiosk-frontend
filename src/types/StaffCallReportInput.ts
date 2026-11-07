@@ -5,7 +5,13 @@
  * 환자의 직접 통지 보고 입력.
  */
 export interface StaffCallReportInput {
+/**
+ * 근거: 1~64자(PUBLIC_API.md 세션 ID 형식)
+ */
 session_id: string
 outcome: ("STAFF_NOTIFIED_MANUALLY" | "NOT_NOTIFIED")
+/**
+ * 근거: 상한 64 는 PUBLIC_API.md 세션·턴 ID 형식과 같다
+ */
 turn_id: string
 }

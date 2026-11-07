@@ -17,11 +17,10 @@ let JSDOM: any = null;
 const mod = "jsdom";
 try { ({ JSDOM } = await import(mod)); } catch { /* 호스트에 없음 */ }
 const opt = { skip: JSDOM ? false : "jsdom 없음" };
-const TOKEN = "tok-FAKE-for-test";
 
-async function rig(configFile: string | null, gateway = false, extra: Record<string, unknown> = {}) {
+async function rig(configFile: string | null, gateway = true, extra: Record<string, unknown> = {}) {
   assert.ok(existsSync("dist/kiosk.js"), "dist 없음: npm run build 먼저");
-  const mock = createMock({ ...(gateway ? { gatewayDevice: true } : { deviceToken: TOKEN }), ...extra });
+  const mock = createMock({ gatewayDevice: true, ...extra });
   const api = mock.server.listeners("request")[0] as (...a: any[]) => void;
   const st = makeDevStatic({ dir: "dist", configFile });
   const seen: Array<{ method: string; path: string; auth: string | undefined }> = [];
@@ -46,8 +45,8 @@ async function rig(configFile: string | null, gateway = false, extra: Record<str
 }
 const tmpConfig = (obj: unknown) => { const d = mkdtempSync(join(tmpdir(), "kiosk-app-")); const f = join(d, "config.json"); writeFileSync(f, JSON.stringify(obj)); return { f, done: () => rmSync(d, { recursive: true, force: true }) }; };
 
-test("조각 없이 /config.json의 기기 토큰으로 /v1/sessions를 부르고, 대화가 보이고, 종료하면 지워진다", opt, async () => {
-  const cfg = tmpConfig({ device_token: TOKEN });
+test("조각 없이 mTLS 게이트웨이를 통해 /v1/sessions를 부르고, 대화가 보이고, 종료하면 지워진다", opt, async () => {
+  const cfg = tmpConfig({});
   const t = await rig(cfg.f);
   try {
     assert.equal(t.w.location.hash, "", "시작 URL에 조각이 없어야 한다");
@@ -56,7 +55,7 @@ test("조각 없이 /config.json의 기기 토큰으로 /v1/sessions를 부르�
     await waitFor(() => t.bubbles().length === 1, "시작 응답 말풍선");
     const start = t.seen.find((s) => s.method === "POST" && s.path === "/v1/sessions");
     assert.ok(start, "POST /v1/sessions가 나가야 한다");
-    assert.equal(start!.auth, `Bearer ${TOKEN}`); // 토큰 없이 부르면 모의 서버가 401(F절)이라 CALL_STAFF가 된다
+    assert.equal(start!.auth, undefined); // 브라우저는 HTTP 기기 자격증명을 보내지 않는다
     assert.equal(t.$("title").textContent, "말씀해 주세요");
     assert.match(t.bubbles()[0], /^system:안녕하세요/);
     // 발화
@@ -74,7 +73,7 @@ test("조각 없이 /config.json의 기기 토큰으로 /v1/sessions를 부르�
     await waitFor(() => t.$("title").textContent === "수고하셨습니다", "종료 화면");
     assert.deepEqual(t.bubbles(), []);
     assert.equal(t.$("chat").hidden, true);
-    assert.ok(t.seen.filter((s) => s.path.startsWith("/v1/sessions")).every((s) => s.auth === `Bearer ${TOKEN}`), "모든 /v1/sessions* 요청에 기기 토큰");
+    assert.ok(t.seen.filter((s) => s.path.startsWith("/v1/sessions")).every((s) => s.auth === undefined), "모든 /v1/sessions* 요청에 Authorization이 없어야 한다");
   } finally { await t.close(); cfg.done(); }
 });
 
@@ -97,7 +96,7 @@ test("기기 설정도 토큰도 없이(2.3.0 mTLS) 게이트웨이를 거치면
 
 // 대화형 UI(ADR 0023): 화면의 중심은 대화 스레드이고, 현재 질문은 스레드의 마지막 시스템 말풍선이며, 입력은 아래 고정 영역에 있다.
 test("대화 스레드: 시간순으로 쌓이고, 마지막 시스템 말풍선이 현재 질문(#text)이며 같은 글이 두 번 보이지 않고, 입력은 스레드 밖 아래 영역에 있다", opt, async () => {
-  const cfg = tmpConfig({ device_token: TOKEN });
+  const cfg = tmpConfig({});
   const t = await rig(cfg.f);
   try {
     await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
@@ -130,7 +129,7 @@ test("대화 스레드: 시간순으로 쌓이고, 마지막 시스템 말풍선
 // 서버가 환자용 고정 문장을 주면 그것이 우선이므로(ADR 0014) 여기서는 사유 표식과 정지 화면 제목을 확인하고, 기본 문구가 서로 다른 것은 아래에서 확인한다.
 for (const [say, reason] of [["알수없음 발화", "REASK_LIMIT"], ["위험 발화", "RISK"]] as const) {
   test(`정지 사유 ${reason}: 대기 화면 body[data-pause-reason]에 실린다`, opt, async () => {
-    const cfg = tmpConfig({ device_token: TOKEN });
+    const cfg = tmpConfig({});
     const t = await rig(cfg.f);
     try {
       await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
@@ -150,8 +149,8 @@ test("REASK_LIMIT 기본 안내 문구는 위험 정지 기본 문구와 다르�
 });
 
 test("문진표가 둘이면 선택 화면에 제목 버튼이 보이고, 고른 문진표로 시작한다(계약 3.3.0, ADR 0036)", opt, async () => {
-  const cfg = tmpConfig({ device_token: TOKEN });
-  const t = await rig(cfg.f, false, { questionSets: [{ question_set_id: "general", title: "일반 문진", version: "1" }, { question_set_id: "cardio", title: "심장 문진", version: "2" }] });
+  const cfg = tmpConfig({});
+  const t = await rig(cfg.f, true, { questionSets: [{ question_set_id: "general", title: "일반 문진", version: "1" }, { question_set_id: "cardio", title: "심장 문진", version: "2" }] });
   try {
     await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
     t.$("action").click();
@@ -167,8 +166,8 @@ test("문진표가 둘이면 선택 화면에 제목 버튼이 보이고, 고른
 });
 
 test("활성 릴리스가 없으면(503 NO_ACTIVE_RELEASE) 시작 불가 안내를 보이고, 처음으로 돌아가면 더 부르지 않는다", opt, async () => {
-  const cfg = tmpConfig({ device_token: TOKEN });
-  const t = await rig(cfg.f, false, { questionSets: [] });
+  const cfg = tmpConfig({});
+  const t = await rig(cfg.f, true, { questionSets: [] });
   try {
     await waitFor(() => t.seen.some((s) => s.path === "/config.json"), "앱이 /config.json을 읽음");
     t.$("action").click();
@@ -193,8 +192,8 @@ const toDeliveryFailed = async (t: Awaited<ReturnType<typeof rig>>) => {
 const posts = (t: Awaited<ReturnType<typeof rig>>, suffix: string) => t.seen.filter((s) => s.method === "POST" && s.path.endsWith(suffix)).length;
 
 test("K2: 전달 실패에서 다시 부르기를 누르면 retry API가 나가고, 전달되면 대기 화면으로 간다", opt, async () => {
-  const cfg = tmpConfig({ device_token: TOKEN });
-  const t = await rig(cfg.f, false, { alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERED" });
+  const cfg = tmpConfig({});
+  const t = await rig(cfg.f, true, { alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERED" });
   try {
     await toDeliveryFailed(t);
     assert.equal(posts(t, "/staff-call/retry"), 0);
@@ -206,8 +205,8 @@ test("K2: 전달 실패에서 다시 부르기를 누르면 retry API가 나가�
 });
 
 test("K2: 재알림이 또 실패하면 안내와 비활성 카운트다운이 남고, 직접 알렸다고 하면 report가 나간다", opt, async () => {
-  const cfg = tmpConfig({ device_token: TOKEN });
-  const t = await rig(cfg.f, false, { alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERY_FAILED", retryAfterS: 30 });
+  const cfg = tmpConfig({});
+  const t = await rig(cfg.f, true, { alertDelivery: "DELIVERY_FAILED", retryDelivery: "DELIVERY_FAILED", retryAfterS: 30 });
   try {
     await toDeliveryFailed(t);
     t.$("staffcall").click();

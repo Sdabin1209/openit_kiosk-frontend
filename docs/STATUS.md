@@ -134,3 +134,10 @@ turn_id 봉투 처리, 상태 코드/Retry-After, 새 스키마 4종, SSE 이벤
 - KF-09: 재시도·처리 여부 불명 분류를 `api/retry.ts`로 모으고 `ApiError.reason`을 추가했다. 재현 시험 `test/kf09.test.ts`. KF-10: STT 오류를 `SttError.kind` 열거로. `test/kf10.test.ts`.
 - 경계 형식 스키마 초안: CR-005. 코드는 바꾸지 않았다.
 - 하지 않은 것: KF-11(사용자 결정 대기), 직원 콘솔 '기록 보기', 컴포넌트 분리. `npm run test:e2e`, `npm run smoke`는 다시 돌리지 않았다.
+
+## 계약 4.0.0 반영 (2026-11-07)
+
+- 기기 토큰 설정·전달 제거. 폐기된 조각/설정 거부, mTLS 게이트웨이 흐름 유지, 서버 발급 세션 ID만 사용한다.
+- 정식 계약 v4.0.0과 문진 스키마 survey-schema-v4.1.2에서 타입·검증기를 재생성했다. 생성기는 전이 참조와 소유자 문진 namespace를 고정 태그에서 등록하고 규칙 버전도 생성한다.
+- 건강 확인은 IPv6 바인드/포트도 따른다. 개인정보 콘솔·모의 접근 로그 비기록 시험을 유지했다.
+- 검증: typecheck, 단위 317 통과/skip 0, 이미지 시험 21 통과/skip 0, 실제 이미지 smoke 통과(nonroot·라벨·healthy/unhealthy·바인드 포함). 생성물 --check 통과. 전체 프로젝트 E2E는 실행하지 않았다.

@@ -161,9 +161,9 @@ test("진입점: 요청이 어떤 survey_schema를 주어도 라벨은 거짓이
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
 
-test("이 이미지에는 문진 스키마가 들어가지 않는다(최종 단계는 dist와 Caddyfile만 담고, 화면 소스에 문진 스키마 파일이 없다)", () => {
+test("이 이미지에는 문진 스키마가 들어가지 않는다(최종 단계는 dist·Caddyfile·건강 확인 명령만 담고, 화면 소스에 문진 스키마 파일이 없다)", () => {
   const final = DOCKERFILE.slice(DOCKERFILE.lastIndexOf("\nFROM "));
   const copies = [...final.matchAll(/^COPY\s+(?:--\S+\s+)*(\S+)\s+(\S+)/gm)].map((m) => m[1]);
-  assert.deepEqual(copies.sort(), ["/src/dist", "Caddyfile"].sort());
+  assert.deepEqual(copies.sort(), ["/src/dist", "Caddyfile", "scripts/healthcheck.sh"].sort());
   assert.doesNotMatch(DOCKERFILE, /survey-service|openit-survey-schema|SURVEY_SCHEMA/i);
 });

@@ -10,7 +10,7 @@ import { compile } from "json-schema-to-typescript";
 import Ajv2020 from "ajv/dist/2020.js";
 import standaloneCode from "ajv/dist/standalone/index.js";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { contractJson, contractVersion, surveySchemaJson, SURVEY_SCHEMA_TAG } from "./contract-source.mjs";
+import { contractJson, contractFile, contractList, contractVersion, surveySchemaJson, surveySchemaNames, SURVEY_SCHEMA_TAG } from "./contract-source.mjs";
 
 const ROOT = new URL("../", import.meta.url);
 const OUT = new URL("src/types/", ROOT);
@@ -45,13 +45,18 @@ function inline(node, seen = []) {
   }
   const out = {};
   for (const [k, v] of Object.entries(node)) if (!(k === "$id" && seen.length > 0)) out[k] = inline(v, seen);
+  // TypeScript has no negative string refinements; runtime Ajv keeps them.
+  if (Array.isArray(out.allOf)) {
+    out.allOf = out.allOf.filter((branch) => !(Object.keys(branch).length === 1 && branch.not));
+    if (!out.allOf.length) delete out.allOf;
+  }
   return out;
 }
 
 const banner = (src) => `/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: ${src} */\n`;
 async function ts(name, schema, src) {
   const { $id, $schema, ...s } = inline(schema);
-  return await compile({ ...s, title: name }, name, { bannerComment: banner(src), additionalProperties: false, format: false, strictIndexSignatures: true, unreachableDefinitions: false, style: { singleQuote: false, printWidth: 160 } });
+  return (await compile({ ...s, title: name }, name, { bannerComment: banner(src), additionalProperties: false, format: false, strictIndexSignatures: true, unreachableDefinitions: false, style: { singleQuote: false, printWidth: 160 } })).replace(/[ \t]+$/gm, "");
 }
 
 const files = new Map();
@@ -69,14 +74,17 @@ for (const n of SURVEY_TYPES) {
 // 왜 $schema를 뺀다: 생성 코드에 스키마 본문이 그대로 실려 화면 번들에 들어가는데, 메타스키마 주소(https://...)가 번들에 외부 URL로 남으면 "외부 URL 없음" 검사(test/static.test.ts)와 섞인다. Ajv2020은 기본이 2020-12라 뺀다.
 const noMeta = ({ $schema, ...rest }) => rest;
 const ajv = createAjv({ code: { source: true, esm: false }, allErrors: true, strict: false });
-for (const n of [...CONTRACT_DEPS, ...CONTRACT_VALIDATORS]) ajv.addSchema(noMeta(contract(n)), `${n}.schema.json`);
+// 모든 소유자 스키마를 등록해 전이 참조 추가도 빠뜨리지 않는다. 번들에는 사용한 검증기만 들어간다.
+for (const file of contractList("schemas").filter((f) => f.endsWith(".schema.json"))) ajv.addSchema({ ...noMeta(contractJson(`schemas/${file}`)), $id: `https://openit.example/schemas/${file}` }, file);
 for (const [n, s] of Object.entries(internal)) ajv.addSchema(noMeta(s), `${n}.json`);
+// Public contract refs use the owner's published survey namespace.
+for (const n of surveySchemaNames()) ajv.addSchema({ ...noMeta(surveySchemaJson(n)), $id: `https://openit.example/survey/v1/${n}.json` });
 const surveyRefs = {};
 for (const n of SURVEY_VALIDATORS) { const s = noMeta(surveySchemaJson(n)); ajv.addSchema(s); surveyRefs[n] = s.$id; }
 const refs = { ...Object.fromEntries(Object.keys(internal).map((n) => [n, `${n}.json`])), ...Object.fromEntries(CONTRACT_VALIDATORS.map((n) => [n, `${n}.schema.json`])), ...surveyRefs };
-files.set("validators.gen.cjs", `// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts ${CONTRACT_VALIDATORS.join(", ")} (패키지 버전 ${contractVersion()}).\n/* eslint-disable */\n` + bundleStandalone(standaloneCode(ajv, refs)));
+files.set("validators.gen.cjs", `// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts ${CONTRACT_VALIDATORS.join(", ")} (패키지 버전 ${contractVersion()}).\n/* eslint-disable */\n` + bundleStandalone(standaloneCode(ajv, refs)) + `\nexports.PIPELINE_SCHEMA_VERSION = ${JSON.stringify(/PIPELINE_SCHEMA_VERSION\s*=\s*"([^"]+)"/.exec(contractFile("boundary_contracts/schemas_api.py"))[1])};\n`);
 const names = Object.keys(refs).sort();
-files.set("validators.gen.d.cts", `// validators.gen.cjs의 형. 이름은 schemas/ 파일 이름과 계약 경계 스키마 이름이다.\nexport interface ErrorObject { instancePath: string; keyword: string; params: Record<string, unknown>; message?: string }\nexport interface ValidateFn { (data: unknown): boolean; errors?: ErrorObject[] | null }\n${names.map((n) => `export const ${n}: ValidateFn;`).join("\n")}\n`);
+files.set("validators.gen.d.cts", `// validators.gen.cjs의 형. 이름은 schemas/ 파일 이름과 계약 경계 스키마 이름이다.\nexport const PIPELINE_SCHEMA_VERSION: string;\nexport interface ErrorObject { instancePath: string; keyword: string; params: Record<string, unknown>; message?: string }\nexport interface ValidateFn { (data: unknown): boolean; errors?: ErrorObject[] | null }\n${names.map((n) => `export const ${n}: ValidateFn;`).join("\n")}\n`);
 
 mkdirSync(OUT, { recursive: true }); mkdirSync(new URL("contract/", OUT), { recursive: true });
 let bad = false;

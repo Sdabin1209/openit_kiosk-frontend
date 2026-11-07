@@ -1,4 +1,5 @@
 // validators.gen.cjs의 형. 이름은 schemas/ 파일 이름과 계약 경계 스키마 이름이다.
+export const PIPELINE_SCHEMA_VERSION: string;
 export interface ErrorObject { instancePath: string; keyword: string; params: Record<string, unknown>; message?: string }
 export interface ValidateFn { (data: unknown): boolean; errors?: ErrorObject[] | null }
 export const AlertInfoInput: ValidateFn;
@@ -24,6 +25,7 @@ export const RetryDecision: ValidateFn;
 export const RetryPolicy: ValidateFn;
 export const RetryQuery: ValidateFn;
 export const SessionRequest: ValidateFn;
+export const SessionStartBody: ValidateFn;
 export const SessionStateBody: ValidateFn;
 export const StaffAlertBody: ValidateFn;
 export const StaffCallReport: ValidateFn;
