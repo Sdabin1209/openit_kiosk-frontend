@@ -4,7 +4,7 @@
 export interface SessionStartBody {
 kind: "SESSION_START"
 /**
- * 예약 값 start·end·idle-expire도 허용
+ * 새 세션의 첫 턴 ID로 기록한다. 예약 값 start·end·idle-expire도 허용. 세션 시작은 멱등이 아니며 이 값으로 재전송을 판별하지 않는다(PUBLIC_API 세션 시작, 4.0.1)
  */
 turn_id?: string
 subject_ref?: (string | null)
