@@ -10,8 +10,9 @@ import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import { startMock, waitFor, qsFetch } from "./helpers.ts";
 
 // 문진 스키마는 고정 태그(contract-source.mjs SURVEY_SCHEMA_TAG)에서 읽는다. 옆 폴더의 작업 트리를 읽지 않는다
-import { surveySchemaJson } from "../scripts/contract-source.mjs";
+import { registerContractSchemas, surveySchemaJson } from "../scripts/contract-source.mjs";
 const ajv = new Ajv2020({ strict: false });
+registerContractSchemas(ajv); // 계약 안정 URI 와 파일 이름 두 이름(계약 5.0.1, 문진 스키마 5.0.0 의 $ref)
 const validate = ajv.compile(surveySchemaJson("FrontendInput"));
 const validateMsg = ajv.compile(surveySchemaJson("FrontendMessage"));
 const fast = { retry: { maxAttempts: 3 }, sleep: async () => {} };
@@ -33,8 +34,6 @@ test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진
 
 const validateDecision = ajv.compile(surveySchemaJson("InterventionDecision"));
 const bs = (n: string) => ajv.compile(contractJson(`schemas/${n}`)); // 고정 태그의 계약(ADR 0027)
-ajv.addSchema(contractJson("schemas/_common.schema.json"), "_common.schema.json"); // 계약 5.0.0: 칸이 _common 의 Id·SessionId 를 참조한다
-ajv.addSchema(contractJson("schemas/StaffAlert.schema.json"), "StaffAlert.schema.json"); // StaffAlertPage가 $ref로 참조(계약 2ec2849)
 const vAlert = ajv.getSchema("StaffAlert.schema.json")!, vPage = bs("StaffAlertPage.schema.json"), vState = bs("SessionState.schema.json"), vPush = bs("PushConfig.schema.json");
 
 test("turn_id는 API 봉투 필드: 떼어 내면 FrontendMessage/InterventionDecision을 지킨다(D66)", async () => {

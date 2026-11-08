@@ -52,7 +52,7 @@ export const contractVersion = () => contractFile("pyproject.toml").match(/^vers
 
 // 문진 스키마(survey-service 리포의 태그). 공개 API 본문 타입 생성(scripts/gen-types.mjs)이 옆 폴더의 작업 트리가 아니라 이 태그에서 읽는다(U410, 계약과 같은 이유: ADR 0027).
 // 이 영역은 문진 스키마를 이미지에 넣지 않으므로 이 값은 이미지 라벨이 아니다(ADR 0031).
-export const SURVEY_SCHEMA_TAG = "survey-schema-v4.1.4";
+export const SURVEY_SCHEMA_TAG = "survey-schema-v5.0.0";
 let SURVEY_DIR_CACHE;
 const surveyDir = () => (SURVEY_DIR_CACHE ??= depRepo("survey-service", "OPENIT_SURVEY_SERVICE_REPO", new URL("../../survey-service/", import.meta.url).pathname,
   "git@github.com:Sdabin1209/openit_survey-service.git", SURVEY_SCHEMA_TAG));
@@ -62,3 +62,12 @@ export const surveySchemaJson = (name) => {
 };
 
 export const surveySchemaNames = () => execFileSync("git", ["-C", surveyDir(), "ls-tree", "--name-only", `${SURVEY_SCHEMA_TAG}:schema/schemas`], { encoding: "utf8" }).split("\n").filter((name) => name.endsWith(".json")).map((name) => name.slice(0, -5));
+
+/** 계약 안정 URI(계약 5.0.1). 문진 스키마 5.0.0 은 계약 칸을 이 주소의 $ref 로 가리킨다. */
+export const contractUri = () => `https://openit.example/contracts/v${contractVersion().split(".")[0]}/`;
+/** 고정 태그의 계약 스키마 전부를 안정 URI 와 파일 이름 두 이름으로, 문진 스키마를 survey/v1 주소로 ajv 에 등록한다(오프라인). 문진 스키마를 컴파일하기 전에 부른다. */
+export function registerContractSchemas(ajv, transform = (s) => s) {
+  for (const file of contractList("schemas").filter((f) => f.endsWith(".schema.json"))) ajv.addSchema({ ...transform(contractJson(`schemas/${file}`)), $id: contractUri() + file }, file);
+  // 계약도 문진 스키마를 이 주소로 가리킨다(PublicApiRequests 등). 고정 태그의 문진 스키마를 같은 주소로 등록한다.
+  for (const n of surveySchemaNames()) ajv.addSchema({ ...transform(surveySchemaJson(n)), $id: `https://openit.example/survey/v1/${n}.json` });
+}

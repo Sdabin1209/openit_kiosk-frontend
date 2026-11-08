@@ -2,7 +2,7 @@ import addFormats from "ajv-formats";
 // 문진 스키마(고정 태그)의 이 영역의 표기(계약 버전, 모의 서버 pipeline 버전)와 서버 스키마(StaffSessionView)를 대조한다. 스키마 복사본은 두지 않는다.
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
-import { contractFile, surveySchemaJson } from "./contract-source.mjs";
+import { contractFile, registerContractSchemas, surveySchemaJson } from "./contract-source.mjs";
 // 문진 스키마와 계약은 고정 태그에서 읽는다(contract-source.mjs: 환경 변수 → 옆 폴더 → 원격 태그 캐시). 옆 폴더의 작업 트리는 읽지 않는다.
 // 열거값 대조는 하지 않는다: 공개 API 본문 타입은 문진 스키마와 계약에서 생성한다(scripts/gen-types.mjs --check가 최신인지 본다, D117).
 let bad = 0;
@@ -18,6 +18,7 @@ if (mock !== pipe) { console.error(`불일치 모의 서버 pipeline_schema_vers
 const svSchema = surveySchemaJson("StaffSessionView");
 const { Ajv2020 } = await import("ajv/dist/2020.js");
 const ajv = addFormats(new Ajv2020({ strict: false }));
+registerContractSchemas(ajv); // 문진 스키마 5.0.0 의 계약 안정 URI $ref 를 고정 태그 계약에서 푼다
 const validateSv = ajv.compile(svSchema);
 const validateInput = ajv.compile(surveySchemaJson("FrontendInput"));
 const m = createMock({});

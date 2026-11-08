@@ -1,3 +1,4 @@
+import { registerContractSchemas } from "./contract-source.mjs";
 import { bundleStandalone, createAjv } from "./standalone.mjs";
 // schemas/(영역 내부 타입)과 계약·문진 스키마에서 src/types/를 만든다. 손으로 고치지 않는다(DESIGN.md 3절, D117).
 //   src/types/<이름>.ts            : json-schema-to-typescript가 만든 코드 타입. 영역 타입은 schemas/<이름>.json, 공개 API 본문 타입은
@@ -25,6 +26,7 @@ const CONTRACT_VALIDATORS = ["DeviceConfig", "KioskStartFragment", "StaffPushPay
 const SURVEY_VALIDATORS = ["FrontendMessage", "InterventionDecision"];
 const CONTRACT_DEPS = ["SessionState"]; // 영역 스키마가 $ref로 가리키는 계약 스키마
 
+const CONTRACT_URI = `https://openit.example/contracts/v${contractVersion().split(".")[0]}/`; // 계약 안정 URI(계약 5.0.1, 오프라인 등록)
 const readJson = (url) => JSON.parse(readFileSync(url, "utf8"));
 const internal = Object.fromEntries(readdirSync(new URL("schemas/", ROOT)).filter((f) => f.endsWith(".json")).map((f) => [f.replace(/\.json$/, ""), readJson(new URL(`schemas/${f}`, ROOT))]));
 const contract = (n) => contractJson(`schemas/${n}.schema.json`);
@@ -35,7 +37,9 @@ function inline(node, seen = [], base = null) {
   if (node === null || typeof node !== "object") return node;
   // 왜 base: 계약 5.0.0 부터 칸이 _common.schema.json#/$defs/Id 를 가리키고 그 안에서 다시 같은 파일의 #/$defs/... 를 가리킨다. 파일 안 참조는 그 참조가 나온 파일에서 푼다.
   if (typeof node.$ref === "string") {
-    const [file, frag = ""] = node.$ref.split("#");
+    const [rawFile, frag = ""] = node.$ref.split("#");
+    // 문진 스키마 5.0.0 은 계약 칸을 안정 URI 로 가리킨다(계약 5.0.1). 같은 고정 태그의 계약 파일로 푼다.
+    const file = rawFile.startsWith(CONTRACT_URI) ? rawFile.slice(CONTRACT_URI.length) : rawFile;
     let doc;
     if (file === "") { if (!base) return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, inline(v, seen, base)])); doc = base; }
     else doc = file.endsWith(".schema.json") ? contract(file.replace(/\.schema\.json$/, "")) : internal[file.replace(/\.json$/, "")];
@@ -81,10 +85,9 @@ for (const n of SURVEY_TYPES) {
 const noMeta = ({ $schema, ...rest }) => rest;
 const ajv = createAjv({ code: { source: true, esm: false }, allErrors: true, strict: false });
 // 모든 소유자 스키마를 등록해 전이 참조 추가도 빠뜨리지 않는다. 번들에는 사용한 검증기만 들어간다.
-for (const file of contractList("schemas").filter((f) => f.endsWith(".schema.json"))) ajv.addSchema({ ...noMeta(contractJson(`schemas/${file}`)), $id: `https://openit.example/schemas/${file}` }, file);
+registerContractSchemas(ajv, noMeta);
 for (const [n, s] of Object.entries(internal)) ajv.addSchema(noMeta(s), `${n}.json`);
 // Public contract refs use the owner's published survey namespace.
-for (const n of surveySchemaNames()) ajv.addSchema({ ...noMeta(surveySchemaJson(n)), $id: `https://openit.example/survey/v1/${n}.json` });
 const surveyRefs = {};
 for (const n of SURVEY_VALIDATORS) { const s = noMeta(surveySchemaJson(n)); ajv.addSchema(s); surveyRefs[n] = s.$id; }
 const refs = { ...Object.fromEntries(Object.keys(internal).map((n) => [n, `${n}.json`])), ...Object.fromEntries(CONTRACT_VALIDATORS.map((n) => [n, `${n}.schema.json`])), ...surveyRefs };

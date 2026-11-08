@@ -1,4 +1,4 @@
-// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts DeviceConfig, KioskStartFragment, StaffPushPayload, StaffCallReport, StaffCallRetryRequest, PushSubscriptionRequest, HealthStatus (패키지 버전 5.0.0).
+// 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/*.json, boundary-contracts DeviceConfig, KioskStartFragment, StaffPushPayload, StaffCallReport, StaffCallRetryRequest, PushSubscriptionRequest, HealthStatus (패키지 버전 5.0.1).
 /* eslint-disable */
 "use strict";
 var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -6629,7 +6629,7 @@ function validate104(data, { instancePath = "", parentData, parentDataProperty, 
 }
 validate104.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.StaffCallReport = validate36;
-var schema48 = { "title": "StaffCallReport", "description": "POST /v1/sessions/{id}/staff-call/report \uBCF8\uBB38(2.1.0, CR-H001). \uD0A4\uC624\uC2A4\uD06C\uC758 '\uC9C1\uC811 \uC54C\uB9AC\uC168\uB098\uC694?' \uC751\uB2F5\uC744 \uC11C\uBC84\uC5D0 \uB0A8\uAE34\uB2E4.", "x-producers": ["kiosk-frontend"], "x-consumers": ["survey-service"], "type": "object", "additionalProperties": false, "required": ["outcome", "turn_id"], "properties": { "outcome": { "enum": ["STAFF_NOTIFIED_MANUALLY", "NOT_NOTIFIED"] }, "turn_id": { "$ref": "_common.schema.json#/$defs/Id", "description": "\uD134 ID(\uACF5\uAC1C \uC785\uAD6C turn_id \uC640 \uAC19\uC740 Id). 5.0.0: 64\uC790 \uC0C1\uD55C \uC0AC\uBCF8\uC744 Id(128) \uCC38\uC870\uB85C \uBC14\uAFE8\uB2E4(D117)." } }, "$id": "https://openit.example/schemas/StaffCallReport.schema.json" };
+var schema48 = { "title": "StaffCallReport", "description": "POST /v1/sessions/{id}/staff-call/report \uBCF8\uBB38(2.1.0, CR-H001). \uD0A4\uC624\uC2A4\uD06C\uC758 '\uC9C1\uC811 \uC54C\uB9AC\uC168\uB098\uC694?' \uC751\uB2F5\uC744 \uC11C\uBC84\uC5D0 \uB0A8\uAE34\uB2E4.", "x-producers": ["kiosk-frontend"], "x-consumers": ["survey-service"], "type": "object", "additionalProperties": false, "required": ["outcome", "turn_id"], "properties": { "outcome": { "enum": ["STAFF_NOTIFIED_MANUALLY", "NOT_NOTIFIED"] }, "turn_id": { "$ref": "_common.schema.json#/$defs/Id", "description": "\uD134 ID(\uACF5\uAC1C \uC785\uAD6C turn_id \uC640 \uAC19\uC740 Id). 5.0.0: 64\uC790 \uC0C1\uD55C \uC0AC\uBCF8\uC744 Id(128) \uCC38\uC870\uB85C \uBC14\uAFE8\uB2E4(D117)." } }, "$id": "https://openit.example/contracts/v5/StaffCallReport.schema.json" };
 function validate36(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
   let vErrors = null;
@@ -6823,7 +6823,7 @@ function validate52(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate52.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.PushSubscriptionRequest = validate58;
-var schema70 = { "$id": "https://openit.example/schemas/PushSubscriptionRequest.schema.json", "title": "PushSubscriptionRequest", "description": "3.4.4(\uAC80\uD1A0 B-28-5\xB7B-24): POST /v1/staff/push-subscriptions \uBCF8\uBB38. \uBE0C\uB77C\uC6B0\uC800 PushSubscription.toJSON() \uC758 endpoint\xB7keys \uC640 \uC120\uD0DD topics. endpoint \uB294 https \uC774\uACE0 \uD3EC\uD2B8\uAC00 \uC5C6\uAC70\uB098 443 \uC774\uBA70 \uD638\uC2A4\uD2B8\uAC00 \uACF5\uC778 \uC8FC\uC18C\uB85C \uD574\uC11D\uB420 \uB54C\uB9CC \uBC1B\uB294\uB2E4(loopback\xB7\uC0AC\uC124\xB7\uB9C1\uD06C\uB85C\uCEEC\xB7\uD2B9\uC218 \uC8FC\uC18C\uB294 400 INVALID_RECORD \u2014 SSRF \uBC29\uC9C0, OWASP A10:2021). \uD638\uC2A4\uD2B8\uB294 \uC810\uC774 \uC788\uB294 \uC774\uB984\uC774\uC5B4\uC57C \uD558\uACE0 IP \uB9AC\uD130\uB7F4\xB7localhost \uB294 \uC2A4\uD0A4\uB9C8\uC5D0\uC11C \uAC70\uBD80\uD55C\uB2E4(\uAC80\uD1A0 P6-R6-15). \uC774\uB984\uC774 RFC 6890 \uD2B9\uC218 \uBAA9\uC801 \uC8FC\uC18C\uB85C \uD574\uC11D\uB418\uB294\uC9C0\uB294 \uC2A4\uD0A4\uB9C8\uB85C \uBABB \uC4F0\uBBC0\uB85C \uC11C\uBC84\uAC00 \uB4F1\uB85D \uB54C\uC640 \uBC1C\uC1A1 \uB54C \uD55C\uB2E4(RUNTIME R3.18). 3.7.0: \uAC19\uC740 \uBCF8\uBB38\uC744 \uC11C\uBC84(openapi: PublicApiRequests.PushSubscribeBody)\uC640 \uC0DD\uC0B0\uC790(kiosk-frontend\xB7admin-console)\uAC00 \uC11C\uB85C \uB2E4\uB978 \uC2A4\uD0A4\uB9C8\uB85C \uAC80\uC99D\uD558\uB358 \uAC83\uC744 \uC774 \uC2A4\uD0A4\uB9C8 \uD558\uB098\uB85C \uD569\uCCE4\uB2E4(PushSubscribeBody \uB294 \uC774\uAC83\uC744 \uCC38\uC870\uD55C\uB2E4). PushSubscription.toJSON() \uC758 expirationTime \uB4F1 \uADF8 \uBC16\uC758 \uD0A4\uB294 \uC0DD\uC0B0\uC790\uAC00 \uBE7C\uACE0 \uBCF4\uB0B8\uB2E4(\uB2EB\uD78C \uBCF8\uBB38).", "x-producers": ["kiosk-frontend", "admin-console"], "x-consumers": ["survey-service"], "type": "object", "required": ["endpoint", "keys"], "additionalProperties": false, "properties": { "endpoint": { "type": "string", "maxLength": 2048, "pattern": "^https://(?=[^/:]*[A-Za-z])[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+(:443)?/[\\x21-\\x7E]*$(?![\\s\\S])", "allOf": [{ "not": { "pattern": "^https://[lL][oO][cC][aA][lL][hH][oO][sS][tT]\\.?(:443)?([/?#]|$(?![\\s\\S]))" } }, { "not": { "pattern": "^https://[^/?#@:\\s]*\\.([lL][oO][cC][aA][lL]|[lL][oO][cC][aA][lL][dD][oO][mM][aA][iI][nN]|[iI][nN][tT][eE][rR][nN][aA][lL]|[lL][aA][nN]|[hH][oO][mM][eE]|[cC][oO][rR][pP]|[iI][nN][tT][rR][aA][nN][eE][tT])\\.?(:443)?([/?#]|$(?![\\s\\S]))" } }], "description": "\uC6F9 \uD478\uC2DC endpoint(PushSubscription.endpoint). https, \uD3EC\uD2B8 \uC5C6\uC74C \uB610\uB294 443, \uC810\uC774 \uC788\uB294 \uC774\uB984 \uD638\uC2A4\uD2B8(IP \uB9AC\uD130\uB7F4\xB7localhost\xB7.local/.localdomain/.internal/.lan/.home/.corp/.intranet \uAC70\uBD80), \uACBD\uB85C\uAC00 \uC788\uACE0 \uACF5\uBC31\uC774 \uC5C6\uB2E4. 3.7.0: PublicApiRequests.PushSubscribeBody \uC640 \uB458\uB85C \uAC08\uB77C\uC838 \uC788\uB358 \uC81C\uC57D\uC744 \uC5EC\uAE30 \uD558\uB098\uB85C \uD569\uCCE4\uB2E4 \uADFC\uAC70: \uC0C1\uD55C 2048 \uC740 \uBE0C\uB77C\uC6B0\uC800\xB7\uD504\uB85D\uC2DC\uAC00 \uB118\uAE30\uB294 URL \uAE38\uC774\uC758 \uAD00\uB840\uC801 \uD558\uD55C(\uCE21\uC815 \uC548 \uD568) 5.0.0: \uACBD\uB85C\uB294 ASCII \uD45C\uC2DC \uBB38\uC790\uB9CC(RFC 3986 2\uC808: URI \uB294 ASCII, \uBE44ASCII \uB294 \uD37C\uC13C\uD2B8 \uC778\uCF54\uB529)\uC774\uACE0 format uri(RFC 3986 URI \uBB38\uBC95, rfc3986-validator \uB97C format_checker \uAC00 \uAC15\uC81C)\uB97C \uD568\uAED8 \uAC74\uB2E4. \uAC15\uC81C \uBC94\uC704\uB294 \uC774 \uB450 \uAC80\uC0AC\uC640 \uC704 \uD328\uD134\uAE4C\uC9C0\uB2E4(\uC2A4\uD0B4\xB7\uD638\uC2A4\uD2B8 \uC758\uBBF8 \uAC80\uC0AC\uB294 \uD328\uD134 \uBAAB). \uBE44ASCII \uACBD\uB85C\uAC00 \uC800\uC7A5\uC18C \uD0A4 \uC0C1\uD55C\uC744 \uB118\uACA8 5xx \uAC00 \uB418\uB358 \uAC83\uC744 \uB9C9\uB294\uB2E4(\uACB0\uD568 \uB300\uC7A5 #10).", "format": "uri" }, "keys": { "type": "object", "required": ["p256dh", "auth"], "additionalProperties": false, "properties": { "p256dh": { "type": "string", "pattern": "^[A-Za-z0-9_-]+=*$(?![\\s\\S])", "maxLength": 200, "description": "\uADFC\uAC70: RFC 8291: P-256 \uACF5\uAC1C\uD0A4 65\uBC14\uC774\uD2B8 = base64url 87\uC790. \uC0C1\uD55C 200 \uC740 \uC5EC\uC720\uB97C \uB454 \uC124\uACC4\uAC12" }, "auth": { "type": "string", "pattern": "^[A-Za-z0-9_-]+=*$(?![\\s\\S])", "maxLength": 64, "description": "\uADFC\uAC70: RFC 8291: \uC778\uC99D \uBE44\uBC00 16\uBC14\uC774\uD2B8 = base64url 22\uC790. \uC0C1\uD55C 64 \uB294 \uC5EC\uC720\uB97C \uB454 \uC124\uACC4\uAC12" } }, "description": "W3C Push API PushSubscriptionKeys \uC758 p256dh(P-256 \uACF5\uAC1C\uD0A4, base64url)\xB7auth(\uC778\uC99D \uBE44\uBC00, base64url). \uC774 \uB458\uB9CC \uBCF4\uB0B8\uB2E4" }, "topics": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["alerts", "results"] }, "description": '\uAD6C\uB3C5 \uC8FC\uC81C(\uACC4\uC57D 3.4.0). alerts=\uC9C1\uC6D0 \uC54C\uB9BC(staff \uC5ED\uD560), results=\uACB0\uACFC \uB3C4\uCC29(clinician \uC5ED\uD560=result-reader \uD1A0\uD070). \uC5C6\uC73C\uBA74 ["alerts"]. \uC5ED\uD560 \uD655\uC778\uC740 \uC11C\uBE44\uC2A4\uAC00 \uD55C\uB2E4.', "maxItems": 2 } } };
+var schema70 = { "$id": "https://openit.example/contracts/v5/PushSubscriptionRequest.schema.json", "title": "PushSubscriptionRequest", "description": "3.4.4(\uAC80\uD1A0 B-28-5\xB7B-24): POST /v1/staff/push-subscriptions \uBCF8\uBB38. \uBE0C\uB77C\uC6B0\uC800 PushSubscription.toJSON() \uC758 endpoint\xB7keys \uC640 \uC120\uD0DD topics. endpoint \uB294 https \uC774\uACE0 \uD3EC\uD2B8\uAC00 \uC5C6\uAC70\uB098 443 \uC774\uBA70 \uD638\uC2A4\uD2B8\uAC00 \uACF5\uC778 \uC8FC\uC18C\uB85C \uD574\uC11D\uB420 \uB54C\uB9CC \uBC1B\uB294\uB2E4(loopback\xB7\uC0AC\uC124\xB7\uB9C1\uD06C\uB85C\uCEEC\xB7\uD2B9\uC218 \uC8FC\uC18C\uB294 400 INVALID_RECORD \u2014 SSRF \uBC29\uC9C0, OWASP A10:2021). \uD638\uC2A4\uD2B8\uB294 \uC810\uC774 \uC788\uB294 \uC774\uB984\uC774\uC5B4\uC57C \uD558\uACE0 IP \uB9AC\uD130\uB7F4\xB7localhost \uB294 \uC2A4\uD0A4\uB9C8\uC5D0\uC11C \uAC70\uBD80\uD55C\uB2E4(\uAC80\uD1A0 P6-R6-15). \uC774\uB984\uC774 RFC 6890 \uD2B9\uC218 \uBAA9\uC801 \uC8FC\uC18C\uB85C \uD574\uC11D\uB418\uB294\uC9C0\uB294 \uC2A4\uD0A4\uB9C8\uB85C \uBABB \uC4F0\uBBC0\uB85C \uC11C\uBC84\uAC00 \uB4F1\uB85D \uB54C\uC640 \uBC1C\uC1A1 \uB54C \uD55C\uB2E4(RUNTIME R3.18). 3.7.0: \uAC19\uC740 \uBCF8\uBB38\uC744 \uC11C\uBC84(openapi: PublicApiRequests.PushSubscribeBody)\uC640 \uC0DD\uC0B0\uC790(kiosk-frontend\xB7admin-console)\uAC00 \uC11C\uB85C \uB2E4\uB978 \uC2A4\uD0A4\uB9C8\uB85C \uAC80\uC99D\uD558\uB358 \uAC83\uC744 \uC774 \uC2A4\uD0A4\uB9C8 \uD558\uB098\uB85C \uD569\uCCE4\uB2E4(PushSubscribeBody \uB294 \uC774\uAC83\uC744 \uCC38\uC870\uD55C\uB2E4). PushSubscription.toJSON() \uC758 expirationTime \uB4F1 \uADF8 \uBC16\uC758 \uD0A4\uB294 \uC0DD\uC0B0\uC790\uAC00 \uBE7C\uACE0 \uBCF4\uB0B8\uB2E4(\uB2EB\uD78C \uBCF8\uBB38).", "x-producers": ["kiosk-frontend", "admin-console"], "x-consumers": ["survey-service"], "type": "object", "required": ["endpoint", "keys"], "additionalProperties": false, "properties": { "endpoint": { "type": "string", "maxLength": 2048, "pattern": "^https://(?=[^/:]*[A-Za-z])[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+(:443)?/[\\x21-\\x7E]*$(?![\\s\\S])", "allOf": [{ "not": { "pattern": "^https://[lL][oO][cC][aA][lL][hH][oO][sS][tT]\\.?(:443)?([/?#]|$(?![\\s\\S]))" } }, { "not": { "pattern": "^https://[^/?#@:\\s]*\\.([lL][oO][cC][aA][lL]|[lL][oO][cC][aA][lL][dD][oO][mM][aA][iI][nN]|[iI][nN][tT][eE][rR][nN][aA][lL]|[lL][aA][nN]|[hH][oO][mM][eE]|[cC][oO][rR][pP]|[iI][nN][tT][rR][aA][nN][eE][tT])\\.?(:443)?([/?#]|$(?![\\s\\S]))" } }], "description": "\uC6F9 \uD478\uC2DC endpoint(PushSubscription.endpoint). https, \uD3EC\uD2B8 \uC5C6\uC74C \uB610\uB294 443, \uC810\uC774 \uC788\uB294 \uC774\uB984 \uD638\uC2A4\uD2B8(IP \uB9AC\uD130\uB7F4\xB7localhost\xB7.local/.localdomain/.internal/.lan/.home/.corp/.intranet \uAC70\uBD80), \uACBD\uB85C\uAC00 \uC788\uACE0 \uACF5\uBC31\uC774 \uC5C6\uB2E4. 3.7.0: PublicApiRequests.PushSubscribeBody \uC640 \uB458\uB85C \uAC08\uB77C\uC838 \uC788\uB358 \uC81C\uC57D\uC744 \uC5EC\uAE30 \uD558\uB098\uB85C \uD569\uCCE4\uB2E4 \uADFC\uAC70: \uC0C1\uD55C 2048 \uC740 \uBE0C\uB77C\uC6B0\uC800\xB7\uD504\uB85D\uC2DC\uAC00 \uB118\uAE30\uB294 URL \uAE38\uC774\uC758 \uAD00\uB840\uC801 \uD558\uD55C(\uCE21\uC815 \uC548 \uD568) 5.0.0: \uACBD\uB85C\uB294 ASCII \uD45C\uC2DC \uBB38\uC790\uB9CC(RFC 3986 2\uC808: URI \uB294 ASCII, \uBE44ASCII \uB294 \uD37C\uC13C\uD2B8 \uC778\uCF54\uB529)\uC774\uACE0 format uri(RFC 3986 URI \uBB38\uBC95, rfc3986-validator \uB97C format_checker \uAC00 \uAC15\uC81C)\uB97C \uD568\uAED8 \uAC74\uB2E4. \uAC15\uC81C \uBC94\uC704\uB294 \uC774 \uB450 \uAC80\uC0AC\uC640 \uC704 \uD328\uD134\uAE4C\uC9C0\uB2E4(\uC2A4\uD0B4\xB7\uD638\uC2A4\uD2B8 \uC758\uBBF8 \uAC80\uC0AC\uB294 \uD328\uD134 \uBAAB). \uBE44ASCII \uACBD\uB85C\uAC00 \uC800\uC7A5\uC18C \uD0A4 \uC0C1\uD55C\uC744 \uB118\uACA8 5xx \uAC00 \uB418\uB358 \uAC83\uC744 \uB9C9\uB294\uB2E4(\uACB0\uD568 \uB300\uC7A5 #10).", "format": "uri" }, "keys": { "type": "object", "required": ["p256dh", "auth"], "additionalProperties": false, "properties": { "p256dh": { "type": "string", "pattern": "^[A-Za-z0-9_-]+=*$(?![\\s\\S])", "maxLength": 200, "description": "\uADFC\uAC70: RFC 8291: P-256 \uACF5\uAC1C\uD0A4 65\uBC14\uC774\uD2B8 = base64url 87\uC790. \uC0C1\uD55C 200 \uC740 \uC5EC\uC720\uB97C \uB454 \uC124\uACC4\uAC12" }, "auth": { "type": "string", "pattern": "^[A-Za-z0-9_-]+=*$(?![\\s\\S])", "maxLength": 64, "description": "\uADFC\uAC70: RFC 8291: \uC778\uC99D \uBE44\uBC00 16\uBC14\uC774\uD2B8 = base64url 22\uC790. \uC0C1\uD55C 64 \uB294 \uC5EC\uC720\uB97C \uB454 \uC124\uACC4\uAC12" } }, "description": "W3C Push API PushSubscriptionKeys \uC758 p256dh(P-256 \uACF5\uAC1C\uD0A4, base64url)\xB7auth(\uC778\uC99D \uBE44\uBC00, base64url). \uC774 \uB458\uB9CC \uBCF4\uB0B8\uB2E4" }, "topics": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["alerts", "results"] }, "description": '\uAD6C\uB3C5 \uC8FC\uC81C(\uACC4\uC57D 3.4.0). alerts=\uC9C1\uC6D0 \uC54C\uB9BC(staff \uC5ED\uD560), results=\uACB0\uACFC \uB3C4\uCC29(clinician \uC5ED\uD560=result-reader \uD1A0\uD070). \uC5C6\uC73C\uBA74 ["alerts"]. \uC5ED\uD560 \uD655\uC778\uC740 \uC11C\uBE44\uC2A4\uAC00 \uD55C\uB2E4.', "maxItems": 2 } } };
 var pattern27 = new RegExp("^https://[lL][oO][cC][aA][lL][hH][oO][sS][tT]\\.?(:443)?([/?#]|$(?![\\s\\S]))", "u");
 var pattern28 = new RegExp("^https://[^/?#@:\\s]*\\.([lL][oO][cC][aA][lL]|[lL][oO][cC][aA][lL][dD][oO][mM][aA][iI][nN]|[iI][nN][tT][eE][rR][nN][aA][lL]|[lL][aA][nN]|[hH][oO][mM][eE]|[cC][oO][rR][pP]|[iI][nN][tT][rR][aA][nN][eE][tT])\\.?(:443)?([/?#]|$(?![\\s\\S]))", "u");
 var pattern29 = new RegExp("^https://(?=[^/:]*[A-Za-z])[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+(:443)?/[\\x21-\\x7E]*$(?![\\s\\S])", "u");
@@ -7155,7 +7155,7 @@ function validate58(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate58.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.HealthStatus = validate107;
-var schema140 = { "$id": "https://openit.example/schemas/HealthStatus.schema.json", "title": "HealthStatus", "description": "3.4.4(RUNTIME R5.1, OPEN_GAPS U101 \uB2EB\uC74C): \uBAA8\uB4E0 \uC601\uC5ED \uC11C\uBE44\uC2A4\uC758 GET /healthz\xB7GET /readyz \uBCF8\uBB38\uC774 \uC9C0\uD0A4\uB294 \uACF5\uD1B5 \uCD5C\uC18C \uBAA8\uC591. \uD310\uC815\uC740 \uC0C1\uD0DC \uCF54\uB4DC\uB2E4(healthz 200 = \uC0B4\uC544 \uC788\uC74C, readyz 200 = \uC694\uCCAD\uC744 \uBC1B\uC744 \uC218 \uC788\uC74C, 503 = \uC544\uB2D8). \uBCF8\uBB38\uC740 \uBE44\uC5B4 \uC788\uC9C0 \uC54A\uC740 JSON \uAC1D\uCCB4\uC774\uACE0, status \uAC00 \uC788\uC73C\uBA74 \uC544\uB798 \uAC12 \uC911 \uD558\uB098\uB2E4. \uC601\uC5ED\uBCC4 \uC900\uBE44 \uD655\uC778 \uC2A4\uD0A4\uB9C8(SurveyReadyz\xB7GateReadyz\xB7OpsFeedbackReadyz\xB7QuestionAuthoringDeployInterface.ReadyzResponse)\uAC00 \uC788\uC73C\uBA74 \uADF8\uAC83\uB3C4 \uD568\uAED8 \uC9C0\uD0A8\uB2E4. 'not ready'(release-gate)\xB7'not-ready'(ops-feedback\xB7question-authoring)\uB294 2026-11-04 \uC774\uC804 \uD45C\uAE30\uB85C not_ready \uC640 \uAC19\uC740 \uB73B\uC774\uBA70, \uC0DD\uC0B0\uC790\uB294 not_ready \uB85C \uC62E\uAE30\uACE0 \uC77D\uB294 \uCABD\uC740 \uC14B\uC744 \uAC19\uAC8C \uB2E4\uB8EC\uB2E4(CONVENTIONS 1\uC808 3, \uD558\uC704 \uD638\uD658). \uADF8 \uBC16\uC758 \uD0A4\uB294 \uC601\uC5ED\uBCC4 \uC900\uBE44 \uD655\uC778 \uC2A4\uD0A4\uB9C8\uAC00 \uC815\uD558\uBA70 \uC774 \uACF5\uD1B5 \uC2A4\uD0A4\uB9C8\uB294 \uD5C8\uC6A9\uD55C\uB2E4(additionalProperties true).", "x-producers": ["*"], "x-consumers": ["platform", "deploy"], "type": "object", "minProperties": 1, "properties": { "status": { "enum": ["ok", "ready", "not_ready", "shutting_down", "not ready", "not-ready"] } }, "additionalProperties": true };
+var schema140 = { "$id": "https://openit.example/contracts/v5/HealthStatus.schema.json", "title": "HealthStatus", "description": "3.4.4(RUNTIME R5.1, OPEN_GAPS U101 \uB2EB\uC74C): \uBAA8\uB4E0 \uC601\uC5ED \uC11C\uBE44\uC2A4\uC758 GET /healthz\xB7GET /readyz \uBCF8\uBB38\uC774 \uC9C0\uD0A4\uB294 \uACF5\uD1B5 \uCD5C\uC18C \uBAA8\uC591. \uD310\uC815\uC740 \uC0C1\uD0DC \uCF54\uB4DC\uB2E4(healthz 200 = \uC0B4\uC544 \uC788\uC74C, readyz 200 = \uC694\uCCAD\uC744 \uBC1B\uC744 \uC218 \uC788\uC74C, 503 = \uC544\uB2D8). \uBCF8\uBB38\uC740 \uBE44\uC5B4 \uC788\uC9C0 \uC54A\uC740 JSON \uAC1D\uCCB4\uC774\uACE0, status \uAC00 \uC788\uC73C\uBA74 \uC544\uB798 \uAC12 \uC911 \uD558\uB098\uB2E4. \uC601\uC5ED\uBCC4 \uC900\uBE44 \uD655\uC778 \uC2A4\uD0A4\uB9C8(SurveyReadyz\xB7GateReadyz\xB7OpsFeedbackReadyz\xB7QuestionAuthoringDeployInterface.ReadyzResponse)\uAC00 \uC788\uC73C\uBA74 \uADF8\uAC83\uB3C4 \uD568\uAED8 \uC9C0\uD0A8\uB2E4. 'not ready'(release-gate)\xB7'not-ready'(ops-feedback\xB7question-authoring)\uB294 2026-11-04 \uC774\uC804 \uD45C\uAE30\uB85C not_ready \uC640 \uAC19\uC740 \uB73B\uC774\uBA70, \uC0DD\uC0B0\uC790\uB294 not_ready \uB85C \uC62E\uAE30\uACE0 \uC77D\uB294 \uCABD\uC740 \uC14B\uC744 \uAC19\uAC8C \uB2E4\uB8EC\uB2E4(CONVENTIONS 1\uC808 3, \uD558\uC704 \uD638\uD658). \uADF8 \uBC16\uC758 \uD0A4\uB294 \uC601\uC5ED\uBCC4 \uC900\uBE44 \uD655\uC778 \uC2A4\uD0A4\uB9C8\uAC00 \uC815\uD558\uBA70 \uC774 \uACF5\uD1B5 \uC2A4\uD0A4\uB9C8\uB294 \uD5C8\uC6A9\uD55C\uB2E4(additionalProperties true).", "x-producers": ["*"], "x-consumers": ["platform", "deploy"], "type": "object", "minProperties": 1, "properties": { "status": { "enum": ["ok", "ready", "not_ready", "shutting_down", "not ready", "not-ready"] } }, "additionalProperties": true };
 function validate107(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
   let vErrors = null;
@@ -7203,7 +7203,77 @@ function validate107(data, { instancePath = "", parentData, parentDataProperty, 
 }
 validate107.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 exports.FrontendMessage = validate108;
-var pattern80 = new RegExp("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])", "u");
+function validate110(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+  let vErrors = null;
+  let errors = 0;
+  const evaluated0 = validate110.evaluated;
+  if (evaluated0.dynamicProps) {
+    evaluated0.props = void 0;
+  }
+  if (evaluated0.dynamicItems) {
+    evaluated0.items = void 0;
+  }
+  if (typeof data === "string") {
+    if (func1(data) > 128) {
+      const err0 = { instancePath, schemaPath: "#/$defs/Id/maxLength", keyword: "maxLength", params: { limit: 128 }, message: "must NOT have more than 128 characters" };
+      if (vErrors === null) {
+        vErrors = [err0];
+      } else {
+        vErrors.push(err0);
+      }
+      errors++;
+    }
+    if (func1(data) < 1) {
+      const err1 = { instancePath, schemaPath: "#/$defs/Id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
+      if (vErrors === null) {
+        vErrors = [err1];
+      } else {
+        vErrors.push(err1);
+      }
+      errors++;
+    }
+    if (!pattern7.test(data)) {
+      const err2 = { instancePath, schemaPath: "#/$defs/Id/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])"' };
+      if (vErrors === null) {
+        vErrors = [err2];
+      } else {
+        vErrors.push(err2);
+      }
+      errors++;
+    }
+  } else {
+    const err3 = { instancePath, schemaPath: "#/$defs/Id/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+    if (vErrors === null) {
+      vErrors = [err3];
+    } else {
+      vErrors.push(err3);
+    }
+    errors++;
+  }
+  if (typeof data === "string") {
+    if (func1(data) > 64) {
+      const err4 = { instancePath, schemaPath: "#/maxLength", keyword: "maxLength", params: { limit: 64 }, message: "must NOT have more than 64 characters" };
+      if (vErrors === null) {
+        vErrors = [err4];
+      } else {
+        vErrors.push(err4);
+      }
+      errors++;
+    }
+    if (!pattern8.test(data)) {
+      const err5 = { instancePath, schemaPath: "#/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9_-]*$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9_-]*$(?![\\s\\S])"' };
+      if (vErrors === null) {
+        vErrors = [err5];
+      } else {
+        vErrors.push(err5);
+      }
+      errors++;
+    }
+  }
+  validate110.errors = vErrors;
+  return errors === 0;
+}
+validate110.evaluated = { "dynamicProps": false, "dynamicItems": false };
 function validate109(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
@@ -7240,34 +7310,18 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
       }
     }
     if (data.session_id !== void 0) {
-      let data0 = data.session_id;
-      if (typeof data0 === "string") {
-        if (func1(data0) < 1) {
-          const err2 = { instancePath: instancePath + "/session_id", schemaPath: "#/$defs/SessionId/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-          if (vErrors === null) {
-            vErrors = [err2];
-          } else {
-            vErrors.push(err2);
-          }
-          errors++;
-        }
-      } else {
-        const err3 = { instancePath: instancePath + "/session_id", schemaPath: "#/$defs/SessionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-        if (vErrors === null) {
-          vErrors = [err3];
-        } else {
-          vErrors.push(err3);
-        }
-        errors++;
+      if (!validate110(data.session_id, { instancePath: instancePath + "/session_id", parentData: data, parentDataProperty: "session_id", rootData, dynamicAnchors })) {
+        vErrors = vErrors === null ? validate110.errors : vErrors.concat(validate110.errors);
+        errors = vErrors.length;
       }
     }
     if (data.kind !== void 0) {
       if ("SESSION_START" !== data.kind) {
-        const err4 = { instancePath: instancePath + "/kind", schemaPath: "#/oneOf/0/properties/kind/const", keyword: "const", params: { allowedValue: "SESSION_START" }, message: "must be equal to constant" };
+        const err2 = { instancePath: instancePath + "/kind", schemaPath: "#/oneOf/0/properties/kind/const", keyword: "const", params: { allowedValue: "SESSION_START" }, message: "must be equal to constant" };
         if (vErrors === null) {
-          vErrors = [err4];
+          vErrors = [err2];
         } else {
-          vErrors.push(err4);
+          vErrors.push(err2);
         }
         errors++;
       }
@@ -7276,20 +7330,20 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
       let data2 = data.subject_ref;
       if (typeof data2 === "string") {
         if (!pattern16.test(data2)) {
-          const err5 = { instancePath: instancePath + "/subject_ref", schemaPath: "#/oneOf/0/properties/subject_ref/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9._:/#=+-]{1,128}$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9._:/#=+-]{1,128}$(?![\\s\\S])"' };
+          const err3 = { instancePath: instancePath + "/subject_ref", schemaPath: "https://openit.example/contracts/v5/PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9._:/#=+-]{1,128}$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9._:/#=+-]{1,128}$(?![\\s\\S])"' };
           if (vErrors === null) {
-            vErrors = [err5];
+            vErrors = [err3];
           } else {
-            vErrors.push(err5);
+            vErrors.push(err3);
           }
           errors++;
         }
       } else {
-        const err6 = { instancePath: instancePath + "/subject_ref", schemaPath: "#/oneOf/0/properties/subject_ref/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        const err4 = { instancePath: instancePath + "/subject_ref", schemaPath: "https://openit.example/contracts/v5/PublicApiRequests.schema.json#/$defs/SessionStartBody/properties/subject_ref/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
-          vErrors = [err6];
+          vErrors = [err4];
         } else {
-          vErrors.push(err6);
+          vErrors.push(err4);
         }
         errors++;
       }
@@ -7297,8 +7351,26 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
     if (data.question_set_id !== void 0) {
       let data3 = data.question_set_id;
       if (typeof data3 === "string") {
-        if (!pattern80.test(data3)) {
-          const err7 = { instancePath: instancePath + "/question_set_id", schemaPath: "#/oneOf/0/properties/question_set_id/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])"' };
+        if (func1(data3) > 128) {
+          const err5 = { instancePath: instancePath + "/question_set_id", schemaPath: "https://openit.example/contracts/v5/_common.schema.json#/$defs/Id/maxLength", keyword: "maxLength", params: { limit: 128 }, message: "must NOT have more than 128 characters" };
+          if (vErrors === null) {
+            vErrors = [err5];
+          } else {
+            vErrors.push(err5);
+          }
+          errors++;
+        }
+        if (func1(data3) < 1) {
+          const err6 = { instancePath: instancePath + "/question_set_id", schemaPath: "https://openit.example/contracts/v5/_common.schema.json#/$defs/Id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
+          if (vErrors === null) {
+            vErrors = [err6];
+          } else {
+            vErrors.push(err6);
+          }
+          errors++;
+        }
+        if (!pattern7.test(data3)) {
+          const err7 = { instancePath: instancePath + "/question_set_id", schemaPath: "https://openit.example/contracts/v5/_common.schema.json#/$defs/Id/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])"' };
           if (vErrors === null) {
             vErrors = [err7];
           } else {
@@ -7307,7 +7379,7 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
           errors++;
         }
       } else {
-        const err8 = { instancePath: instancePath + "/question_set_id", schemaPath: "#/oneOf/0/properties/question_set_id/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        const err8 = { instancePath: instancePath + "/question_set_id", schemaPath: "https://openit.example/contracts/v5/_common.schema.json#/$defs/Id/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
           vErrors = [err8];
         } else {
@@ -7372,19 +7444,25 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
       }
     }
     if (data.session_id !== void 0) {
-      let data4 = data.session_id;
-      if (typeof data4 === "string") {
-        if (func1(data4) < 1) {
-          const err14 = { instancePath: instancePath + "/session_id", schemaPath: "#/$defs/SessionId/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-          if (vErrors === null) {
-            vErrors = [err14];
-          } else {
-            vErrors.push(err14);
-          }
-          errors++;
+      if (!validate110(data.session_id, { instancePath: instancePath + "/session_id", parentData: data, parentDataProperty: "session_id", rootData, dynamicAnchors })) {
+        vErrors = vErrors === null ? validate110.errors : vErrors.concat(validate110.errors);
+        errors = vErrors.length;
+      }
+    }
+    if (data.kind !== void 0) {
+      if ("UTTERANCE" !== data.kind) {
+        const err14 = { instancePath: instancePath + "/kind", schemaPath: "#/oneOf/1/properties/kind/const", keyword: "const", params: { allowedValue: "UTTERANCE" }, message: "must be equal to constant" };
+        if (vErrors === null) {
+          vErrors = [err14];
+        } else {
+          vErrors.push(err14);
         }
-      } else {
-        const err15 = { instancePath: instancePath + "/session_id", schemaPath: "#/$defs/SessionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        errors++;
+      }
+    }
+    if (data.utterance !== void 0) {
+      if (typeof data.utterance !== "string") {
+        const err15 = { instancePath: instancePath + "/utterance", schemaPath: "#/oneOf/1/properties/utterance/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
           vErrors = [err15];
         } else {
@@ -7393,34 +7471,12 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
         errors++;
       }
     }
-    if (data.kind !== void 0) {
-      if ("UTTERANCE" !== data.kind) {
-        const err16 = { instancePath: instancePath + "/kind", schemaPath: "#/oneOf/1/properties/kind/const", keyword: "const", params: { allowedValue: "UTTERANCE" }, message: "must be equal to constant" };
-        if (vErrors === null) {
-          vErrors = [err16];
-        } else {
-          vErrors.push(err16);
-        }
-        errors++;
-      }
-    }
-    if (data.utterance !== void 0) {
-      if (typeof data.utterance !== "string") {
-        const err17 = { instancePath: instancePath + "/utterance", schemaPath: "#/oneOf/1/properties/utterance/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-        if (vErrors === null) {
-          vErrors = [err17];
-        } else {
-          vErrors.push(err17);
-        }
-        errors++;
-      }
-    }
   } else {
-    const err18 = { instancePath, schemaPath: "#/oneOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err16 = { instancePath, schemaPath: "#/oneOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err18];
+      vErrors = [err16];
     } else {
-      vErrors.push(err18);
+      vErrors.push(err16);
     }
     errors++;
   }
@@ -7436,80 +7492,64 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
         props0 = true;
       }
     }
-    const _errs21 = errors;
+    const _errs19 = errors;
     if (data && typeof data == "object" && !Array.isArray(data)) {
       if (data.session_id === void 0) {
-        const err19 = { instancePath, schemaPath: "#/oneOf/2/required", keyword: "required", params: { missingProperty: "session_id" }, message: "must have required property 'session_id'" };
+        const err17 = { instancePath, schemaPath: "#/oneOf/2/required", keyword: "required", params: { missingProperty: "session_id" }, message: "must have required property 'session_id'" };
         if (vErrors === null) {
-          vErrors = [err19];
+          vErrors = [err17];
         } else {
-          vErrors.push(err19);
+          vErrors.push(err17);
         }
         errors++;
       }
       if (data.kind === void 0) {
-        const err20 = { instancePath, schemaPath: "#/oneOf/2/required", keyword: "required", params: { missingProperty: "kind" }, message: "must have required property 'kind'" };
+        const err18 = { instancePath, schemaPath: "#/oneOf/2/required", keyword: "required", params: { missingProperty: "kind" }, message: "must have required property 'kind'" };
         if (vErrors === null) {
-          vErrors = [err20];
+          vErrors = [err18];
         } else {
-          vErrors.push(err20);
+          vErrors.push(err18);
         }
         errors++;
       }
       for (const key2 in data) {
         if (!(key2 === "session_id" || key2 === "kind")) {
-          const err21 = { instancePath, schemaPath: "#/oneOf/2/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" };
+          const err19 = { instancePath, schemaPath: "#/oneOf/2/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" };
           if (vErrors === null) {
-            vErrors = [err21];
+            vErrors = [err19];
           } else {
-            vErrors.push(err21);
+            vErrors.push(err19);
           }
           errors++;
         }
       }
       if (data.session_id !== void 0) {
-        let data7 = data.session_id;
-        if (typeof data7 === "string") {
-          if (func1(data7) < 1) {
-            const err22 = { instancePath: instancePath + "/session_id", schemaPath: "#/$defs/SessionId/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-            if (vErrors === null) {
-              vErrors = [err22];
-            } else {
-              vErrors.push(err22);
-            }
-            errors++;
-          }
-        } else {
-          const err23 = { instancePath: instancePath + "/session_id", schemaPath: "#/$defs/SessionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-          if (vErrors === null) {
-            vErrors = [err23];
-          } else {
-            vErrors.push(err23);
-          }
-          errors++;
+        if (!validate110(data.session_id, { instancePath: instancePath + "/session_id", parentData: data, parentDataProperty: "session_id", rootData, dynamicAnchors })) {
+          vErrors = vErrors === null ? validate110.errors : vErrors.concat(validate110.errors);
+          errors = vErrors.length;
         }
       }
       if (data.kind !== void 0) {
         if ("SESSION_END" !== data.kind) {
-          const err24 = { instancePath: instancePath + "/kind", schemaPath: "#/oneOf/2/properties/kind/const", keyword: "const", params: { allowedValue: "SESSION_END" }, message: "must be equal to constant" };
+          const err20 = { instancePath: instancePath + "/kind", schemaPath: "#/oneOf/2/properties/kind/const", keyword: "const", params: { allowedValue: "SESSION_END" }, message: "must be equal to constant" };
           if (vErrors === null) {
-            vErrors = [err24];
+            vErrors = [err20];
           } else {
-            vErrors.push(err24);
+            vErrors.push(err20);
           }
           errors++;
         }
       }
     } else {
-      const err25 = { instancePath, schemaPath: "#/oneOf/2/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+      const err21 = { instancePath, schemaPath: "#/oneOf/2/type", keyword: "type", params: { type: "object" }, message: "must be object" };
       if (vErrors === null) {
-        vErrors = [err25];
+        vErrors = [err21];
       } else {
-        vErrors.push(err25);
+        vErrors.push(err21);
       }
       errors++;
     }
-    var _valid0 = _errs21 === errors;
+    var _valid0 = _errs19 === errors;
     if (_valid0 && valid0) {
       valid0 = false;
       passing0 = [passing0, 2];
@@ -7524,11 +7564,11 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
     }
   }
   if (!valid0) {
-    const err26 = { instancePath, schemaPath: "#/oneOf", keyword: "oneOf", params: { passingSchemas: passing0 }, message: "must match exactly one schema in oneOf" };
+    const err22 = { instancePath, schemaPath: "#/oneOf", keyword: "oneOf", params: { passingSchemas: passing0 }, message: "must match exactly one schema in oneOf" };
     if (vErrors === null) {
-      vErrors = [err26];
+      vErrors = [err22];
     } else {
-      vErrors.push(err26);
+      vErrors.push(err22);
     }
     errors++;
   } else {
@@ -7568,11 +7608,82 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
   return errors === 0;
 }
 validate108.evaluated = { "dynamicProps": true, "dynamicItems": false };
-exports.InterventionDecision = validate111;
-function validate112(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+exports.InterventionDecision = validate115;
+function validate117(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate112.evaluated;
+  const evaluated0 = validate117.evaluated;
+  if (evaluated0.dynamicProps) {
+    evaluated0.props = void 0;
+  }
+  if (evaluated0.dynamicItems) {
+    evaluated0.items = void 0;
+  }
+  if (typeof data === "string") {
+    if (func1(data) > 128) {
+      const err0 = { instancePath, schemaPath: "#/$defs/Id/maxLength", keyword: "maxLength", params: { limit: 128 }, message: "must NOT have more than 128 characters" };
+      if (vErrors === null) {
+        vErrors = [err0];
+      } else {
+        vErrors.push(err0);
+      }
+      errors++;
+    }
+    if (func1(data) < 1) {
+      const err1 = { instancePath, schemaPath: "#/$defs/Id/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
+      if (vErrors === null) {
+        vErrors = [err1];
+      } else {
+        vErrors.push(err1);
+      }
+      errors++;
+    }
+    if (!pattern7.test(data)) {
+      const err2 = { instancePath, schemaPath: "#/$defs/Id/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9][A-Za-z0-9._:-]*$(?![\\s\\S])"' };
+      if (vErrors === null) {
+        vErrors = [err2];
+      } else {
+        vErrors.push(err2);
+      }
+      errors++;
+    }
+  } else {
+    const err3 = { instancePath, schemaPath: "#/$defs/Id/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+    if (vErrors === null) {
+      vErrors = [err3];
+    } else {
+      vErrors.push(err3);
+    }
+    errors++;
+  }
+  if (typeof data === "string") {
+    if (func1(data) > 64) {
+      const err4 = { instancePath, schemaPath: "#/maxLength", keyword: "maxLength", params: { limit: 64 }, message: "must NOT have more than 64 characters" };
+      if (vErrors === null) {
+        vErrors = [err4];
+      } else {
+        vErrors.push(err4);
+      }
+      errors++;
+    }
+    if (!pattern8.test(data)) {
+      const err5 = { instancePath, schemaPath: "#/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9_-]*$(?![\\s\\S])" }, message: 'must match pattern "^[A-Za-z0-9_-]*$(?![\\s\\S])"' };
+      if (vErrors === null) {
+        vErrors = [err5];
+      } else {
+        vErrors.push(err5);
+      }
+      errors++;
+    }
+  }
+  validate117.errors = vErrors;
+  return errors === 0;
+}
+validate117.evaluated = { "dynamicProps": false, "dynamicItems": false };
+function validate116(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+  let vErrors = null;
+  let errors = 0;
+  const evaluated0 = validate116.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -7610,19 +7721,34 @@ function validate112(data, { instancePath = "", parentData, parentDataProperty, 
       }
     }
     if (data.session_id !== void 0) {
-      let data0 = data.session_id;
-      if (typeof data0 === "string") {
-        if (func1(data0) < 1) {
-          const err3 = { instancePath: instancePath + "/session_id", schemaPath: "#/$defs/SessionId/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-          if (vErrors === null) {
-            vErrors = [err3];
-          } else {
-            vErrors.push(err3);
-          }
-          errors++;
+      if (!validate117(data.session_id, { instancePath: instancePath + "/session_id", parentData: data, parentDataProperty: "session_id", rootData, dynamicAnchors })) {
+        vErrors = vErrors === null ? validate117.errors : vErrors.concat(validate117.errors);
+        errors = vErrors.length;
+      }
+    }
+    if (data.decision !== void 0) {
+      let data1 = data.decision;
+      const _errs5 = errors;
+      let valid2 = false;
+      let passing0 = null;
+      const _errs6 = errors;
+      if ("RESUME" !== data1) {
+        const err3 = { instancePath: instancePath + "/decision", schemaPath: "#/$defs/Decision/oneOf/0/const", keyword: "const", params: { allowedValue: "RESUME" }, message: "must be equal to constant" };
+        if (vErrors === null) {
+          vErrors = [err3];
+        } else {
+          vErrors.push(err3);
         }
-      } else {
-        const err4 = { instancePath: instancePath + "/session_id", schemaPath: "#/$defs/SessionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        errors++;
+      }
+      var _valid0 = _errs6 === errors;
+      if (_valid0) {
+        valid2 = true;
+        passing0 = 0;
+      }
+      const _errs7 = errors;
+      if ("END" !== data1) {
+        const err4 = { instancePath: instancePath + "/decision", schemaPath: "#/$defs/Decision/oneOf/1/const", keyword: "const", params: { allowedValue: "END" }, message: "must be equal to constant" };
         if (vErrors === null) {
           vErrors = [err4];
         } else {
@@ -7630,60 +7756,29 @@ function validate112(data, { instancePath = "", parentData, parentDataProperty, 
         }
         errors++;
       }
-    }
-    if (data.decision !== void 0) {
-      let data1 = data.decision;
-      const _errs7 = errors;
-      let valid3 = false;
-      let passing0 = null;
-      const _errs8 = errors;
-      if ("RESUME" !== data1) {
-        const err5 = { instancePath: instancePath + "/decision", schemaPath: "#/$defs/Decision/oneOf/0/const", keyword: "const", params: { allowedValue: "RESUME" }, message: "must be equal to constant" };
+      var _valid0 = _errs7 === errors;
+      if (_valid0 && valid2) {
+        valid2 = false;
+        passing0 = [passing0, 1];
+      } else {
+        if (_valid0) {
+          valid2 = true;
+          passing0 = 1;
+        }
+      }
+      if (!valid2) {
+        const err5 = { instancePath: instancePath + "/decision", schemaPath: "#/$defs/Decision/oneOf", keyword: "oneOf", params: { passingSchemas: passing0 }, message: "must match exactly one schema in oneOf" };
         if (vErrors === null) {
           vErrors = [err5];
         } else {
           vErrors.push(err5);
         }
         errors++;
-      }
-      var _valid0 = _errs8 === errors;
-      if (_valid0) {
-        valid3 = true;
-        passing0 = 0;
-      }
-      const _errs9 = errors;
-      if ("END" !== data1) {
-        const err6 = { instancePath: instancePath + "/decision", schemaPath: "#/$defs/Decision/oneOf/1/const", keyword: "const", params: { allowedValue: "END" }, message: "must be equal to constant" };
-        if (vErrors === null) {
-          vErrors = [err6];
-        } else {
-          vErrors.push(err6);
-        }
-        errors++;
-      }
-      var _valid0 = _errs9 === errors;
-      if (_valid0 && valid3) {
-        valid3 = false;
-        passing0 = [passing0, 1];
       } else {
-        if (_valid0) {
-          valid3 = true;
-          passing0 = 1;
-        }
-      }
-      if (!valid3) {
-        const err7 = { instancePath: instancePath + "/decision", schemaPath: "#/$defs/Decision/oneOf", keyword: "oneOf", params: { passingSchemas: passing0 }, message: "must match exactly one schema in oneOf" };
-        if (vErrors === null) {
-          vErrors = [err7];
-        } else {
-          vErrors.push(err7);
-        }
-        errors++;
-      } else {
-        errors = _errs7;
+        errors = _errs5;
         if (vErrors !== null) {
-          if (_errs7) {
-            vErrors.length = _errs7;
+          if (_errs5) {
+            vErrors.length = _errs5;
           } else {
             vErrors = null;
           }
@@ -7691,36 +7786,36 @@ function validate112(data, { instancePath = "", parentData, parentDataProperty, 
       }
     }
   } else {
-    const err8 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err6 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err8];
+      vErrors = [err6];
     } else {
-      vErrors.push(err8);
+      vErrors.push(err6);
     }
     errors++;
   }
-  validate112.errors = vErrors;
+  validate116.errors = vErrors;
   return errors === 0;
 }
-validate112.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate111(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate116.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate115(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate111.evaluated;
+  const evaluated0 = validate115.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
   if (evaluated0.dynamicItems) {
     evaluated0.items = void 0;
   }
-  if (!validate112(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })) {
-    vErrors = vErrors === null ? validate112.errors : vErrors.concat(validate112.errors);
+  if (!validate116(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })) {
+    vErrors = vErrors === null ? validate116.errors : vErrors.concat(validate116.errors);
     errors = vErrors.length;
   }
-  validate111.errors = vErrors;
+  validate115.errors = vErrors;
   return errors === 0;
 }
-validate111.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate115.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 
 exports.PIPELINE_SCHEMA_VERSION = "5.0";

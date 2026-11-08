@@ -7,3 +7,5 @@ export const SURVEY_SCHEMA_TAG: string;
 export function surveySchemaJson(name: string): any;
 
 export function surveySchemaNames(): string[];
+export function contractUri(): string;
+export function registerContractSchemas(ajv: { addSchema(schema: unknown, key?: string): unknown }, transform?: (schema: any) => any): void;

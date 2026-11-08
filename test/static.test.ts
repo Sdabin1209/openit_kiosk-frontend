@@ -30,6 +30,6 @@ test("빌드 산출물에 토큰과 외부 URL이 없다", () => {
     const s = readFileSync(f, "utf8");
     assert.doesNotMatch(s, /Bearer\s+(?!\$\{)[A-Za-z0-9_.-]{6,}/i, f); // 토큰 값이 박혀 있으면 안 된다(헤더 이름만 허용)
     // Schema IDs and https://[lL]/https://[^ pattern text are validation metadata; HTTP calls still use same-origin paths.
-    assert.doesNotMatch(s, /https?:\/\/(?!www\.w3\.org|openit\.example\/(?:schemas|survey)\/|push\.example|\[lL\]|\[\^|\(\?=)/, f);
+    assert.doesNotMatch(s, /https?:\/\/(?!www\.w3\.org|openit\.example\/(?:schemas|survey|contracts)\/|push\.example|\[lL\]|\[\^|\(\?=)/, f);
   }
 });

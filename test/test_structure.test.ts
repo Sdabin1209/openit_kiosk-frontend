@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
-import { contractJson, contractList, surveySchemaJson, surveySchemaNames } from "../scripts/contract-source.mjs";
+import { contractJson, contractList, registerContractSchemas, surveySchemaJson, surveySchemaNames } from "../scripts/contract-source.mjs";
 
 const walk = (d: string, out: string[] = []): string[] => { for (const n of readdirSync(d)) { const p = join(d, n); statSync(p).isDirectory() ? walk(p, out) : out.push(p); } return out; };
 const code = walk("src").filter((f) => f.endsWith(".ts") && !f.endsWith(".d.ts"));
@@ -43,8 +43,7 @@ test("4. 모든 스키마에 통과·거부 예시가 있고 결과가 맞다", 
   const files = readdirSync("schemas").filter((f) => f.endsWith(".json"));
   const names = files.map((f) => f.replace(/\.json$/, ""));
   // 영역 스키마가 $ref로 가리키는 계약 스키마(고정 태그)
-  for (const f of contractList("schemas").filter((f) => f.endsWith(".schema.json"))) ajv.addSchema({ ...contractJson(`schemas/${f}`), $id: `https://openit.example/schemas/${f}` }, f);
-  for (const n of surveySchemaNames()) ajv.addSchema({ ...surveySchemaJson(n), $id: `https://openit.example/survey/v1/${n}.json` });
+  registerContractSchemas(ajv);
   for (const f of files) ajv.addSchema(JSON.parse(readFileSync(`schemas/${f}`, "utf8")), f);
   const ex = readdirSync("schemas/examples");
   for (const n of names) {
