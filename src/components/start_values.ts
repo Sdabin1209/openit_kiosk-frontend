@@ -49,18 +49,13 @@ function fromFragment(hash: string) {
   return { subject: frag.ok.subject_ref, questionSet: frag.ok.question_set_id, subjectBad: frag.bad.has("subject_ref") || (frag.whole && "subject_ref" in raw) };
 }
 
-/** 조각만으로 두 값이 모두 정해졌으면 기기 설정을 읽을 필요가 없다. */
-export function needsConfig(hash: string): boolean {
-  const f = fromFragment(hash);
-  return f.subject === undefined || f.questionSet === undefined;
-}
-
 export function resolveStart(input: StartInput): KioskStart {
   if (!vStartInput(input)) throw new Error("StartInput schema violation");
   const f = fromFragment(input.hash);
   let { subject, subjectBad, questionSet } = f;
   let allowRemote = false;
-  if (input.config !== null && (subject === undefined || questionSet === undefined)) {
+  // 왜 조각이 다 정해도 설정을 읽나: allow_remote_stt 는 기기 설정에만 있어, 조각이 두 값을 정했다고 건너뛰면 설정의 STT 허용이 조용히 무시된다(sweep-1222 정독에서 발견).
+  if (input.config !== null) {
     const raw = input.config, c = usableKeys(vDeviceConfig, raw);
     // 문진표 ID도 조각이 먼저, 없을 때만 기기 설정(계약 3.3.0). 형식이 틀리면 그 키만 버려 활성 목록에서 정한다(환자 참조와 달리 직원을 부르지 않는다).
     if (questionSet === undefined && typeof c.ok.question_set_id === "string") questionSet = c.ok.question_set_id;

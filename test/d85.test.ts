@@ -147,3 +147,11 @@ test("환자 참조와 발화는 콘솔이나 모의 접근 로그에 남기지 
     assert.equal(data.includes("private-test-utterance"), false);
   } finally { consoleMock.restoreAll(); }
 });
+
+// 소스 정독(sweep-1222)에서 찾은 결함: 조각이 환자 참조와 문진표를 모두 정하면 기기 설정을 읽지 않아 allow_remote_stt 가 조용히 무시됐다.
+test("조각이 환자 참조와 문진표를 모두 정해도 기기 설정의 STT 허용은 읽고, 두 값은 조각이 이긴다", async () => {
+  const seen: string[] = [];
+  const value = await loadKioskStart(win("#subject_ref=url-patient&question_set_id=frag-set"), (async (url: string) => { seen.push(url); return json({ question_set_id: "cfg-set", allow_remote_stt: true }); }) as any);
+  assert.deepEqual(seen, ["/config.json"]);
+  assert.deepEqual(value, { subjectRef: "url-patient", subjectInvalid: false, questionSetId: "frag-set", allowRemoteStt: true });
+});
