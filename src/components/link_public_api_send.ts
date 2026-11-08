@@ -4,8 +4,8 @@
 // UI를 모른다. 세션 순서 큐, 응답 대기 타임아웃, 상태 코드 분기, 오류를 ApiFailure 데이터 모양으로 던진다.
 import {
   InterventionRequest as vIntervention, SessionRequest as vSession, StaffCallReportInput as vReport, StaffCallRetryInput as vRetry,
-  SessionStartBody as vSessionStart, StartRequest as vStart, QuestionSetListBody as vQsList, UtteranceRequest as vUtterance, FrontendBody as vFrontend, StartedBody as vStarted, SessionStateBody as vState,
-  StaffAlertBody as vAlertBody, StaffCallRetryBody as vRetryBody, StaffCallReport as cReportBody, FrontendMessage as sMessage, InterventionDecision as sDecision, StaffCallRetryRequest as cRetryBody, PushSubscriptionRequest as cPushSub, type ValidateFn,
+  SessionStartBody as vSessionStart, StartRequest as vStart, UtteranceRequest as vUtterance,
+  StaffCallReport as cReportBody, FrontendMessage as sMessage, InterventionDecision as sDecision, StaffCallRetryRequest as cRetryBody, PushSubscriptionRequest as cPushSub, type ValidateFn,
 } from "../types/validators.gen.cjs";
 import type { BoundaryError } from "../types/contract/BoundaryError.ts";
 import type { FrontendInput } from "../types/FrontendInput.ts";
@@ -25,12 +25,12 @@ type Decision = "RESUME" | "END";
 type StaffCallOutcome = "STAFF_NOTIFIED_MANUALLY" | "NOT_NOTIFIED";
 /** 세션 시작 응답: FrontendInput + 서버가 발급한 session_id(PUBLIC_API.md 원칙 절, 2.2.0). */
 export type StartedSession = FrontendInput & { session_id: string };
-/** GET /v1/question-sets 항목(schemas/QuestionSetListBody.json). */
+/** GET /v1/question-sets 항목(PUBLIC_API.md I절 산문 형식. 이 응답의 스키마는 계약에 아직 없다: 있으면 생성 타입으로 바꾼다). */
 export interface QuestionSetItem { question_set_id: string; title: string; version: string }
 export interface PushSubscriptionJson { endpoint: string; keys: { p256dh: string; auth: string }; [k: string]: unknown }
 
 // ---- 오류(데이터 모양은 schemas/ApiFailure.json). 업무 컴포넌트는 클래스를 가져오지 않고 name과 필드만 읽는다.
-/** 응답 본문이 비었거나 JSON이 아니거나 스키마에 맞지 않는다. 5xx와 같이 재시도한다. */
+/** 응답 본문이 비었거나 JSON이 아니다(해석 실패). 5xx와 같이 재시도한다. 생산자가 보증하는 응답 모양은 다시 검사하지 않는다(R7, ADR 0010). */
 export class BadBodyError extends Error {
   constructor(what: string) { super(`응답 본문이 올바르지 않습니다: ${what}`); this.name = "BadBodyError"; }
 }
@@ -89,8 +89,6 @@ function acceptEnvelope(v: ValidateFn, what: string, bodyWithEnvelope: Record<st
   const { turn_id: _envelope, ...rest } = bodyWithEnvelope;
   accept(v, what, rest);
 }
-/** 응답 본문 검증기를 call()의 validate 인자 모양으로 바꾼다. 어기면 BadBodyError -> 일시 장애와 같이 재시도(FAULT_POLICY 원칙 10). */
-const body = (v: ValidateFn, what: string) => (r: unknown) => { if (!v(r)) throw new BadBodyError(what); };
 
 export interface ClientOptions {
   /** 같은 출처의 /v1. 직원 콘솔은 게이트웨이가 직원 인증을 붙인다. */
@@ -141,7 +139,7 @@ export class PublicApiClient {
 
   /** 활성 릴리스의 문진표 목록(I10 GET /v1/question-sets, 계약 3.3.0). 기기 인증은 /sessions와 같다. 읽기라 일시 장애는 재시도한다. */
   async listQuestionSets(co: CallOptions = {}): Promise<QuestionSetItem[]> {
-    const r = await this.call<{ items: QuestionSetItem[] }>("GET", `/question-sets`, undefined, true, co, body(vQsList, "QuestionSetListBody"));
+    const r = await this.call<{ items: QuestionSetItem[] }>("GET", `/question-sets`, undefined, true, co);
     return r.items;
   }
 
@@ -152,7 +150,7 @@ export class PublicApiClient {
     const req: { kind: "SESSION_START"; subject_ref?: string; question_set_id?: string } = { kind: "SESSION_START", ...given }; // 세션 ID는 서버가 발급해 응답에 싣는다(2.2.0, D106)
     // 아직 ID가 없으므로 세션별 직렬 큐에 넣지 않는다(이후 요청부터 응답의 ID로 큐가 생긴다).
     accept(vSessionStart, "SessionStartBody(공개 API 계약)", req);
-    return this.call<StartedSession>("POST", `/sessions`, req, true, co, body(vStarted, "StartedBody"));
+    return this.call<StartedSession>("POST", `/sessions`, req, true, co);
   }
 
   /** turnId를 주면 그 ID로 보낸다(재시도 모두 같은 ID). 빈 발화는 보내지 않는다. */
@@ -178,7 +176,7 @@ export class PublicApiClient {
   /** 위험 정지 중 키오스크가 2초 간격으로 폴링한다. */
   getSessionState(sessionId: string, co: CallOptions = {}): Promise<SessionState> {
     accept(vSession, "SessionRequest", { session_id: sessionId });
-    return this.call("GET", `/sessions/${sessionId}/state`, undefined, true, co, body(vState, "SessionStateBody"));
+    return this.call("GET", `/sessions/${sessionId}/state`, undefined, true, co);
   }
   /**
    * 직원 호출 재알림(2.1.0, PUBLIC_API.md G절). single: 429는 '너무 일찍 눌렀다/상한'이라는 답이지 일시 장애가 아니므로 자동 재시도하지 않는다(환자 화면의 카운트다운이 대신한다).
@@ -188,14 +186,14 @@ export class PublicApiClient {
     accept(vRetry, "StaffCallRetryInput", { session_id: sessionId, turn_id: turnId });
     const req = { turn_id: turnId };
     accept(cRetryBody, "StaffCallRetryRequest(계약)", req); // 보내기 전에 요청 본문 전체를 계약으로 검증한다(R7)
-    return this.serial(sessionId, () => this.call<StaffCallRetryResult>("POST", `/sessions/${sessionId}/staff-call/retry`, req, false, { ...co, single: true }, body(vRetryBody, "StaffCallRetryBody")));
+    return this.serial(sessionId, () => this.call<StaffCallRetryResult>("POST", `/sessions/${sessionId}/staff-call/retry`, req, false, { ...co, single: true }));
   }
   /** 환자가 직접 알렸는지(2.1.0 G절)를 서버에 남긴다. 자유 문장 없음. */
   staffCallReport(sessionId: string, outcome: StaffCallOutcome, turnId: string, co: CallOptions = {}): Promise<StaffAlert> {
     accept(vReport, "StaffCallReportInput", { session_id: sessionId, outcome, turn_id: turnId });
     const req = { outcome, turn_id: turnId };
     accept(cReportBody, "StaffCallReport(계약)", req); // 보내기 전에 요청 본문 전체를 계약으로 검증한다(R7)
-    return this.serial(sessionId, () => this.call<StaffAlert>("POST", `/sessions/${sessionId}/staff-call/report`, req, false, { ...co, single: true }, body(vAlertBody, "StaffAlertBody")));
+    return this.serial(sessionId, () => this.call<StaffAlert>("POST", `/sessions/${sessionId}/staff-call/report`, req, false, { ...co, single: true }));
   }
   /**
    * 스트림 탐침(PUBLIC_API 직원 콘솔 SSE): EventSource는 상태 코드를 알려 주지 않으므로 연결이 닫히면 같은 인증으로 한 번 불러 상태와 Retry-After만 읽는다.
@@ -259,10 +257,9 @@ export class PublicApiClient {
 
   private post(schema: ValidateFn, path: string, reqBody: Record<string, unknown>, co: CallOptions = {}, retryNotCommitted = false): Promise<FrontendInput> {
     acceptEnvelope(schema, "요청 본문(문진 스키마)", reqBody); // 보내기 전에 본문 전체를 검증한다. 어기면 보내지 않는다(R7)
-    const ok = body(vFrontend, "FrontendBody");
     // NOT_COMMITTED 재시도는 위험 정지 신호(staff_alert DELIVERED·DELIVERY_FAILED)가 없을 때만이다: 직원 호출 판단(안전)이 저장 재시도보다 먼저다.
+    // 응답 모양(FrontendInput)은 생산자(문진 서비스)가 보증한다: 다시 검사해 재시도하지 않는다(R7). 여기는 업무 분기(NOT_COMMITTED)만 본다.
     const validate = (r: unknown) => {
-      ok(r);
       const sig = (r as FrontendInput).turn_failure_signal;
       if (retryNotCommitted && sig?.write_committed === "NOT_COMMITTED" && sig.staff_alert !== "DELIVERED" && sig.staff_alert !== "DELIVERY_FAILED") throw new NotCommittedError();
     };
@@ -278,7 +275,7 @@ export class PublicApiClient {
       if (co.signal?.aborted) throw new AbortedError();
       try {
         const r = await this.once<T>(method, path, reqBody, co.signal);
-        validate?.(r); // 본문이 계약에 맞지 않으면 BadBodyError -> 아래에서 일시 장애와 같이 재시도
+        validate?.(r); // 업무 분기(NOT_COMMITTED) 판정만. 본문 모양은 다시 검사하지 않는다
         return r;
       } catch (e) {
         if (e instanceof AbortedError) throw e;
@@ -329,7 +326,8 @@ export class PublicApiClient {
       }
       if (res.status === 204) return undefined as T;
       const text = await res.text();
-      return (text ? JSON.parse(text) : undefined) as T;
+      if (!text) return undefined as T;
+      try { return JSON.parse(text) as T; } catch { throw new BadBodyError("JSON 해석 실패"); } // 해석 실패는 일시 장애처럼 재시도한다. 모양 검사는 하지 않는다(R7)
     } catch (e) {
       if (outer?.aborted) throw new AbortedError();
       throw e;

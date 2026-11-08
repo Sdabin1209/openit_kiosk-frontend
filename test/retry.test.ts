@@ -238,17 +238,13 @@ test("흐름: reason 없는 409는 재시도 없이 직원 호출 화면, TURN_I
   flow.reset();
 });
 
-// ---- 깨진 응답 본문(원칙 10): 성공으로 취급하지 않고 일시 장애처럼 재시도, 값을 지어내지 않는다 ----
+// ---- 깨진 응답 본문(원칙 10): JSON 으로 해석되지 않는 본문은 성공으로 취급하지 않고 일시 장애처럼 재시도한다.
+// 해석된 JSON 의 모양(필드·값)은 생산자가 계약으로 보증하므로 다시 검사하지 않는다(R7, ADR 0010·0045) — 그래서 모양 위반 사례는 여기 없다.
 const raw = (body: string, status = 200, ct = "text/html") => () => new Response(body, { status, headers: { "content-type": ct } });
 const bad: Array<[string, () => Response]> = [
   ["HTML 본문(200)", raw("<html>gateway</html>")],
   ["빈 본문(200)", raw("")],
   ["잘린 JSON", raw('{"response_text": "안', 200, "application/json")],
-  ["배열", raw("[]", 200, "application/json")],
-  ["response_text 없음", raw('{"turn_failure_signal": null}', 200, "application/json")],
-  ["response_text가 숫자", raw('{"response_text": 1, "turn_failure_signal": null}', 200, "application/json")],
-  ["빈 문자열 response_text", raw('{"response_text": "", "turn_failure_signal": null}', 200, "application/json")],
-  ["신호의 알 수 없는 값", raw('{"response_text": null, "turn_failure_signal": {"session_id": "s", "write_committed": "MAYBE", "staff_alert": "NONE"}}', 200, "application/json")],
   ["204 본문 없음", () => new Response(null, { status: 204 })],
 ];
 for (const [name, mk] of bad) {
@@ -279,13 +275,12 @@ test("정상 응답 모양(신호 3종, null 응답 문장)은 그대로 통과�
   }
 });
 
-test("상태 폴링 응답이 깨졌으면 재시도하고 그래도 안 되면 실패(상태를 지어내지 않는다)", async () => {
+test("상태 폴링 응답이 JSON 이 아니면 재시도해 정상 응답을 받는다", async () => {
   let n = 0;
   const c = clock();
   const api = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async () => (++n < 2 ? new Response("<html>") : json({ session_id: "s1", state: "ACTIVE", resume_text: null }))) as any) });
   assert.equal((await api.getSessionState("s1")).state, "ACTIVE");
-  const api2 = createPublicApiClient({ now: c.now, sleep: c.sleep, fetch: qsFetch((async () => json({ ok: true })) as any) });
-  await assert.rejects(api2.getSessionState("s1"), CallStaffError);
+  // 해석된 JSON 의 모양은 다시 검사하지 않는다(R7, ADR 0045): 모양 위반 응답 사례는 두지 않는다
 });
 
 

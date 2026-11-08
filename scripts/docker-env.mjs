@@ -5,7 +5,7 @@
 // 호출자가 DOCKER_CONFIG 를 이미 주었으면 그대로 쓴다(deploy 가 인증이 필요한 레지스트리용 자기 설정 폴더를 넘기는 경우, deploy 의 DEPLOY_DOCKER_CONFIG 와 같은 규칙). 없을 때만 아래 빈 설정을 쓴다.
 // 사용자 ~/.docker 는 이 파일이 읽지도 고치지도 않는다(컨텍스트 엔드포인트는 docker CLI 에게 묻는다). 설정 폴더는 git 제외 폴더 build/docker-config 다.
 // 사용: Node 는 `dockerEnv()` 를 spawn 의 env 로, 셸은 `eval "$(node scripts/docker-env.mjs --sh)"`.
-import { minEnv } from "./min-env.mjs";
+import { minEnv, DOCKER_CONNECTION_NAMES } from "./min-env.mjs";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_HOST = "unix:///var/run/docker.sock";
 const CONFIG_DIR = fileURLToPath(new URL("../build/docker-config/", import.meta.url));
 
-export function dockerEnv(base = minEnv()) {
+export function dockerEnv(base = minEnv({}, DOCKER_CONNECTION_NAMES)) {
   const env = { ...base };
   if (!env.DOCKER_HOST) {
     let host = "";

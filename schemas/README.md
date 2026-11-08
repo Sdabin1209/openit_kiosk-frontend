@@ -4,9 +4,9 @@
 
 영역 사이 타입(`DeviceConfig`, `SessionState`, `StaffCallReport` 등)은 복사하지 않고 `$ref`로 계약을 가리킨다(`<이름>.schema.json#/properties/...`, 고정 태그). 공개 API 본문 타입(`FrontendInput`, `StaffAlert` 등)은 문진 스키마·계약에서 `src/types/`로 직접 생성한다.
 
-## 받는 쪽 관대한 읽기 스키마 (`*Body`)
+## 응답 본문은 다시 검사하지 않는다 (R7, ADR 0010, ADR 0045)
 
-`FrontendBody`, `StartedBody`, `SessionStateBody`, `StaffCallRetryBody`, `StaffAlertBody`는 계약 응답 스키마의 복사가 아니라 **이 영역이 응답을 성공으로 받아들이는 조건**이다. 계약은 모르는 키를 거부(`additionalProperties: false`)하지만 읽는 쪽은 서버가 필드를 늘려도 환자 턴을 막지 않도록 모르는 키를 허용하고(ADR 0005), `state`의 모르는 값도 받는다. 어기면 성공으로 취급하지 않고 일시 장애처럼 재시도한다(FAULT_POLICY 원칙 10).
+받은 응답(FrontendInput, SessionState, 재알림 결과, 알림 본문 등)의 모양은 생산자(문진 서비스)가 보증한다. 이 영역은 해석 실패(JSON 아님)와 전송 실패만 일시 장애로 재시도하고, 모양 검사용 자체 스키마(`FrontendBody`, `StartedBody`, `SessionStateBody`, `QuestionSetListBody`, `StaffCallRetryBody`, `StaffAlertBody`)는 두지 않는다. 타입은 계약·문진 스키마에서 생성한 `src/types/`의 것을 쓴다.
 
 ## 스키마 밖 조건
 
@@ -25,7 +25,7 @@
 | 잘못된 session_id(계약 `_common.SessionId`) | `SessionRequest`, `UtteranceRequest` 등 (계약 `SessionState.session_id`를 `$ref`) |
 | 빈 발화, 너무 긴 발화(계약 5.0.0: 최대 1000자. 자르지 않고 `TOO_LONG`으로 되묻는다, ADR 0044) | `UtteranceText`, `UtteranceRequest.utterance` (계약 `UtteranceBody.utterance`를 `$ref`) |
 | 잘못된 subject_ref | `StartRequest` (계약 `DeviceConfig.subject_ref`를 `$ref`) |
-| 응답 본문 형식(FrontendInput, 시작 응답 session_id, SessionState, 재알림 결과, 알림 본문) | `FrontendBody`, `StartedBody`, `SessionStateBody`, `StaffCallRetryBody`, `StaffAlertBody` |
+| 응답 본문 형식(FrontendInput, 시작 응답 session_id, SessionState, 재알림 결과, 알림 본문) | 옮기지 않고 지움: 생산자가 보증하는 DTO 는 받는 쪽이 다시 거부하지 않는다(ADR 0045) |
 | STT 결과가 비었거나 신뢰도 0.4 미만(서버로 보내지 않음) | `UsableTranscript` |
 | 빈 말풍선, 모르는 대화 이벤트 | `ConversationEvent` |
 | 말풍선 100개 상한 | `ChatView.maxItems` (`chat_log.ts`의 `MAX_BUBBLES`는 같은 값, 스키마가 정본) |

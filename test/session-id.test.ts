@@ -44,15 +44,8 @@ test("이후 요청(발화, 종료)이 응답의 session_id를 경로와 본문�
   assert.equal(end.body.session_id, SERVER_SESSION_ID);
 });
 
-test("응답에 session_id가 없거나 형식이 틀리면 시작 성공으로 보지 않는다(직원 호출)", async () => {
-  for (const bad of [json({ response_text: "첫 질문", turn_failure_signal: null }), started("첫 질문", null, "bad id!"), started("첫 질문", null, "a".repeat(65))]) {
-    const { api } = rig({ startResp: () => bad.clone() });
-    const flow = createKioskFlow(api, { idleMs: 0 });
-    await flow.start();
-    assert.equal(flow.current.state, "CALL_STAFF");
-    assert.equal(flow.session, null, "검증되지 않은 ID를 세션으로 두지 않는다");
-  }
-});
+// 응답의 session_id 형식은 생산자(survey-service)가 계약 SessionId 로 보증한다. 받는 쪽은 다시 검사하지 않는다(R7, ADR 0010·0045)
+// — 그래서 "형식이 틀린 ID 를 거부" 시험은 없다. 서버 발급 형식은 survey-service 시험이 지킨다.
 
 test("시작 재시도 중 '그만하기': 서버가 발급한 ID를 아직 모르므로 종료 요청 없이 끝난다", async () => {
   const calls: string[] = [];
