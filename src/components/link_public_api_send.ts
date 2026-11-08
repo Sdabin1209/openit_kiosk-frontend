@@ -10,6 +10,7 @@ import {
 import type { BoundaryError } from "../types/contract/BoundaryError.ts";
 import type { FrontendInput } from "../types/FrontendInput.ts";
 import type { PushConfig } from "../types/contract/PushConfig.ts";
+import type { QuestionSetList } from "../types/contract/QuestionSetList.ts";
 import type { SessionState } from "../types/contract/SessionState.ts";
 import type { StaffAlert } from "../types/contract/StaffAlert.ts";
 import type { StaffAlertPage } from "../types/contract/StaffAlertPage.ts";
@@ -25,8 +26,6 @@ type Decision = "RESUME" | "END";
 type StaffCallOutcome = "STAFF_NOTIFIED_MANUALLY" | "NOT_NOTIFIED";
 /** 세션 시작 응답: FrontendInput + 서버가 발급한 session_id(PUBLIC_API.md 원칙 절, 2.2.0). */
 export type StartedSession = FrontendInput & { session_id: string };
-/** GET /v1/question-sets 항목(PUBLIC_API.md I절 산문 형식. 이 응답의 스키마는 계약에 아직 없다: 있으면 생성 타입으로 바꾼다). */
-export interface QuestionSetItem { question_set_id: string; title: string; version: string }
 export interface PushSubscriptionJson { endpoint: string; keys: { p256dh: string; auth: string }; [k: string]: unknown }
 
 // ---- 오류(데이터 모양은 schemas/ApiFailure.json). 업무 컴포넌트는 클래스를 가져오지 않고 name과 필드만 읽는다.
@@ -138,8 +137,8 @@ export class PublicApiClient {
   }
 
   /** 활성 릴리스의 문진표 목록(I10 GET /v1/question-sets, 계약 3.3.0). 기기 인증은 /sessions와 같다. 읽기라 일시 장애는 재시도한다. */
-  async listQuestionSets(co: CallOptions = {}): Promise<QuestionSetItem[]> {
-    const r = await this.call<{ items: QuestionSetItem[] }>("GET", `/question-sets`, undefined, true, co);
+  async listQuestionSets(co: CallOptions = {}): Promise<QuestionSetList["items"]> {
+    const r = await this.call<QuestionSetList>("GET", `/question-sets`, undefined, true, co);
     return r.items;
   }
 
