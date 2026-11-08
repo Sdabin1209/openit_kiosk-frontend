@@ -107,16 +107,16 @@ export class KioskFlow {
   private emit(e: ConversationEvent): void { if (!vConversationEvent(e)) throw new Error("ConversationEvent schema violation"); for (const l of this.convListeners) l(e); }
   private say(text: string | null | undefined, id: string): void { if (text) this.emit({ type: "SYSTEM", id, text }); }
 
-  /** 응답 대기 화면 피드백 타이머: SENDING에 들어갈 때만 걸고 떠나면 거둔다. 시계는 주입된 timers를 쓴다(ADR 0034). */
+  /** 응답 대기 화면 피드백 타이머: SENDING·STARTING에 들어갈 때만 걸고 떠나면 거둔다(STARTING은 기기 설정 읽기가 최악 CONFIG_READ_TIMEOUT_MS까지 걸려, 환자가 멈춘 화면으로 느끼지 않게 같은 안내를 쓴다). 시계는 주입된 timers를 쓴다(ADR 0034). */
   private armWaitHints(sending: boolean) {
     for (const h of this.waitTimers) this.timers.clear(h);
     this.waitTimers = [];
     if (!sending) return;
-    const hint = (waitHint: NonNullable<KioskView["waitHint"]>) => () => { if (this.view.state === "SENDING") this.patch({ waitHint }); };
+    const hint = (waitHint: NonNullable<KioskView["waitHint"]>) => () => { if (this.view.state === "SENDING" || this.view.state === "STARTING") this.patch({ waitHint }); };
     this.waitTimers = [this.timers.set(hint("THINKING"), WAIT_PROGRESS_MS), this.timers.set(hint("PLEASE_WAIT"), WAIT_NOTICE_MS)];
   }
   private set(v: KioskView) {
-    this.stopCallTimer(); this.armWaitHints(v.state === "SENDING");
+    this.stopCallTimer(); this.armWaitHints(v.state === "SENDING" || v.state === "STARTING");
     if (v.state === "IDLE" || v.state === "ENDED") this.emit({ type: "CLEAR" }); // 세션이 끝났거나 처음 화면이면 대화를 지운다
     if (v.state !== "WAITING_STAFF") this.gen++; // 대기 화면을 떠나면 폴링 종료
     if (this.notice && (v.state === "LISTENING" || v.state === "REPEAT_PROMPT" || v.state === "SENDING")) v = { ...v, startNotice: this.notice };

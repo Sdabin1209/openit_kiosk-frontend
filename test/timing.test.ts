@@ -5,7 +5,8 @@ import { readFileSync, readdirSync } from "node:fs";
 
 // 허용: 가짜 시계 정의(helpers.ts, 매달림 감시 Date.now 하나 포함), 시험이 쥔 가짜 타이머 큐(sync.test.ts), 시계를 읽지 않는 고정 과거 날짜(setup-env.test.ts)
 const ALLOW = new Set(["helpers.ts", "sync.test.ts", "setup-env.test.ts", "timing.test.ts", "test_structure.test.ts"]);
-const BAD = /Date\.now|performance\.now|hrtime|setInterval|new Date|mock\.timers|\bsetTimeout\b|timeoutMs:\s*\d/;
+const BAD = /Date\.now|performance\.now|hrtime|setInterval|new Date|mock\.timers|\bsetTimeout\b|timeoutMs:\s*\d|\breal(Timers|Sleep|Now|FlowTimers|Intervals)\b|wiring\/clock/;
+// 왜 real* 와 wiring/clock: 시험이 wiring 의 실제 시계를 직접 쓰면 실제 시간을 기다린다(U422). 시계는 가짜(helpers.fakeTimers)를 넣는다.
 
 test("시험 코드(test/*.test.ts)에 실제 시간을 읽거나 기다리는 곳이 허용 목록 밖에 없다", () => {
   const bad: string[] = [];

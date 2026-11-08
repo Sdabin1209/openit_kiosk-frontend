@@ -53,7 +53,7 @@ function waitingButtons(v: KioskView) {
 function paint() { renderChat(document, $("chat"), chat.current, text.textContent ? text.textContent : null); }
 
 function render(v: KioskView) {
-  if (v.state === "SENDING" && v.waitHint) document.body.dataset.waitHint = v.waitHint; else delete document.body.dataset.waitHint; // 진행 표시 꾸밈용
+  if ((v.state === "SENDING" || v.state === "STARTING") && v.waitHint) document.body.dataset.waitHint = v.waitHint; else delete document.body.dataset.waitHint; // 진행 표시 꾸밈용
   document.body.classList.toggle("warn", v.state === "CALL_STAFF");
   // 정지 사유는 글자와 data 속성으로 구분한다(색에 의존하지 않는다). 시험·접근성 도구용.
   if (v.state === "WAITING_STAFF" && v.pauseReason) document.body.dataset.pauseReason = v.pauseReason; else delete document.body.dataset.pauseReason;
@@ -93,7 +93,9 @@ function render(v: KioskView) {
     case "NOT_OPEN": // 활성 릴리스 없음(503 NO_ACTIVE_RELEASE): 시작할 수 없다는 안내. Retry-After 뒤 상태 기계가 목록을 다시 받는다.
       title.textContent = MSG.TITLE_NOT_OPEN.text; text.textContent = MSG.BODY_NOT_OPEN.text; action.hidden = true;
       secondary.hidden = false; secondary.textContent = MSG.BTN_HOME.text; onSecondary = () => flow.cancelChoose(); break;
-    case "STARTING": title.textContent = MSG.TITLE_WAIT.text; action.hidden = true; waitingButtons(v); break;
+    case "STARTING": title.textContent = MSG.TITLE_WAIT.text; action.hidden = true;
+      if (v.waitHint) text.textContent = v.waitHint === "PLEASE_WAIT" ? MSG.BODY_WAIT_LONGER.text : MSG.BODY_THINKING.text; // 설정 읽기가 길어져도 SENDING 과 같은 안내
+      waitingButtons(v); break;
     case "LISTENING":
       if (!v.text) text.textContent = MSG.BODY_KEEP_TALKING.text; // 응답 문장이 없는 정상 응답에서 빈 화면을 막는다
       title.textContent = MSG.TITLE_LISTENING.text; action.hidden = false; action.textContent = MSG.BTN_SPEAK.text;

@@ -10,6 +10,8 @@
 | client.test 한 세션의 요청은 하나씩 순서대로 | 직렬 큐 | 사건(첫 요청을 Event로 붙잡고 뒤 요청이 나가지 않음을 확인) | 같은 이름 |
 | client.test (새) 응답 대기 타이머는 REQUEST_TIMEOUT_MS에 발동하고 그 전에는 끊지 않는다 | 우리가 정한 응답 대기 값(60초, D125) | 1(가짜 타이머를 주입, 시간을 흘림) | 새로 씀 |
 | wait-hint.test (새) 1초 뒤 진행 표시·10초 뒤 안내 문구, 응답 오면 타이머 거둠 | Nielsen 응답 시간 지침 값(D125) | 1(시험이 쥔 가짜 타이머 큐, 실제 시간 없음) | 새로 씀 |
+| config-read.test (새) 기기 설정 응답이 멈추면 상한(CONFIG_READ_TIMEOUT_MS)에서 null 이고 요청을 취소, 응답이 먼저 오면 타이머를 거둠 | 설정 읽기 상한(ADR 0043, 값은 deploy-exposure.json 의 12초) | 1(시험이 쥔 가짜 타이머 `fakeTimers`, 시간을 흘림) + 매달림 감시(node:test timeout) | 새로 씀 |
+| config-read.test (새) STARTING 에서도 1초 진행 표시·10초 안내 문구, 시작이 끝나면 타이머 거둠 | 설정 읽기 동안 멈춘 화면으로 느끼지 않게(Nielsen 지침 값) | 1(가짜 타이머 큐) | 새로 씀 |
 | retry.test 무응답(타임아웃)도 예산에 들어가고 소진하면 직원 호출 | 시간 초과가 재시도 예산에 들어간다 | 2 | 같은 이름 |
 | retry.test 그 밖(백오프 값, Retry-After, 예산) | 재시도 간격·예산 | 이미 1(`now`·`sleep` 주입, 실제 대기 없음) | 변경 없음 |
 | flow.test 재시도 3회 실패하면 직원 호출 화면 | 재시도 소진 -> CALL_STAFF | 2 | 같은 이름 |

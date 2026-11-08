@@ -233,7 +233,7 @@ for (const row of TABLE) {
 
 test("K-1 표: STARTING·SENDING(요청 진행 중)에는 유휴 타이머가 없다", async () => {
   const a = rig({ hold: "SESSION_START" }); void a.flow.start(); await settle();
-  assert.equal(a.flow.current.state, "STARTING"); assert.equal(a.t.q.length, 0);
+  assert.equal(a.flow.current.state, "STARTING"); assert.deepEqual(a.t.q.map((x) => x.ms).sort((x, y) => x - y), [1000, 10000], "유휴 타이머는 없고 대기 피드백 타이머만 있다(STARTING 도 같은 안내, ADR 0043)");
   const b = rig({ hold: "UTTERANCE" }); await b.flow.start(); void b.flow.hear(say("네")); await settle();
   assert.equal(b.flow.current.state, "SENDING"); assert.deepEqual(b.t.q.map((x) => x.ms).sort((x, y) => x - y), [1000, 10000], "유휴 타이머는 없고 대기 피드백 타이머(D125: 1초·10초)만 있다");
 });
