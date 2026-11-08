@@ -76,8 +76,7 @@ async function open(stt: "fake" | "fake-nolocal" | "none", fakeText = "가짜 �
   }, { stt, fakeText });
   return { page, ctx, errors };
 }
-const DEV = "dev-tok-FAKE-e2e";
-const kioskUrl = (frag = `device=${DEV}`) => `${base}/#${frag}`; // 기기 토큰은 시작 URL 조각으로 받는다(쿼리 문자열 아님)
+const kioskUrl = (frag = "") => `${base}/#${frag}`; // 시작 값은 URL 조각으로 받는다(쿼리 문자열 아님). 기기 토큰 조각은 계약 4.0.0에서 없어졌다(D136)
 const title = (p: Page) => p.locator("#title");
 /** 가짜 시계를 흘려 조건이 될 때까지 기다린다(실제로 기다리지 않는다). 매달림 감시: 조건이 끝내 되지 않을 때만 HANG_GUARD_SECONDS 뒤 실패하며 판정이 아니다. */
 async function runUntil(page: Page, ok: () => Promise<boolean>, stepMs = 1000): Promise<void> {
@@ -485,10 +484,11 @@ test("직원 콘솔: 스트림이 끊긴 사이 생긴 알림이 재연결 뒤 �
   await staff.page.getByText("연결 끊김").first().waitFor({ timeout: HANG_GUARD_MS });
   // 끊긴 동안 환자 쪽에서 위험 발화(가짜 입력)
   const post = (path: string, body: object) => fetch(base + "/v1" + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  await post("/sessions", { session_id: "gap-1", kind: "SESSION_START" });
-  await post("/sessions/gap-1/turns", { session_id: "gap-1", kind: "UTTERANCE", utterance: "위험해요", turn_id: "gap-t1" });
+  // 왜 응답에서 ID를 읽나: 계약 4(D136)부터 세션 ID는 서버만 발급하고 호출자가 고른 ID는 받지 않는다.
+  const gap = (await (await post("/sessions", { kind: "SESSION_START" })).json() as any).session_id as string;
+  await post(`/sessions/${gap}/turns`, { session_id: gap, kind: "UTTERANCE", utterance: "위험해요", turn_id: "gap-t1" });
   await runUntil(staff.page, visible(staff.page.getByText("실시간 연결됨")), 1000);
-  await staff.page.locator("#open").getByText("gap-1").waitFor({ timeout: HANG_GUARD_MS });
+  await staff.page.locator("#open").getByText(gap).waitFor({ timeout: HANG_GUARD_MS });
   await staff.ctx.close();
 });
 
@@ -511,12 +511,12 @@ test("직원 콘솔: resync 이벤트를 받으면 스트림으로 오지 않은
   await staff.page.getByText("실시간 연결됨").waitFor();
   await fetch(base + "/__mock/stream", { method: "POST", body: JSON.stringify({ mute: true }) });
   const post = (path: string, body: object) => fetch(base + "/v1" + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  await post("/sessions", { session_id: "rs-1", kind: "SESSION_START" });
-  await post("/sessions/rs-1/turns", { session_id: "rs-1", kind: "UTTERANCE", utterance: "위험해요", turn_id: "rs-t1" });
+  const rs = (await (await post("/sessions", { kind: "SESSION_START" })).json() as any).session_id as string; // 서버 발급 ID(계약 4, D136)
+  await post(`/sessions/${rs}/turns`, { session_id: rs, kind: "UTTERANCE", utterance: "위험해요", turn_id: "rs-t1" });
   await staff.page.clock.runFor(1000); // 가짜 시계를 흘린 뒤에도 스트림으로는 오지 않았음을 확인한다(실제로 기다리지 않는다)
-  assert.equal(await staff.page.locator("#open").getByText("rs-1").count(), 0, "스트림으로는 오지 않았다");
+  assert.equal(await staff.page.locator("#open").getByText(rs).count(), 0, "스트림으로는 오지 않았다");
   await fetch(base + "/__mock/stream", { method: "POST", body: JSON.stringify({ mute: false, resync: true }) });
-  await staff.page.locator("#open").getByText("rs-1").waitFor({ timeout: HANG_GUARD_MS }); // 15초 주기보다 훨씬 빠르게
+  await staff.page.locator("#open").getByText(rs).waitFor({ timeout: HANG_GUARD_MS }); // 15초 주기보다 훨씬 빠르게
   await staff.ctx.close();
 });
 
@@ -626,9 +626,10 @@ test("웹 푸시(헤드리스 가능 범위): 서비스 워커 등록·활성화
   await ctx.close();
 });
 
-test("D85: subject_ref 전송 · 기기 토큰 헤더 · 주소창 조각 제거 · 저장소/콘솔에 없음 · 기록 화면 표시", async () => {
+test("D85: subject_ref 전송 · 자격 헤더 없음(mTLS) · 주소창 조각 제거 · 저장소/콘솔에 없음 · 기록 화면 표시", async () => {
   const REF = "visit:2026/10#27=a+b";
-  await scenario("risk_stop", { deviceToken: DEV });
+  gatewayDeviceId = "kiosk-e2e"; // 게이트웨이 흉내(mTLS): 기기 ID는 게이트웨이가 붙인다(D136)
+  await scenario("risk_stop", { gatewayDevice: true });
   const staff = await open("none", "", { extraHTTPHeaders: { "x-openit-user": "staff-e2e" } }); // 게이트웨이가 붙이는 헤더 대역
   await staff.page.goto(base + "/staff/");
   await staff.page.getByText("실시간 연결됨").waitFor();
@@ -637,7 +638,7 @@ test("D85: subject_ref 전송 · 기기 토큰 헤더 · 주소창 조각 제거
   kiosk.page.on("console", (m) => logs.push(m.text()));
   const sessionReqs: { url: string; auth: string | undefined; body: any }[] = [];
   kiosk.page.on("request", (r) => { if (r.url().includes("/v1/sessions")) sessionReqs.push({ url: r.url(), auth: r.headers()["authorization"], body: r.postData() ? JSON.parse(r.postData()!) : undefined }); });
-  await kiosk.page.goto(kioskUrl(`device=${DEV}&subject_ref=${encodeURIComponent(REF)}`));
+  await kiosk.page.goto(kioskUrl(`subject_ref=${encodeURIComponent(REF)}`));
   await kiosk.page.getByRole("button", { name: "시작하기" }).click();
   await kiosk.page.getByText("어디가 불편하신가요?").waitFor();
   await kiosk.page.locator("#manual-input").fill("가짜 두통 문장");
@@ -646,16 +647,16 @@ test("D85: subject_ref 전송 · 기기 토큰 헤더 · 주소창 조각 제거
   await kiosk.page.locator("#manual-input").fill("위험해요");
   await kiosk.page.getByRole("button", { name: "말하기" }).click();
   await kiosk.page.getByText("직원이 곧 도와드립니다").waitFor();
-  // 요청: 시작 본문에 subject_ref, 모든 /v1/sessions* 에 Bearer
+  // 요청: 시작 본문에 subject_ref, 모든 /v1/sessions* 에 Authorization 없음
   const start = sessionReqs.find((r) => r.body?.kind === "SESSION_START")!;
   assert.equal(start.body.subject_ref, REF);
-  assert.ok(sessionReqs.length >= 3 && sessionReqs.every((r) => r.auth === `Bearer ${DEV}`));
-  assert.ok(sessionReqs.every((r) => !r.url.includes(DEV) && !r.url.includes("subject_ref")), "토큰·참조는 URL에 없다");
+  assert.ok(sessionReqs.length >= 3 && sessionReqs.every((r) => r.auth === undefined), "앱은 자격을 보내지 않는다");
+  assert.ok(sessionReqs.every((r) => !r.url.includes("subject_ref") && !r.url.includes("visit:")), "참조는 URL에 없다");
   // 주소창에서 조각이 지워졌고, 저장소·콘솔에 값이 없다
   assert.equal(await kiosk.page.evaluate(() => location.hash), "");
   const store = await kiosk.page.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]));
-  assert.ok(!store.includes(DEV) && !store.includes("visit:"));
-  assert.ok(!logs.join("\n").includes(DEV) && !logs.join("\n").includes("visit:"));
+  assert.ok(!store.includes("visit:"));
+  assert.ok(!logs.join("\n").includes("visit:"));
   // 직원 콘솔: 기록 보기에 환자 참조, 결정 뒤 해결한 직원
   await staff.page.locator("#banner").getByText("새 알림").waitFor();
   await staff.page.locator("#open").getByRole("button", { name: /기록 보기/ }).click();
@@ -668,9 +669,10 @@ test("D85: subject_ref 전송 · 기기 토큰 헤더 · 주소창 조각 제거
   await staff.page.screenshot({ path: `${SHOTS}/staff-6-record-subject-ref.png` });
   assert.deepEqual(staff.errors, []);
   await staff.ctx.close(); await kiosk.ctx.close();
+  gatewayDeviceId = null;
 });
 
-test("D85·2.3.0: 토큰 없이 게이트웨이(mTLS)를 거치면 시작되고 자격을 보내지 않는다, 2.x 호환 토큰이 틀리면 인증 거부 화면, subject_ref 형식 오류면 직원 호출", async () => {
+test("D85·4.0: 게이트웨이(mTLS)를 거치면 시작되고 자격을 보내지 않는다, subject_ref 형식 오류면 직원 호출", async () => {
   // (1) mTLS: 앱은 기기 자격을 보내지 않는다. 게이트웨이(이 시험의 web 라우터)가 기기 ID를 붙인다.
   gatewayDeviceId = "kiosk-e2e";
   await scenario("normal", { gatewayDevice: true });
@@ -682,9 +684,7 @@ test("D85·2.3.0: 토큰 없이 게이트웨이(mTLS)를 거치면 시작되고 
   await k.page.locator("#chat li.system").first().waitFor();
   assert.ok(auths.length > 0 && auths.every((a) => a === undefined), "Authorization을 보내지 않는다");
   await k.ctx.close();
-  gatewayDeviceId = null;
-  // (2) 2.x 호환: 토큰 방식 서버에 틀린 토큰이면 인증 거부
-  await scenario("normal", { deviceToken: DEV, gatewayDevice: false });
+  // (2) 환자 참조 형식 오류: 같은 게이트웨이 조건에서 직원 호출 화면. 기기 토큰 조각(device=)은 계약 4.0.0에서 없어졌다.
   const run = async (frag: string) => {
     const k2 = await open("none");
     await k2.page.goto(kioskUrl(frag));
@@ -694,8 +694,8 @@ test("D85·2.3.0: 토큰 없이 게이트웨이(mTLS)를 거치면 시작되고 
     await k2.ctx.close();
     return t;
   };
-  assert.match(await run("device=wrong-token"), /인증이 거부/);
-  assert.match(await run(`device=${DEV}&subject_ref=${encodeURIComponent("공백 있음")}`), /접수 정보/);
+  assert.match(await run(`subject_ref=${encodeURIComponent("공백 있음")}`), /접수 정보/);
+  gatewayDeviceId = null;
 });
 
 // 마지막 시험(앞선 시험들이 만든 요청을 모아 확인한다): 브라우저의 모든 상태 변경 요청이 fetch 기본 모드(cors)로 나가
