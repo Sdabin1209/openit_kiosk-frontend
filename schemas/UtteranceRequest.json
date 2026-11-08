@@ -9,8 +9,7 @@
       "$ref": "SessionState.schema.json#/properties/session_id"
     },
     "utterance": {
-      "type": "string",
-      "pattern": "\\S"
+      "$ref": "PublicApiRequests.schema.json#/$defs/UtteranceBody/properties/utterance"
     },
     "turn_id": {
       "$ref": "StaffCallReport.schema.json#/properties/turn_id"

@@ -30,21 +30,27 @@ const internal = Object.fromEntries(readdirSync(new URL("schemas/", ROOT)).filte
 const contract = (n) => contractJson(`schemas/${n}.schema.json`);
 
 /** $ref를 제자리에 풀어 한 파일로 만든다(타입 생성용). "X.json" = 영역 스키마, "Y.schema.json#/..." = 계약 스키마의 일부. */
-function inline(node, seen = []) {
-  if (Array.isArray(node)) return node.map((n) => inline(n, seen));
+function inline(node, seen = [], base = null) {
+  if (Array.isArray(node)) return node.map((n) => inline(n, seen, base));
   if (node === null || typeof node !== "object") return node;
-  if (typeof node.$ref === "string" && !node.$ref.startsWith("#")) {
+  // 왜 base: 계약 5.0.0 부터 칸이 _common.schema.json#/$defs/Id 를 가리키고 그 안에서 다시 같은 파일의 #/$defs/... 를 가리킨다. 파일 안 참조는 그 참조가 나온 파일에서 푼다.
+  if (typeof node.$ref === "string") {
     const [file, frag = ""] = node.$ref.split("#");
-    const base = file.endsWith(".schema.json") ? contract(file.replace(/\.schema\.json$/, "")) : internal[file.replace(/\.json$/, "")];
-    if (!base) throw new Error(`gen-types: 풀 수 없는 $ref ${node.$ref}`);
-    if (seen.includes(node.$ref)) throw new Error(`gen-types: 순환 $ref ${node.$ref}`);
-    let target = base;
+    let doc;
+    if (file === "") { if (!base) return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, inline(v, seen, base)])); doc = base; }
+    else doc = file.endsWith(".schema.json") ? contract(file.replace(/\.schema\.json$/, "")) : internal[file.replace(/\.json$/, "")];
+    if (!doc) throw new Error(`gen-types: 풀 수 없는 $ref ${node.$ref}`);
+    const key = (file === "" ? "<base>" : file) + "#" + frag;
+    if (seen.includes(key)) throw new Error(`gen-types: 순환 $ref ${node.$ref}`);
+    let target = doc;
     for (const k of frag.split("/").filter(Boolean)) target = target[k];
     const { $id, $schema, ...rest } = target;
-    return inline(rest, [...seen, node.$ref]);
+    // $ref 옆의 설명·not 같은 형제 키는 보존한다(참조한 정의 위에 덮는다).
+    const { $ref, ...sib } = node;
+    return inline({ ...rest, ...sib }, [...seen, key], doc);
   }
   const out = {};
-  for (const [k, v] of Object.entries(node)) if (!(k === "$id" && seen.length > 0)) out[k] = inline(v, seen);
+  for (const [k, v] of Object.entries(node)) if (!(k === "$id" && seen.length > 0)) out[k] = inline(v, seen, base);
   // TypeScript has no negative string refinements; runtime Ajv keeps them.
   if (Array.isArray(out.allOf)) {
     out.allOf = out.allOf.filter((branch) => !(Object.keys(branch).length === 1 && branch.not));

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "UtteranceText.json",
+  "title": "UtteranceText",
+  "description": "서버로 보낼 발화 문장 한 칸. 형식(공백뿐 거부, 최대 길이)은 계약 UtteranceBody.utterance 가 정한다. 여기에 값을 되풀이하지 않는다(D117).",
+  "$ref": "PublicApiRequests.schema.json#/$defs/UtteranceBody/properties/utterance"
+}

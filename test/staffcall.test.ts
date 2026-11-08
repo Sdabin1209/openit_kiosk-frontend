@@ -163,6 +163,7 @@ test("직원 콘솔 보조 표시: 정지 사유는 글자로 구분, 필드 없
 
 // ---- 모의 서버 계약 시험: 응답이 설치된 계약 스키마를 지킨다 ----
 const ajv = new Ajv2020({ strict: false });
+ajv.addSchema(contractJson("schemas/_common.schema.json"), "_common.schema.json"); // 계약 5.0.0: 칸이 _common 의 Id·SessionId 를 참조한다
 const bs = (n: string) => ajv.compile(contractJson(`schemas/${n}`)); // 고정 태그의 계약(ADR 0027)
 const vRetryReq = bs("StaffCallRetryRequest.schema.json"), vRetry = bs("StaffCallRetryResult.schema.json"), vReport = bs("StaffCallReport.schema.json"), vAlert = bs("StaffAlert.schema.json"), vState = bs("SessionState.schema.json");
 const open: Array<() => Promise<void>> = [];

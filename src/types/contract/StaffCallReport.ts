@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffCallReport (패키지 버전 4.0.5) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffCallReport (패키지 버전 5.0.0) */
 
 
 /**
@@ -7,7 +7,7 @@
 export interface StaffCallReport {
 outcome: ("STAFF_NOTIFIED_MANUALLY" | "NOT_NOTIFIED")
 /**
- * 근거: 상한 64 는 PUBLIC_API.md 세션·턴 ID 형식과 같다
+ * 턴 ID(공개 입구 turn_id 와 같은 Id). 5.0.0: 64자 상한 사본을 Id(128) 참조로 바꿨다(D117).
  */
 turn_id: string
 }

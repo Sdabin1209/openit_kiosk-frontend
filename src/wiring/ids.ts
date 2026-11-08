@@ -4,7 +4,7 @@ function randomHex(bytes: number): string {
   globalThis.crypto.getRandomValues(a);
   return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
 }
-/** "t-" + 24자리 16진수(26자). 계약 turn_id는 1~64자(StaffCallReport.turn_id)이고 같은 세션 안에서 고유하면 된다. 난수 12바이트 = 96비트라 겹칠 확률은 무시할 수 있다(측정이 아니라 계산). */
+/** "t-" + 24자리 16진수(26자). 계약 turn_id는 모두 _common.Id(첫 글자 영문·숫자, 이후 영문·숫자·._:-, 1~128자; 계약 5.0.0)이고 같은 세션 안에서 고유하면 된다. 난수 12바이트 = 96비트라 겹칠 확률은 무시할 수 있다(측정이 아니라 계산). */
 export function newTurnId(): string {
   return "t-" + randomHex(12);
 }

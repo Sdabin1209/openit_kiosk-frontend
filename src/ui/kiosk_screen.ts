@@ -3,7 +3,7 @@ import type { ChatLog } from "../components/chat_log.ts";
 import type { KioskFlow, KioskView } from "../components/kiosk_flow.ts";
 import { MSG, fill } from "../components/patient_copy.ts";
 import { SttError, type WebSpeechStt } from "../components/stt_adapter.ts";
-import { DELIVERY_FAILED_DIRECT_NOTICE, ENDED_RESET_MS, MAX_INPUT_CHARS, NO_STT_NOTICE, REASK_LIMIT_WAIT_NOTICE, REMOTE_STT_NOTICE, RETRY_BUTTON_LABEL, STAFF_CALL_NOTICES } from "../config.ts";
+import { DELIVERY_FAILED_DIRECT_NOTICE, ENDED_RESET_MS, NO_STT_NOTICE, REASK_LIMIT_WAIT_NOTICE, REMOTE_STT_NOTICE, RETRY_BUTTON_LABEL, STAFF_CALL_NOTICES } from "../config.ts";
 import { renderChat } from "./chat_view.ts";
 
 export function mountKioskScreen({ flow, chat, stt, sttReady }: { flow: KioskFlow; chat: ChatLog; stt: WebSpeechStt; sttReady: Promise<unknown> }): void {
@@ -20,7 +20,7 @@ let onAction: () => void = () => {};
 let onSecondary: (() => void) | null = null;
 let idleTimer: number | undefined;
 $("manual-label").textContent = MSG.LABEL_MANUAL_INPUT.text; $("chat").setAttribute("aria-label", MSG.LABEL_CHAT.text); // 정적 HTML에는 환자 노출 문구를 두지 않는다(patient_copy.ts)
-input.maxLength = MAX_INPUT_CHARS; // 화면 쪽 제한(임시, config.ts)
+// 왜 maxLength 를 두지 않나: 길이 상한은 계약이 정하고 넘으면 흐름이 알린다(kiosk_flow.hear). 화면이 조용히 막거나 자르지 않는다.
 
 /** 읽어 주기는 기기 안 한국어 음성(localService)만 쓴다. 없으면 읽지 않고 화면 글자만 보인다(원격 음성은 문장을 외부로 보낼 수 있다). */
 function speak(t: string | null) {
@@ -99,11 +99,11 @@ function render(v: KioskView) {
     case "LISTENING":
       if (!v.text) text.textContent = MSG.BODY_KEEP_TALKING.text; // 응답 문장이 없는 정상 응답에서 빈 화면을 막는다
       title.textContent = MSG.TITLE_LISTENING.text; action.hidden = false; action.textContent = MSG.BTN_SPEAK.text;
-      onAction = () => (useStt() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null }).then(() => { input.value = ""; }));
+      onAction = () => (useStt() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null }).then(() => { if (flow.current.repeatReason !== "TOO_LONG") input.value = ""; /* 너무 길면 환자가 줄일 수 있게 입력을 남긴다 */ }));
       secondary.hidden = false; secondary.textContent = MSG.BTN_STOP.text; onSecondary = () => void flow.end(); break;
     case "REPEAT_PROMPT":
-      title.textContent = MSG.TITLE_REPEAT.text; action.hidden = false; action.textContent = MSG.BTN_SPEAK.text;
-      onAction = () => (useStt() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null }).then(() => { input.value = ""; }));
+      title.textContent = MSG.TITLE_REPEAT.text; if (v.repeatReason === "TOO_LONG") text.textContent = MSG.BODY_TOO_LONG.text; action.hidden = false; action.textContent = MSG.BTN_SPEAK.text;
+      onAction = () => (useStt() ? void listenOnce() : void flow.hear({ text: input.value, confidence: null }).then(() => { if (flow.current.repeatReason !== "TOO_LONG") input.value = ""; /* 너무 길면 환자가 줄일 수 있게 입력을 남긴다 */ }));
       secondary.hidden = false; secondary.textContent = MSG.BTN_STOP.text; onSecondary = () => void flow.end(); break;
     case "SENDING":
       title.textContent = v.retrying ? MSG.TITLE_WAIT.text : MSG.TITLE_SENDING.text; action.hidden = true;

@@ -1,7 +1,7 @@
 // 키오스크 상태 기계 컴포넌트. UI를 모른다. 화면은 subscribe로 상태(KioskView)를 받아 그린다.
 // 입력: 환자 조작(start·hear·end·callStaff 등)과 STT 결과(UsableTranscript 스키마로 검증), 주입받은 공개 API 포트(link_public_api_send의 함수 모양).
 // 출력: KioskView(schemas/KioskView.json)와 대화 이벤트(ConversationEvent). 링크·재시도 정책·턴 ID 발급은 wiring이 주입한다(규칙 3: 다른 컴포넌트를 import하지 않는다).
-import { KioskView as vKioskView, ConversationEvent as vConversationEvent, UsableTranscript as vUsable } from "../types/validators.gen.cjs";
+import { KioskView as vKioskView, ConversationEvent as vConversationEvent, UsableTranscript as vUsable, UtteranceText as vUtteranceText } from "../types/validators.gen.cjs";
 import type { ConversationEvent } from "../types/ConversationEvent.ts";
 import type { FrontendInput } from "../types/FrontendInput.ts";
 import type { KioskStart } from "../types/KioskStart.ts";
@@ -11,7 +11,7 @@ import type { StaffCallRetryResult } from "../types/contract/StaffCallRetryResul
 import type { StaffCallView } from "../types/StaffCallView.ts";
 import type { SttErrorKind } from "../types/SttErrorKind.ts";
 import type { SttResult } from "../types/SttResult.ts";
-import { IDLE_RESET_MS, IDLE_WARNING_MS, LONG_WAIT_NOTICE_MS, MAX_INPUT_CHARS, MAX_REPEAT, WAIT_NOTICE_MS, WAIT_PROGRESS_MS } from "../config.ts";
+import { IDLE_RESET_MS, IDLE_WARNING_MS, LONG_WAIT_NOTICE_MS, MAX_REPEAT, WAIT_NOTICE_MS, WAIT_PROGRESS_MS } from "../config.ts";
 
 /** 시작 값(KioskStart) + 시작이 서버에 접수된 뒤 부르는 confirm(한 번 쓴 환자 참조를 비운다). */
 export type StartValues = KioskStart & { confirm?: () => void };
@@ -249,8 +249,10 @@ export class KioskFlow {
     const s = this.view.state;
     if (s !== "LISTENING" && s !== "REPEAT_PROMPT") return; // 위험 정지 중에는 말을 받지 않는다
     if (!vUsable(r)) return this.repeat({ state: "REPEAT_PROMPT", text: null, repeatReason: "EMPTY_STT" });
-    const text = Array.from((r as SttResult).text.replace(/\u0000/g, "").trim()).slice(0, MAX_INPUT_CHARS).join("").trim(); // 코드 포인트 단위로 자른다(이모지 서로게이트 쌍을 가르지 않는다)
+    const text = (r as SttResult).text.replace(/\u0000/g, "").trim();
     if (text === "") return this.repeat({ state: "REPEAT_PROMPT", text: null, repeatReason: "EMPTY_STT" });
+    // 왜 자르지 않고 되묻나: 환자 발화를 말없이 자르면 임상 내용이 사라진다. 길이 상한은 계약 UtteranceBody.utterance 가 정하고(생성 검증기, 값을 코드에 두지 않는다 D117) 넘으면 알리고 다시 받는다.
+    if (!vUtteranceText(text)) return this.repeat({ state: "REPEAT_PROMPT", text: null, repeatReason: "TOO_LONG" });
     // 직전 발화가 응답 없이 실패해 같은 발화를 다시 보내는 경우만 같은 turn_id를 쓴다.
     const turnId = this.pendingUtterance === text && this.pendingTurnId ? this.pendingTurnId : this.newTurnId();
     this.pendingTurnId = turnId; this.pendingUtterance = text;

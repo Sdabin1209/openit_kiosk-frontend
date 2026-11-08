@@ -1,10 +1,13 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffCallRetryResult (패키지 버전 4.0.5) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffCallRetryResult (패키지 버전 5.0.0) */
 
 
 /**
  * 재알림 응답(2.1.0, CR-H001). 같은 alert_id로 다시 전달한 결과.
  */
 export interface StaffCallRetryResult {
+/**
+ * 근거: 길이 상한 128 은 설계 상한(CONVENTIONS 2절, 측정 안 함)
+ */
 alert_id: string
 staff_alert: ("DELIVERED" | "DELIVERY_FAILED")
 delivery_attempts: number

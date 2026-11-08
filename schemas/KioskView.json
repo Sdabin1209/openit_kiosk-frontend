@@ -39,7 +39,8 @@
     },
     "repeatReason": {
       "enum": [
-        "EMPTY_STT"
+        "EMPTY_STT",
+        "TOO_LONG"
       ]
     },
     "retrying": {

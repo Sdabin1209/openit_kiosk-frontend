@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffCallRetryRequest (패키지 버전 4.0.5) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts StaffCallRetryRequest (패키지 버전 5.0.0) */
 
 
 /**
@@ -6,7 +6,7 @@
  */
 export interface StaffCallRetryRequest {
 /**
- * 키오스크가 만든 고유 문자열. 같은 값을 다시 보내면 같은 응답(멱등) 근거: 상한 64 는 PUBLIC_API.md 세션·턴 ID 형식과 같다
+ * 턴 ID(공개 입구 turn_id 와 같은 Id). 5.0.0: 64자 상한 사본을 Id(128) 참조로 바꿨다(D117).
  */
 turn_id: string
 }

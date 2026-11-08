@@ -9,6 +9,8 @@ import { createPublicApiClient } from "../src/wiring/public_api.ts";
 import { createStartHolder } from "../src/components/start_values.ts";
 import { createKioskFlow } from "../src/wiring/kiosk.ts";
 import * as clinical from "../src/config.ts";
+// 발화 상한은 코드가 아니라 고정 태그의 계약 값이다(시험이 계약 파일에서 읽는다)
+const UTTERANCE_MAX: number = contractJson("schemas/PublicApiRequests.schema.json").$defs.UtteranceBody.properties.utterance.maxLength;
 import { json, ok, settle, started, qsFetch, noTimers } from "./helpers.ts";
 
 const say = (t: string) => ({ text: t, confidence: 0.9 });
@@ -100,13 +102,20 @@ test("P4: 성공한 턴이 있으면 반복 횟수가 초기화되고, 알아듣
   assert.equal(flow.current.callStaffReason, "REPEAT_LIMIT");
 });
 
-test("P4: 수동 입력은 최대 글자 수로 자르고 널 문자를 제거한다", async () => {
+test("P4: 널 문자는 제거하고, 계약 상한(UtteranceBody.utterance)을 넘는 발화는 자르지 않고 되묻는다", async () => {
   const { api, bodies } = server(); const flow = createKioskFlow(api, { idleMs: 0 });
   await flow.start();
-  await flow.hear(say("가".repeat(clinical.MAX_INPUT_CHARS + 50) + "\u0000"));
-  const sent = bodies.find((b) => b.kind === "UTTERANCE").utterance as string;
-  assert.equal(sent.length, clinical.MAX_INPUT_CHARS);
-  assert.ok(!sent.includes("\u0000"));
+  await flow.hear(say("가나\u0000다"));
+  assert.equal(bodies.find((b) => b.kind === "UTTERANCE").utterance, "가나다");
+  // 상한 값은 시험이 계약에서 읽는다(코드와 같은 출처가 아니라 고정 태그의 계약 파일)
+  const flow2 = createKioskFlow(api, { idleMs: 0 });
+  await flow2.start();
+  const before = bodies.filter((b) => b.kind === "UTTERANCE").length;
+  await flow2.hear(say("가".repeat(UTTERANCE_MAX + 1)));
+  assert.equal(flow2.current.state, "REPEAT_PROMPT"); assert.equal(flow2.current.repeatReason, "TOO_LONG");
+  assert.equal(bodies.filter((b) => b.kind === "UTTERANCE").length, before, "서버로 보내지 않았다");
+  await flow2.hear(say("가".repeat(UTTERANCE_MAX)));
+  assert.equal((bodies.filter((b) => b.kind === "UTTERANCE").at(-1)!.utterance as string).length, UTTERANCE_MAX, "상한 그대로는 전부 보낸다");
 });
 
 // ---- P5 ----
@@ -128,7 +137,9 @@ test("P5: 위험 정지 대기 중 상태 조회가 실패하면 환자에게 �
 });
 
 // ---- H-2 ----
-const sessionState = new Ajv2020({ strict: false }).compile(contractJson("schemas/SessionState.schema.json"));
+const sessionAjv = new Ajv2020({ strict: false });
+sessionAjv.addSchema(contractJson("schemas/_common.schema.json"), "_common.schema.json"); // 계약 5.0.0: session_id 는 _common.SessionId 참조
+const sessionState = sessionAjv.compile(contractJson("schemas/SessionState.schema.json"));
 
 test("H-2: 실서버 응답 모양(신호 null + 상태 PAUSED_RISK)이면 대기 화면으로 간다", async () => {
   // 계약 예시를 고정한다: 위험 정지 성공 때 survey는 turn_failure_signal=null을 주고 정지는 SessionState로만 보인다.
@@ -278,12 +289,11 @@ test("K-2: 시작이 실패하면 환자 참조가 남아 같은 참조로 다�
 });
 
 // ---- L ----
-test("L: 입력 자르기는 코드 포인트 단위라 이모지 서로게이트 쌍을 가르지 않는다", async () => {
+test("L: 상한은 코드 포인트 단위라 이모지 한 글자를 둘로 세지 않는다", async () => {
   const { api, bodies } = server(); const flow = createKioskFlow(api, { idleMs: 0 });
   await flow.start();
-  await flow.hear(say("가".repeat(clinical.MAX_INPUT_CHARS - 1) + "😀😀😀"));
+  await flow.hear(say("가".repeat(UTTERANCE_MAX - 1) + "😀"));
   const sent = bodies.find((b) => b.kind === "UTTERANCE").utterance as string;
-  assert.equal(Array.from(sent).length, clinical.MAX_INPUT_CHARS);
+  assert.equal(Array.from(sent).length, UTTERANCE_MAX);
   assert.ok(sent.endsWith("😀"));
-  assert.doesNotMatch(sent, /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/, "외톨이 서로게이트 없음");
 });

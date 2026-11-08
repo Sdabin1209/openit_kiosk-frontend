@@ -1,4 +1,4 @@
-/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts PushSubscriptionRequest (패키지 버전 4.0.5) */
+/* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: boundary-contracts PushSubscriptionRequest (패키지 버전 5.0.0) */
 
 
 /**
@@ -6,7 +6,7 @@
  */
 export interface PushSubscriptionRequest {
 /**
- * 웹 푸시 endpoint(PushSubscription.endpoint). https, 포트 없음 또는 443, 점이 있는 이름 호스트(IP 리터럴·localhost·.local/.localdomain/.internal/.lan/.home/.corp/.intranet 거부), 경로가 있고 공백이 없다. 3.7.0: PublicApiRequests.PushSubscribeBody 와 둘로 갈라져 있던 제약을 여기 하나로 합쳤다 근거: 상한 2048 은 브라우저·프록시가 넘기는 URL 길이의 관례적 하한(측정 안 함)
+ * 웹 푸시 endpoint(PushSubscription.endpoint). https, 포트 없음 또는 443, 점이 있는 이름 호스트(IP 리터럴·localhost·.local/.localdomain/.internal/.lan/.home/.corp/.intranet 거부), 경로가 있고 공백이 없다. 3.7.0: PublicApiRequests.PushSubscribeBody 와 둘로 갈라져 있던 제약을 여기 하나로 합쳤다 근거: 상한 2048 은 브라우저·프록시가 넘기는 URL 길이의 관례적 하한(측정 안 함) 5.0.0: 경로는 ASCII 표시 문자만(RFC 3986 2절: URI 는 ASCII, 비ASCII 는 퍼센트 인코딩)이고 format uri(RFC 3986 URI 문법, rfc3986-validator 를 format_checker 가 강제)를 함께 건다. 강제 범위는 이 두 검사와 위 패턴까지다(스킴·호스트 의미 검사는 패턴 몫). 비ASCII 경로가 저장소 키 상한을 넘겨 5xx 가 되던 것을 막는다(결함 대장 #10).
  */
 endpoint: string
 /**
@@ -26,6 +26,7 @@ auth: string
  * 구독 주제(계약 3.4.0). alerts=직원 알림(staff 역할), results=결과 도착(clinician 역할=result-reader 토큰). 없으면 ["alerts"]. 역할 확인은 서비스가 한다.
  *
  * @minItems 1
+ * @maxItems 2
  */
-topics?: [("alerts" | "results"), ...(("alerts" | "results"))[]]
+topics?: [("alerts" | "results")]|[("alerts" | "results"), ("alerts" | "results")]
 }

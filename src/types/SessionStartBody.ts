@@ -1,6 +1,9 @@
 /* 생성 파일: node scripts/gen-types.mjs (직접 고치지 않는다). 출처: schemas/SessionStartBody.json */
 
 
+/**
+ * 세션 시작의 HTTP 본문. 형식의 정본은 공개 API 계약이며 모의 서버도 같은 검증기를 쓴다.
+ */
 export interface SessionStartBody {
 kind: "SESSION_START"
 /**

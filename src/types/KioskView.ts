@@ -8,7 +8,7 @@ export type KioskView = {
 state: ("IDLE" | "CHOOSING" | "NOT_OPEN" | "STARTING" | "LISTENING" | "REPEAT_PROMPT" | "SENDING" | "WAITING_STAFF" | "CALL_STAFF" | "ENDING" | "ENDED")
 text: (string | null)
 callStaffReason?: ("RETRY_EXHAUSTED" | "DELIVERY_FAILED" | "AUTH" | "START_FAILED" | "STAFF_REQUESTED" | "BAD_SUBJECT_REF" | "REPEAT_LIMIT")
-repeatReason?: "EMPTY_STT"
+repeatReason?: ("EMPTY_STT" | "TOO_LONG")
 retrying?: boolean
 /**
  * SENDING 대기 중 화면 피드백 단계(D125, Nielsen): 1초 뒤 THINKING(진행 표시), 10초 뒤 PLEASE_WAIT(안내 문구). 없으면 아직 1초 전

@@ -22,8 +22,8 @@
 
 | 기존 코드의 거부 | 옮긴 곳 |
 |---|---|
-| 잘못된 session_id(1~64자 영문·숫자·-_) | `SessionRequest`, `UtteranceRequest` 등 (계약 `SessionState.session_id`를 `$ref`) |
-| 빈 발화 | `UtteranceRequest.utterance` (`\S` 패턴) |
+| 잘못된 session_id(계약 `_common.SessionId`) | `SessionRequest`, `UtteranceRequest` 등 (계약 `SessionState.session_id`를 `$ref`) |
+| 빈 발화, 너무 긴 발화(계약 5.0.0: 최대 1000자. 자르지 않고 `TOO_LONG`으로 되묻는다, ADR 0044) | `UtteranceText`, `UtteranceRequest.utterance` (계약 `UtteranceBody.utterance`를 `$ref`) |
 | 잘못된 subject_ref | `StartRequest` (계약 `DeviceConfig.subject_ref`를 `$ref`) |
 | 응답 본문 형식(FrontendInput, 시작 응답 session_id, SessionState, 재알림 결과, 알림 본문) | `FrontendBody`, `StartedBody`, `SessionStateBody`, `StaffCallRetryBody`, `StaffAlertBody` |
 | STT 결과가 비었거나 신뢰도 0.4 미만(서버로 보내지 않음) | `UsableTranscript` |

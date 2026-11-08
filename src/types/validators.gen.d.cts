@@ -45,3 +45,4 @@ export const SttResult: ValidateFn;
 export const SyncStatus: ValidateFn;
 export const UsableTranscript: ValidateFn;
 export const UtteranceRequest: ValidateFn;
+export const UtteranceText: ValidateFn;

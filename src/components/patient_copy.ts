@@ -15,6 +15,7 @@ export const MSG = {
   TITLE_REPEAT: m("다시 말씀해 주세요"),
   TITLE_SENDING: m("확인하고 있어요"),
   // 응답 대기 화면 피드백(D125, Nielsen 응답 시간 지침: 1초 뒤 진행 표시, 10초 뒤 안내 문구). 임시 UI 문구, 임상 검토 전
+  BODY_TOO_LONG: m("말씀이 너무 길어요. 조금 줄여서 다시 말씀해 주세요."), // 임시 UI 문구, 임상 검토 전
   BODY_THINKING: m("생각하고 있어요..."),
   BODY_WAIT_LONGER: m("조금만 더 기다려 주세요."),
   TITLE_WAITING_STAFF: m("직원이 곧 도와드립니다"),

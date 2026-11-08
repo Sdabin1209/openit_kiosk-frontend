@@ -33,6 +33,7 @@ test("모의 서버 응답이 FrontendInput 스키마를 지키고 전체 문진
 
 const validateDecision = ajv.compile(surveySchemaJson("InterventionDecision"));
 const bs = (n: string) => ajv.compile(contractJson(`schemas/${n}`)); // 고정 태그의 계약(ADR 0027)
+ajv.addSchema(contractJson("schemas/_common.schema.json"), "_common.schema.json"); // 계약 5.0.0: 칸이 _common 의 Id·SessionId 를 참조한다
 ajv.addSchema(contractJson("schemas/StaffAlert.schema.json"), "StaffAlert.schema.json"); // StaffAlertPage가 $ref로 참조(계약 2ec2849)
 const vAlert = ajv.getSchema("StaffAlert.schema.json")!, vPage = bs("StaffAlertPage.schema.json"), vState = bs("SessionState.schema.json"), vPush = bs("PushConfig.schema.json");
 
@@ -58,11 +59,10 @@ test("모의 서버는 봉투 밖의 필드를 400으로 거부한다", async ()
   const body: any = await bad.json();
   assert.equal(body.code, "INVALID_RECORD");
   // 오류 본문은 계약의 BoundaryError 스키마(pipeline_schema_version 포함)를 지킨다.
-  ajv.addSchema(contractJson("schemas/_common.schema.json"), "_common.schema.json");
   const vErr = bs("BoundaryError.schema.json");
   const okErr: boolean = vErr(body);
   assert.ok(okErr, JSON.stringify(vErr.errors));
-  assert.equal(body.pipeline_schema_version, "4.0");
+  assert.equal(body.pipeline_schema_version, "5.0");
 });
 
 test("알림·목록·상태·푸시 설정 응답이 계약 스키마를 지킨다", async () => {
