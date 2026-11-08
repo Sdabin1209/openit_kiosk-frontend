@@ -19,4 +19,4 @@ COPY --chown=pwuser:pwuser scripts ./scripts
 COPY --chown=pwuser:pwuser test/helpers.ts ./test/helpers.ts
 COPY --chown=pwuser:pwuser test-e2e ./test-e2e
 ENV CI=1
-CMD ["sh", "-c", "fc-list :lang=ko | grep -qi 'noto.*cjk' && node scripts/build.mjs && node --test --test-concurrency=1 'test-e2e/*.test.ts'"]
+CMD ["sh", "-c", "fc-list :lang=ko | grep -qi 'noto.*cjk' && node scripts/build.mjs && node --test --test-timeout=600000 --test-concurrency=1 'test-e2e/*.test.ts'"]

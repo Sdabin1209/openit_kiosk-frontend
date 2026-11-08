@@ -1,4 +1,5 @@
 // 화면(DOM): 기기 설정 읽기 등으로 STARTING 이 길어지면 1초·10초 안내 문구가 실제 화면에 그려진다(ADR 0043). 가짜 시계, 실제 시간 없음(U422).
+// HTML 은 소스(src/kiosk/index.html)를 직접 읽는다: dist 는 빌드 산출물이라 단일 파일 실행 때 낡을 수 있다.
 // 1초·10초는 Nielsen 응답 시간 지침의 표준 값이다(wait-hint.test.ts 와 같다). jsdom 이 호스트에 없으면 건너뛴다(kiosk-app.test.ts 와 같은 방식).
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -14,7 +15,7 @@ const mod = "jsdom";
 try { ({ JSDOM } = await import(mod)); } catch { /* 호스트에 없음 */ }
 
 test("STARTING 이 길어지면 화면에 진행 표시 문구, 이어서 안내 문구가 그려진다", { skip: JSDOM ? false : "jsdom 없음" }, async () => {
-  const dom = new JSDOM(readFileSync("dist/index.html", "utf8"), { url: "http://127.0.0.1/", pretendToBeVisual: true });
+  const dom = new JSDOM(readFileSync("src/kiosk/index.html", "utf8"), { url: "http://127.0.0.1/", pretendToBeVisual: true });
   const g = globalThis as any, saved = { document: g.document, window: g.window };
   g.document = dom.window.document; g.window = dom.window;
   try {
