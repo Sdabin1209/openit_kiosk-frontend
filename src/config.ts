@@ -78,5 +78,9 @@ export const WAIT_NOTICE_MS = 10_000;
 /** 언어 팩 설치가 이 시간(ms) 안에 끝나지 않으면 지원 안 함으로 보고 글자 입력으로 대체한다. 임의 값(측정 안 함): 환자가 음성 입력만 기다리지 않게 하는 상한. docs/design.md 5절 */
 export const STT_INSTALL_TIMEOUT_MS = 10_000;
 
+/** 기기 설정(`GET /config.json`) 읽기 상한 12초 [출처: deploy-exposure.json 의 /config.json timeouts_ms 가 dial 2000 + response_header 10000 = 12000, ADR 0043]. 게이트웨이가 먼저 끊어 오류(504 등)를 주도록 그 합계와 같게 둔다. 측정하지 않았다.
+ * 이 시간 안에 응답이 없으면 설정 없음(null)으로 보고 시작한다: 설정은 선택이고 시작을 막으면 재시도 예산·직원 호출 화면에도 닿지 못한다. */
+export const CONFIG_READ_TIMEOUT_MS = 12_000;
+
 /** 로그인 경로: 계약 HumanAuthEndpoints.login(const "/oauth2/start", GET, 쿼리 rd=로그인 뒤 돌아올 같은 출처 경로). platform 공개 입구가 주는 값이고 계약이 정본이다(3.4.4). */
 export const LOGIN_PATH = "/oauth2/start";

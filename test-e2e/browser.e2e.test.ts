@@ -627,75 +627,77 @@ test("웹 푸시(헤드리스 가능 범위): 서비스 워커 등록·활성화
 });
 
 test("D85: subject_ref 전송 · 자격 헤더 없음(mTLS) · 주소창 조각 제거 · 저장소/콘솔에 없음 · 기록 화면 표시", async () => {
-  const REF = "visit:2026/10#27=a+b";
-  gatewayDeviceId = "kiosk-e2e"; // 게이트웨이 흉내(mTLS): 기기 ID는 게이트웨이가 붙인다(D136)
-  await scenario("risk_stop", { gatewayDevice: true });
-  const staff = await open("none", "", { extraHTTPHeaders: { "x-openit-user": "staff-e2e" } }); // 게이트웨이가 붙이는 헤더 대역
-  await staff.page.goto(base + "/staff/");
-  await staff.page.getByText("실시간 연결됨").waitFor();
-  const kiosk = await open("none");
-  const logs: string[] = [];
-  kiosk.page.on("console", (m) => logs.push(m.text()));
-  const sessionReqs: { url: string; auth: string | undefined; body: any }[] = [];
-  kiosk.page.on("request", (r) => { if (r.url().includes("/v1/sessions")) sessionReqs.push({ url: r.url(), auth: r.headers()["authorization"], body: r.postData() ? JSON.parse(r.postData()!) : undefined }); });
-  await kiosk.page.goto(kioskUrl(`subject_ref=${encodeURIComponent(REF)}`));
-  await kiosk.page.getByRole("button", { name: "시작하기" }).click();
-  await kiosk.page.getByText("어디가 불편하신가요?").waitFor();
-  await kiosk.page.locator("#manual-input").fill("가짜 두통 문장");
-  await kiosk.page.getByRole("button", { name: "말하기" }).click();
-  await kiosk.page.getByText("언제부터 그러셨나요?").waitFor();
-  await kiosk.page.locator("#manual-input").fill("위험해요");
-  await kiosk.page.getByRole("button", { name: "말하기" }).click();
-  await kiosk.page.getByText("직원이 곧 도와드립니다").waitFor();
-  // 요청: 시작 본문에 subject_ref, 모든 /v1/sessions* 에 Authorization 없음
-  const start = sessionReqs.find((r) => r.body?.kind === "SESSION_START")!;
-  assert.equal(start.body.subject_ref, REF);
-  assert.ok(sessionReqs.length >= 3 && sessionReqs.every((r) => r.auth === undefined), "앱은 자격을 보내지 않는다");
-  assert.ok(sessionReqs.every((r) => !r.url.includes("subject_ref") && !r.url.includes("visit:")), "참조는 URL에 없다");
-  // 주소창에서 조각이 지워졌고, 저장소·콘솔에 값이 없다
-  assert.equal(await kiosk.page.evaluate(() => location.hash), "");
-  const store = await kiosk.page.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]));
-  assert.ok(!store.includes("visit:"));
-  assert.ok(!logs.join("\n").includes("visit:"));
-  // 직원 콘솔: 기록 보기에 환자 참조, 결정 뒤 해결한 직원
-  await staff.page.locator("#banner").getByText("새 알림").waitFor();
-  await staff.page.locator("#open").getByRole("button", { name: /기록 보기/ }).click();
-  const dlg = staff.page.getByRole("dialog", { name: /세션 기록/ });
-  await dlg.getByText(REF).waitFor();
-  assert.equal(await dlg.getByRole("table", { name: "이 세션의 알림" }).getByText("(없음)").count(), 1); // 아직 해결 전
-  await dlg.getByRole("button", { name: "이어서 진행" }).click();
-  await staff.page.locator("#confirm-yes").click();
-  await dlg.getByRole("table", { name: "이 세션의 알림" }).getByText("staff-e2e").waitFor();
-  await staff.page.screenshot({ path: `${SHOTS}/staff-6-record-subject-ref.png` });
-  assert.deepEqual(staff.errors, []);
-  await staff.ctx.close(); await kiosk.ctx.close();
-  gatewayDeviceId = null;
+  try {
+    const REF = "visit:2026/10#27=a+b";
+    gatewayDeviceId = "kiosk-e2e"; // 게이트웨이 흉내(mTLS): 기기 ID는 게이트웨이가 붙인다(D136)
+    await scenario("risk_stop", { gatewayDevice: true });
+    const staff = await open("none", "", { extraHTTPHeaders: { "x-openit-user": "staff-e2e" } }); // 게이트웨이가 붙이는 헤더 대역
+    await staff.page.goto(base + "/staff/");
+    await staff.page.getByText("실시간 연결됨").waitFor();
+    const kiosk = await open("none");
+    const logs: string[] = [];
+    kiosk.page.on("console", (m) => logs.push(m.text()));
+    const sessionReqs: { url: string; auth: string | undefined; body: any }[] = [];
+    kiosk.page.on("request", (r) => { if (r.url().includes("/v1/sessions")) sessionReqs.push({ url: r.url(), auth: r.headers()["authorization"], body: r.postData() ? JSON.parse(r.postData()!) : undefined }); });
+    await kiosk.page.goto(kioskUrl(`subject_ref=${encodeURIComponent(REF)}`));
+    await kiosk.page.getByRole("button", { name: "시작하기" }).click();
+    await kiosk.page.getByText("어디가 불편하신가요?").waitFor();
+    await kiosk.page.locator("#manual-input").fill("가짜 두통 문장");
+    await kiosk.page.getByRole("button", { name: "말하기" }).click();
+    await kiosk.page.getByText("언제부터 그러셨나요?").waitFor();
+    await kiosk.page.locator("#manual-input").fill("위험해요");
+    await kiosk.page.getByRole("button", { name: "말하기" }).click();
+    await kiosk.page.getByText("직원이 곧 도와드립니다").waitFor();
+    // 요청: 시작 본문에 subject_ref, 모든 /v1/sessions* 에 Authorization 없음
+    const start = sessionReqs.find((r) => r.body?.kind === "SESSION_START")!;
+    assert.equal(start.body.subject_ref, REF);
+    assert.ok(sessionReqs.length >= 3 && sessionReqs.every((r) => r.auth === undefined), "앱은 자격을 보내지 않는다");
+    assert.ok(sessionReqs.every((r) => !r.url.includes("subject_ref") && !r.url.includes("visit:")), "참조는 URL에 없다");
+    // 주소창에서 조각이 지워졌고, 저장소·콘솔에 값이 없다
+    assert.equal(await kiosk.page.evaluate(() => location.hash), "");
+    const store = await kiosk.page.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]));
+    assert.ok(!store.includes("visit:"));
+    assert.ok(!logs.join("\n").includes("visit:"));
+    // 직원 콘솔: 기록 보기에 환자 참조, 결정 뒤 해결한 직원
+    await staff.page.locator("#banner").getByText("새 알림").waitFor();
+    await staff.page.locator("#open").getByRole("button", { name: /기록 보기/ }).click();
+    const dlg = staff.page.getByRole("dialog", { name: /세션 기록/ });
+    await dlg.getByText(REF).waitFor();
+    assert.equal(await dlg.getByRole("table", { name: "이 세션의 알림" }).getByText("(없음)").count(), 1); // 아직 해결 전
+    await dlg.getByRole("button", { name: "이어서 진행" }).click();
+    await staff.page.locator("#confirm-yes").click();
+    await dlg.getByRole("table", { name: "이 세션의 알림" }).getByText("staff-e2e").waitFor();
+    await staff.page.screenshot({ path: `${SHOTS}/staff-6-record-subject-ref.png` });
+    assert.deepEqual(staff.errors, []);
+    await staff.ctx.close(); await kiosk.ctx.close();
+  } finally { gatewayDeviceId = null; } // 왜 finally: 실패해도 다음 시험이 게이트웨이 흉내를 물려받지 않게 한다
 });
 
 test("D85·4.0: 게이트웨이(mTLS)를 거치면 시작되고 자격을 보내지 않는다, subject_ref 형식 오류면 직원 호출", async () => {
-  // (1) mTLS: 앱은 기기 자격을 보내지 않는다. 게이트웨이(이 시험의 web 라우터)가 기기 ID를 붙인다.
-  gatewayDeviceId = "kiosk-e2e";
-  await scenario("normal", { gatewayDevice: true });
-  const auths: Array<string | undefined> = [];
-  const k = await open("none");
-  k.page.on("request", (r) => { if (r.url().includes("/v1/sessions")) auths.push(r.headers()["authorization"]); });
-  await k.page.goto(kioskUrl("x=1"));
-  await k.page.getByRole("button", { name: "시작하기" }).click();
-  await k.page.locator("#chat li.system").first().waitFor();
-  assert.ok(auths.length > 0 && auths.every((a) => a === undefined), "Authorization을 보내지 않는다");
-  await k.ctx.close();
-  // (2) 환자 참조 형식 오류: 같은 게이트웨이 조건에서 직원 호출 화면. 기기 토큰 조각(device=)은 계약 4.0.0에서 없어졌다.
-  const run = async (frag: string) => {
-    const k2 = await open("none");
-    await k2.page.goto(kioskUrl(frag));
-    await k2.page.getByRole("button", { name: "시작하기" }).click();
-    await k2.page.getByText("직원을 불러 주세요").waitFor();
-    const t = (await k2.page.locator("#text").textContent()) ?? "";
-    await k2.ctx.close();
-    return t;
-  };
-  assert.match(await run(`subject_ref=${encodeURIComponent("공백 있음")}`), /접수 정보/);
-  gatewayDeviceId = null;
+  try {
+    // (1) mTLS: 앱은 기기 자격을 보내지 않는다. 게이트웨이(이 시험의 web 라우터)가 기기 ID를 붙인다.
+    gatewayDeviceId = "kiosk-e2e";
+    await scenario("normal", { gatewayDevice: true });
+    const auths: Array<string | undefined> = [];
+    const k = await open("none");
+    k.page.on("request", (r) => { if (r.url().includes("/v1/sessions")) auths.push(r.headers()["authorization"]); });
+    await k.page.goto(kioskUrl("x=1"));
+    await k.page.getByRole("button", { name: "시작하기" }).click();
+    await k.page.locator("#chat li.system").first().waitFor();
+    assert.ok(auths.length > 0 && auths.every((a) => a === undefined), "Authorization을 보내지 않는다");
+    await k.ctx.close();
+    // (2) 환자 참조 형식 오류: 같은 게이트웨이 조건에서 직원 호출 화면. 기기 토큰 조각(device=)은 계약 4.0.0에서 없어졌다.
+    const run = async (frag: string) => {
+      const k2 = await open("none");
+      await k2.page.goto(kioskUrl(frag));
+      await k2.page.getByRole("button", { name: "시작하기" }).click();
+      await k2.page.getByText("직원을 불러 주세요").waitFor();
+      const t = (await k2.page.locator("#text").textContent()) ?? "";
+      await k2.ctx.close();
+      return t;
+    };
+    assert.match(await run(`subject_ref=${encodeURIComponent("공백 있음")}`), /접수 정보/);
+  } finally { gatewayDeviceId = null; } // 왜 finally: 실패해도 다음 시험이 게이트웨이 흉내를 물려받지 않게 한다
 });
 
 // 마지막 시험(앞선 시험들이 만든 요청을 모아 확인한다): 브라우저의 모든 상태 변경 요청이 fetch 기본 모드(cors)로 나가

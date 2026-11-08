@@ -155,3 +155,18 @@ test("조각이 환자 참조와 문진표를 모두 정해도 기기 설정의 
   assert.deepEqual(seen, ["/config.json"]);
   assert.deepEqual(value, { subjectRef: "url-patient", subjectInvalid: false, questionSetId: "frag-set", allowRemoteStt: true });
 });
+
+// cd78429 뒤 모든 시작이 /config.json 읽기를 기다린다. 설정은 선택이라 404·오류·멈춤이어도 조각 값으로 시작해야 한다(ADR 0043).
+// 실제 시간은 재지 않는다: 상한을 작게 주입하고 결과만 본다.
+const FRAG = "#subject_ref=url-patient&question_set_id=frag-set";
+const expected = { subjectRef: "url-patient", subjectInvalid: false, questionSetId: "frag-set" }; // allowRemoteStt 키 없음 = 설정에서 켜지 않았다
+for (const [name, fetchFn] of [
+  ["404", async () => json({}, 404)],
+  ["네트워크 오류", async () => { throw new TypeError("fetch failed"); }],
+  ["응답이 끝나지 않음", () => new Promise<Response>(() => {})],
+] as const) {
+  test(`조각이 완전하고 기기 설정이 ${name}이면 조각 값으로 시작하고 STT 허용은 없다`, async () => {
+    const value = await loadKioskStart(win(FRAG), fetchFn as any, 20);
+    assert.deepEqual(value, expected);
+  });
+}
