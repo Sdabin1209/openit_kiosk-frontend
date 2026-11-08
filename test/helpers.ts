@@ -38,7 +38,7 @@ export const settle = async (rounds = 20) => { for (let i = 0; i < rounds; i++) 
 /** 조건이 참이 될 때까지 기다린다. 시간은 상한(실패 시에만 쓰임)일 뿐 통과 조건이 아니다. */
 /** 매달림 감시(U422): 시험이 자기 가짜에게서 신호를 기다리는 대기의 바깥 마감(초). 정상이면 즉시(이벤트 루프 몇 바퀴) 끝나고 코드가 진짜로 멈췄을 때만 걸린다.
  * 판정(옳고 그름)이 아니다. 숫자를 시험마다 쓰지 않고 이 상수 하나로 통일한다. 300초는 헤드 지시(U422)가 정한 값이다. */
-export const HANG_GUARD_SECONDS = Number(process.env.HANG_GUARD_SECONDS ?? 300); // 왜 환경 변수: 매달림을 '실패'로 바꾸는 변이 확인을 5분 기다리지 않게 줄이려는 시험 도구용. 정상 통과에는 쓰이지 않는다
+export const HANG_GUARD_SECONDS = 300;
 export async function waitFor(cond: () => boolean, what = "조건", timeoutMs = HANG_GUARD_SECONDS * 1000) {
   const t0 = Date.now();
   while (!cond()) {

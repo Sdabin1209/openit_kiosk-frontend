@@ -13,7 +13,7 @@
     "gen-validators": "node scripts/gen-validators.mjs",
     "gen-types": "node scripts/gen-types.mjs",
     "pretest": "npm run build && npm run check-schema",
-    "test": "node --test \"test/*.test.ts\"",
+    "test": "node --test --test-timeout=300000 \"test/*.test.ts\"",
     "mock": "node mock-server/main.ts",
     "smoke": "bash scripts/smoke.sh",
     "test:image": "node --test --test-concurrency=1 \"test-image/*.test.ts\"",

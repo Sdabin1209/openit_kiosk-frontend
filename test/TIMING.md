@@ -28,6 +28,7 @@
 | setup-env.test 이미 준비돼 있으면 건너뜀 | 멱등 | 시계를 읽지 않는 고정 과거 mtime | 같은 이름 |
 | sync.test (스트림·하트비트·재연결 전부) | 직원 스트림 복구 | 이미 1(시험이 쥔 가짜 setTimeout 큐) | 변경 없음 |
 | idle-warning / audit (유휴 정리) | 유휴 경고·만료 | 이미 1(`timers` 주입) | 변경 없음 |
+| 변이 확인 방법: `npm test` 는 표준 옵션 `--test-timeout=300000`(300초 = `HANG_GUARD_SECONDS`)을 준다. 멈춤 시험의 변이를 빨리 확인하려면 실행 때 `node --test --test-timeout=3000 test/<파일>.test.ts` 로 줄인다(환경 변수 없음). | | | |
 | helpers.waitFor | 시험이 자기 가짜에게서 신호를 기다림 | 매달림 감시(`HANG_GUARD_SECONDS`) | 상수 통일 |
 | test-image 느린 클라이언트가 다른 요청을 막지 않는다 | Caddy 동작 | 지움 -> 2: Caddyfile에 `read_header 10s`, `idle 60s`를 넘겼다 | 느린 클라이언트 방어: Caddy 서버 timeout 값을 설정에 넘겼다 |
 | test-image SIGTERM에 5초 안에 정상 종료 | Docker·Caddy 신호 처리 | 지움 -> 2: CMD가 exec 형식, `grace_period 10s` | 종료 신호 설정: CMD는 exec 형식이고 grace_period는 10s다 |

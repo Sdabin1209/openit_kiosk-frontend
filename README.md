@@ -53,6 +53,7 @@ bash scripts/setup-env.sh   # 환경 준비의 정본: Node/npm 버전 점검 �
 npm run doctor          # Docker 전제 점검
 npm run typecheck && npm run check-schema
 npm test                # 단위·계약 시험(pretest가 먼저 build를 돌린다, ADR 0013)
+# 매달림 감시: npm test 는 표준 옵션 --test-timeout=300000 을 준다. 멈춤 시험의 변이 확인은 `node --test --test-timeout=3000 test/<파일>.test.ts` 로 줄인다(test/TIMING.md)
 npm run build && STATIC_DIR=dist MOCK_SCENARIO=risk_stop node mock-server/main.ts   # 모의 서버로 시연(PORT를 비우면 빈 포트)
 npm run smoke           # 이미지 빌드, /healthz, 라벨, non-root (Docker)
 bash scripts/build-image.sh <요청 JSON>   # 영역 빌드 진입점(계약 2.5.0 BuildImageRequest, 결과는 표준 출력 마지막 줄, ADR 0026)
