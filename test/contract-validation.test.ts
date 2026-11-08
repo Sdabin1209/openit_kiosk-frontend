@@ -1,5 +1,6 @@
 // 계약(boundary-contracts)에 승격된 이 영역 경계 스키마를 코드가 실제로 쓰는지 확인한다(D107, MANIFEST kiosk-frontend).
 // 기대값은 계약의 examples(통과)와 conformance/examples_invalid(거부)에서 온다. 복사본은 두지 않고 읽는다.
+import { minEnv, CONTRACT_SOURCE_NAMES } from "../scripts/min-env.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -14,8 +15,8 @@ const win = (hash = "") => ({ location: { hash, pathname: "/", search: "" }, his
 const cfg = (obj: unknown) => (async () => new Response(JSON.stringify(obj), { status: 200 })) as any;
 
 test("생성된 검증기가 계약 스키마와 같다(최신성)", () => {
-  execFileSync("node", ["scripts/gen-validators.mjs", "--check"], { stdio: "pipe" });
-  execFileSync("node", ["scripts/gen-types.mjs", "--check"], { stdio: "pipe" });
+  execFileSync("node", ["scripts/gen-validators.mjs", "--check"], { stdio: "pipe", env: minEnv({}, CONTRACT_SOURCE_NAMES) });
+  execFileSync("node", ["scripts/gen-types.mjs", "--check"], { stdio: "pipe", env: minEnv({}, CONTRACT_SOURCE_NAMES) });
 });
 
 for (const [schema, fn] of [["DeviceConfig", validateDeviceConfig], ["KioskStartFragment", validateKioskStartFragment], ["StaffPushPayload", validateStaffPushPayload]] as const) {

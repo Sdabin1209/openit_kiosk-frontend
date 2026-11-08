@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HANG_GUARD_SECONDS } from "../test/helpers.ts";
 import { dockerEnv } from "../scripts/docker-env.mjs";
+import { minEnv } from "../scripts/min-env.mjs";
 import { HealthStatus as vHealth } from "../src/types/validators.gen.cjs";
 
 const docker = (...a: string[]) => spawnSync("docker", a, { encoding: "utf8", env: dockerEnv() });
@@ -161,7 +162,7 @@ test("PORT가 정수가 아니면 시작을 거부한다(비0 종료)", () => {
   started.push(name);
   docker("run", "-d", "--name", name, "-e", "PORT=abc", TAG);
   let code = "";
-  for (let i = 0; i < 25 && code === ""; i++) { const s = docker("inspect", "-f", "{{.State.Status}} {{.State.ExitCode}}", name).stdout.trim(); if (s.startsWith("exited")) code = s.split(" ")[1]; else spawnSync("sleep", ["0.2"]); }
+  for (let i = 0; i < 25 && code === ""; i++) { const s = docker("inspect", "-f", "{{.State.Status}} {{.State.ExitCode}}", name).stdout.trim(); if (s.startsWith("exited")) code = s.split(" ")[1]; else spawnSync("sleep", ["0.2"], { env: minEnv() }); }
   assert.ok(code !== "" && code !== "0", `종료 코드 ${code}`);
 });
 
@@ -169,7 +170,7 @@ test("PORT가 정수가 아니면 시작을 거부한다(비0 종료)", () => {
 test("KIOSK_HOST=127.0.0.1이면 같은 네트워크 공간에서만 닿고 게시한 포트로는 닿지 않는다", async () => {
   const lo = run([], ["KIOSK_HOST=127.0.0.1"]);
   let inside = false;
-  for (let i = 0; i < 25 && !inside; i++) { inside = docker("exec", lo.name, "wget", "-qO-", "http://127.0.0.1:8080/healthz").status === 0; if (!inside) spawnSync("sleep", ["0.2"]); } // 매달림 감시: 기동 대기 상한 5초, 판정은 응답 여부
+  for (let i = 0; i < 25 && !inside; i++) { inside = docker("exec", lo.name, "wget", "-qO-", "http://127.0.0.1:8080/healthz").status === 0; if (!inside) spawnSync("sleep", ["0.2"], { env: minEnv() }); } // 매달림 감시: 기동 대기 상한 5초, 판정은 응답 여부
   assert.ok(inside, "컨테이너 안의 127.0.0.1에서는 응답한다");
   assert.equal(await fetch(lo.base + "/healthz").then((r) => r.status, () => "닿지 않음"), "닿지 않음", "게시한 포트(컨테이너 외부 인터페이스)로는 닿지 않는다");
 });

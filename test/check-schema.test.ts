@@ -1,9 +1,10 @@
 import { test } from "node:test";
+import { minEnv, CONTRACT_SOURCE_NAMES } from "../scripts/min-env.mjs";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 
 test("스키마 점검은 정상 모의 응답을 허용한다", () => {
-  const result = spawnSync(process.execPath, ["scripts/check-schema.mjs"], { encoding: "utf8", timeout: 30000 });
+  const result = spawnSync(process.execPath, ["scripts/check-schema.mjs"], { encoding: "utf8", timeout: 30000, env: minEnv({}, CONTRACT_SOURCE_NAMES) });
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /StaffSessionView:.*PASS/);
@@ -22,7 +23,7 @@ for (const field of ["session_id", "subject_ref", "resolved_by"]) {
       };`;
     const result = spawnSync(process.execPath,
       ["--import", `data:text/javascript,${encodeURIComponent(preload)}`, "scripts/check-schema.mjs"],
-      { encoding: "utf8", timeout: 30000 });
+      { encoding: "utf8", timeout: 30000, env: minEnv({}, CONTRACT_SOURCE_NAMES) });
     assert.ifError(result.error);
     assert.equal(result.status, 1, result.stderr);
     assert.match(result.stderr, /StaffSessionView 불일치/);

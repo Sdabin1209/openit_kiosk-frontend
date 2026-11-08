@@ -1,6 +1,7 @@
 // 영역 빌드 진입점 `bash scripts/build-image.sh <요청 JSON>` (계약 2.5.0 BuildImageRequest/BuildImageResult, OPEN_GAPS U42, ADR 0026).
 // 이 시험은 가짜 docker(DOCKER 환경 변수)로 요청 검증·빌드 인자·결과 JSON을 확인한다. 실제 빌드는 test-image/build-image.test.ts.
 // 기대값은 계약의 examples(통과)와 conformance/examples_invalid(거부)에서 온다.
+import { minEnv, CONTRACT_SOURCE_NAMES } from "../scripts/min-env.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -41,7 +42,7 @@ esac
 function run(req: unknown, dockerBin: string | null, dir: string) {
   const f = join(dir, "req.json");
   writeFileSync(f, typeof req === "string" ? req : JSON.stringify(req));
-  return spawnSync("bash", ["scripts/build-image.sh", f], { cwd: REPO, encoding: "utf8", env: { ...process.env, ...(dockerBin ? { DOCKER: dockerBin } : {}) } });
+  return spawnSync("bash", ["scripts/build-image.sh", f], { cwd: REPO, encoding: "utf8", env: minEnv(dockerBin ? { DOCKER: dockerBin } : {}, CONTRACT_SOURCE_NAMES) });
 }
 const tmp = () => mkdtempSync(join(tmpdir(), "kf-buildimg-"));
 const lastLine = (s: string) => s.trimEnd().split("\n").pop()!;

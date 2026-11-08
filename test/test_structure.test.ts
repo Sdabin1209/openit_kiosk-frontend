@@ -1,5 +1,6 @@
 // 구조 검사(head/docs/DESIGN.md 6절, D117). 헤드의 structure-check.py와 같은 기준을 이 영역 시험으로 강제한다.
 // 다른 점 하나: TypeScript 화면 리포는 화면 부품을 ui/에 둔다(DESIGN.md 3절)고 이 검사는 ui/를 허용한다.
+import { minEnv, CONTRACT_SOURCE_NAMES } from "../scripts/min-env.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -58,7 +59,7 @@ test("4. 모든 스키마에 통과·거부 예시가 있고 결과가 맞다", 
 });
 
 test("5. src/types/가 schemas/와 계약·문진 스키마에서 다시 생성한 결과와 같다", () => {
-  execFileSync("node", ["scripts/gen-types.mjs", "--check"], { stdio: "pipe" });
+  execFileSync("node", ["scripts/gen-types.mjs", "--check"], { stdio: "pipe", env: minEnv({}, CONTRACT_SOURCE_NAMES) });
 });
 
 test("6. 시험을 뺀 모든 코드 파일이 components/, wiring/, types/, ui/ 또는 진입점·설정에 속한다", () => {

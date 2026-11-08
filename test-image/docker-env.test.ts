@@ -7,6 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "nod
 import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
 import { dockerEnv } from "../scripts/docker-env.mjs";
+import { minEnv } from "../scripts/min-env.mjs";
 
 const tmp = mkdtempSync(join(tmpdir(), "docker-env-"));
 const BROKEN = JSON.stringify({ credsStore: "nonexistent-helper-xyz" });      // 없는 자격 도우미: 부르는 순간 "error getting credentials"
@@ -18,16 +19,16 @@ const ctx = join(tmp, "ctx"); mkdirSync(ctx);
 writeFileSync(join(ctx, "Dockerfile"), "# syntax=docker/dockerfile:1\nFROM scratch\nLABEL io.openit.test=docker-env\n");   // syntax 줄: 프런트엔드 이미지를 레지스트리에서 풀어 자격 도우미를 부르는 경로(실제 실패가 난 곳)
 const TAG = `docker-env-test-${process.pid}`;
 const build = (env: NodeJS.ProcessEnv) => spawnSync("docker", ["build", "-q", "--no-cache", "-t", TAG, ctx], { encoding: "utf8", env });
-const noCfg = (extra: NodeJS.ProcessEnv = {}) => { const e = { ...process.env, ...extra }; delete e.DOCKER_CONFIG; return e; };
+const noCfg = (extra: NodeJS.ProcessEnv = {}) => { const e = minEnv(extra); delete e.DOCKER_CONFIG; return e; };
 after(() => { spawnSync("docker", ["rmi", "-f", TAG], { env: dockerEnv() }); rmSync(tmp, { recursive: true, force: true }); });
 
 test("주어진 DOCKER_CONFIG 는 그대로 쓰인다(바꾸지 않고, 리포 안 빈 설정으로 덮지 않는다)", () => {
-  assert.equal(dockerEnv({ ...process.env, DOCKER_CONFIG: givenOk }).DOCKER_CONFIG, givenOk);
+  assert.equal(dockerEnv(minEnv({ DOCKER_CONFIG: givenOk })).DOCKER_CONFIG, givenOk);
 });
 
 test("주어진 DOCKER_CONFIG 로 docker build 가 돈다(변이: 주어진 설정이 망가졌다면 그 설정 때문에 실패해야 한다 = 실제로 그 설정을 쓴다는 증거)", () => {
-  assert.equal(build(dockerEnv({ ...process.env, DOCKER_CONFIG: givenOk })).status, 0);
-  const bad = build(dockerEnv({ ...process.env, DOCKER_CONFIG: givenBroken }));
+  assert.equal(build(dockerEnv(minEnv({ DOCKER_CONFIG: givenOk }))).status, 0);
+  const bad = build(dockerEnv(minEnv({ DOCKER_CONFIG: givenBroken })));
   assert.notEqual(bad.status, 0);
   assert.match(bad.stderr, /credentials/);
 });

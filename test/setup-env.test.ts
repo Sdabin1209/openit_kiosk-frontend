@@ -1,6 +1,7 @@
 // 계약 2.6.0 SetupEnvReport(OPEN_GAPS U43): `bash scripts/setup-env.sh`는 표준 출력 마지막 줄에 보고 JSON 한 줄을 낸다. 진행 기록은 표준 오류.
 // 실제 npm ci를 시험 안에서 돌리면 node_modules를 지우고 다시 깔아 이 시험 자체가 흔들리므로, 가짜 npm(PATH)으로 스크립트 동작만 확인한다.
 // 실제 환경에서 test_command를 돌리는 것은 영역 전체 시험(npm test)을 도는 것과 같다(여기서 부르면 자기 자신을 부르는 재귀가 된다).
+import { minEnv, CONTRACT_SOURCE_NAMES } from "../scripts/min-env.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -22,7 +23,7 @@ function fixture(fakeNpm: string) {
   writeFileSync(join(d, "bin/npm"), `#!/usr/bin/env bash\n${fakeNpm}\n`); chmodSync(join(d, "bin/npm"), 0o755);
   return d;
 }
-const run = (d: string) => spawnSync("bash", [join(d, "scripts/setup-env.sh")], { cwd: tmpdir(), encoding: "utf8", env: { ...process.env, PATH: `${join(d, "bin")}:${process.env.PATH}` } });
+const run = (d: string) => spawnSync("bash", [join(d, "scripts/setup-env.sh")], { cwd: tmpdir(), encoding: "utf8", env: minEnv({ PATH: `${join(d, "bin")}:${process.env.PATH}` }) });
 const lastLine = (s: string) => s.trimEnd().split("\n").pop()!;
 
 test("setup-env.sh: 성공하면 마지막 줄이 SetupEnvReport(ok, node-modules, npm test)이고 npm의 표준 출력 소음은 앞줄이 아니라 표준 오류로 간다", () => {
@@ -43,7 +44,7 @@ test("setup-env.sh: 성공하면 마지막 줄이 SetupEnvReport(ok, node-module
 test("setup-env.sh: 실패해도(npm ci 두 번 실패) 마지막 줄은 status fail과 같은 종료 코드의 보고이고 스크립트는 비0으로 끝난다", () => {
   const d = fixture("exit 1");
   try {
-    const r = spawnSync("bash", ["-c", `sleep() { :; }; export -f sleep; bash '${join(d, "scripts/setup-env.sh")}'`], { cwd: tmpdir(), encoding: "utf8", env: { ...process.env, PATH: `${join(d, "bin")}:${process.env.PATH}` } });
+    const r = spawnSync("bash", ["-c", `sleep() { :; }; export -f sleep; bash '${join(d, "scripts/setup-env.sh")}'`], { cwd: tmpdir(), encoding: "utf8", env: minEnv({ PATH: `${join(d, "bin")}:${process.env.PATH}` }) });
     assert.notEqual(r.status, 0);
     const rep = JSON.parse(lastLine(r.stdout));
     assert.equal(gen.SetupEnvReport(rep), true, JSON.stringify(gen.SetupEnvReport.errors));

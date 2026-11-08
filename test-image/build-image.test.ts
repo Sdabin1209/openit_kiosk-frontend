@@ -8,10 +8,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { dockerEnv } from "../scripts/docker-env.mjs";
+import { minEnv, CONTRACT_SOURCE_NAMES } from "../scripts/min-env.mjs";
 
 const gen = createRequire(import.meta.url)("../scripts/build-validators.gen.cjs");
 const PIN_BOUNDARY = readFileSync("Dockerfile", "utf8").match(/^ARG BOUNDARY_CONTRACT=(\S+)/m)![1]; // 이 영역이 고정한 계약 버전(U50: 요청이 이것과 다르면 진입점이 실패한다)
-const REV = spawnSync("git", ["rev-parse", "--short=7", "HEAD"], { encoding: "utf8" }).stdout.trim();
+const REV = spawnSync("git", ["rev-parse", "--short=7", "HEAD"], { encoding: "utf8", env: minEnv() }).stdout.trim();
 const TAG = `kiosk-frontend-buildimg-test/kiosk-frontend:${REV}-${process.pid}`;
 const dir = mkdtempSync(join(tmpdir(), "kf-buildimg-real-"));
 after(() => { spawnSync("docker", ["rmi", "-f", TAG], { env: dockerEnv() }); rmSync(dir, { recursive: true, force: true }); });
@@ -19,7 +20,7 @@ after(() => { spawnSync("docker", ["rmi", "-f", TAG], { env: dockerEnv() }); rmS
 function build() {
   const f = join(dir, "req.json");
   writeFileSync(f, JSON.stringify({ source_dir: process.cwd(), revision: REV, versions: { boundary: PIN_BOUNDARY }, image_tag: TAG }));
-  return spawnSync("bash", ["scripts/build-image.sh", f], { encoding: "utf8" });
+  return spawnSync("bash", ["scripts/build-image.sh", f], { encoding: "utf8", env: dockerEnv(minEnv({}, CONTRACT_SOURCE_NAMES)) });
 }
 
 test("실제 docker 빌드: 결과 마지막 줄이 BuildImageResult이고 라벨이 요청 값과 같으며 같은 요청은 같은 라벨의 이미지다", () => {
