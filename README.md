@@ -79,11 +79,11 @@ node scripts/gen-types.mjs --check   # 생성 결과와 같은지만 확인(test
 ## 현재 상태
 
 확인된 것(근거 문서):
-- 시험 상태(이 영역 시험 개수는 이 절에만 적는다; 2026-10-28, 이 PC 한 환경):
-  - `npm test` 단위·계약·구조 시험: 현행 계약(`Dockerfile`의 `ARG BOUNDARY_CONTRACT`) 기준 이 PC에서 전체 통과(2026-11-08 실측 rc=0; 개수는 `npm test` 출력의 `tests`·`pass`가 정본이고 문서에 쓰지 않는다). 이전 기록: 277개 통과(2026-10-31, 새 clone, U424 뒤; 4개 동시 실행도 실패 0). 시험 안의 실제 시간: `test/TIMING.md`. 호스트에 jsdom이 있어 화면 구조 시험과 앱 전체 jsdom 시험(`test/kiosk-app.test.ts`: 조각 없이 `/config.json`으로 시작, 대화 말풍선)도 이 안에서 돈다.
-  - `test:dom`(Docker) 화면 구조 시험 20개 통과(2026-10-30 실측, 이 PC 한 환경).
-  - `test:image`(Docker) 정적 서빙·빌드 진입점 시험 15개 통과(2026-10-30 실측).
-  - 브라우저 시험 34개 통과(Playwright 1.55.1 이미지, `npm run test:e2e`; 2026-10-31 실측, 가짜 시계 `page.clock` 적용 뒤 약 42초). 대화형 UI 전에는 같은 문구가 말풍선과 본문 두 곳에 있어 22개가 strict mode 위반으로 실패했고, 화면 구조 변경(ADR 0023)으로 해소됐다(로케이터는 바꾸지 않았다).
+- 시험 상태(시험 개수는 문서에 쓰지 않는다. 실행 출력의 `tests`·`pass`가 정본이다; 날짜·명령·rc만 적는다. 이 PC 한 환경):
+  - `npm test` 단위·계약·구조 시험: 현행 계약(`Dockerfile`의 `ARG BOUNDARY_CONTRACT`) 기준 이 PC에서 전체 통과(2026-11-08 `npm test` rc=0). 이전 기록: 2026-10-31 새 clone에서 전체 통과(U424 뒤; 4개 동시 실행도 실패 0). 시험 안의 실제 시간: `test/TIMING.md`. 호스트에 jsdom이 있어 화면 구조 시험과 앱 전체 jsdom 시험(`test/kiosk-app.test.ts`: 조각 없이 `/config.json`으로 시작, 대화 말풍선)도 이 안에서 돈다.
+  - `test:dom`(Docker) 화면 구조 시험 통과(2026-10-30, rc=0, 이 PC 한 환경).
+  - `test:image`(Docker) 정적 서빙·빌드 진입점 시험 통과(2026-10-30 rc=0; 2026-11-08 `npm run test:image` rc=0).
+  - 브라우저 시험 통과(Playwright 1.55.1 이미지, `npm run test:e2e`; 2026-10-31 rc=0, 2026-11-08 rc=0, 가짜 시계 `page.clock` 적용). 대화형 UI 전에는 같은 문구가 말풍선과 본문 두 곳에 있어 일부 시험이 strict mode 위반으로 실패했고, 화면 구조 변경(ADR 0023)으로 해소됐다(로케이터는 바꾸지 않았다).
   - `npm run smoke` 통과. `npm audit`·`--omit=dev` 모두 0건(ADR 0012).
   - 서비스끼리 도는 시험의 결과는 이 문서에 옮기지 않고 `deploy/docs/E2E_RESULTS.md`를 본다.
 - 브라우저 시험 통과, 이미지 빌드·`/healthz`·라벨·non-root 확인은 이전 작업 PC에서 했다고 기록되어 있다(`docs/runbook.md`, `docs/STATUS.md`). 이 세션에서는 다시 확인하지 않았다.
